@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Guru - Kelas Coding</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.css">
+    <link rel="stylesheet" href="css/shared.css">
+    <link rel="stylesheet" href="css/admin.css">
+</head>
+
+<body style="padding:1.5rem;">
+
+    <header class="glass p-6 mb-6 fade-in flex justify-between items-center flex-wrap gap-4">
+        <div>
+            <h1 class="text-2xl md:text-3xl font-bold text-primary">Dashboard Guru</h1>
+            <p class="text-secondary mt-1">Kelola jadwal, siswa, materi, dan permintaan kelas.</p>
+        </div>
+        <div class="flex gap-3 items-center">
+            <button onclick="toggleNotifPanel('adminNotificationPanel')" class="icon-btn glass relative" title="Notifikasi">
+                <i data-lucide="bell" class="icon-sm"></i>
+                <span id="adminNotifBadge" class="notification-badge hidden">0</span>
+            </button>
+            <button onclick="toggleTheme()" class="icon-btn glass" title="Tema">
+                <span id="themeIcon"></span>
+            </button>
+            <button onclick="logout()" class="btn btn-danger px-4 py-2 rounded-lg font-semibold">
+                <i data-lucide="log-out" class="icon-sm"></i>
+                Logout
+            </button>
+        </div>
+    </header>
+
+    <div id="adminNotificationPanel" class="notification-panel p-4">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-bold text-primary">Notifikasi</h3>
+            <button onclick="markAllRead('admin')" class="text-sm text-secondary hover:text-primary">Tandai semua dibaca</button>
+        </div>
+        <div id="adminNotifList" class="space-y-2 max-h-96 overflow-y-auto"></div>
+    </div>
+
+    <nav class="tabs glass p-3 mb-6 fade-in" aria-label="Navigasi dashboard guru">
+        <button class="tab-btn active" data-tab="overview" onclick="switchAdminTab('overview')">
+            <i data-lucide="layout-dashboard" class="icon-sm"></i> Ringkasan
+        </button>
+        <button class="tab-btn" data-tab="calendar" onclick="switchAdminTab('calendar')">
+            <i data-lucide="calendar-days" class="icon-sm"></i> Kalender
+        </button>
+        <button class="tab-btn" data-tab="students" onclick="switchAdminTab('students')">
+            <i data-lucide="users" class="icon-sm"></i> Siswa
+        </button>
+        <button class="tab-btn" data-tab="lessons" onclick="switchAdminTab('lessons')">
+            <i data-lucide="book-open" class="icon-sm"></i> Materi
+        </button>
+        <button class="tab-btn" data-tab="requests" onclick="switchAdminTab('requests')">
+            <i data-lucide="repeat-2" class="icon-sm"></i> Request
+        </button>
+        <button class="tab-btn" data-tab="broadcast" onclick="switchAdminTab('broadcast')">
+            <i data-lucide="megaphone" class="icon-sm"></i> Pesan
+        </button>
+    </nav>
+
+    <main>
+        <section id="tab-overview" class="tab-panel active">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 fade-in">
+                <div class="glass p-6 stat-card">
+                    <p class="text-secondary text-sm">Total Siswa</p>
+                    <p class="text-3xl font-bold text-primary mt-2" id="totalStudents">0</p>
+                </div>
+                <div class="glass p-6 stat-card">
+                    <p class="text-secondary text-sm">Jadwal Hari Ini</p>
+                    <p class="text-3xl font-bold text-primary mt-2" id="todaySchedules">0</p>
+                </div>
+                <div class="glass p-6 stat-card">
+                    <p class="text-secondary text-sm">Request Pending</p>
+                    <p class="text-3xl font-bold text-primary mt-2" id="pendingRequests">0</p>
+                </div>
+            </div>
+
+            <div class="dashboard-grid mb-6">
+                <section class="glass p-6 fade-in">
+                    <div class="flex justify-between items-center mb-4 flex-wrap gap-3">
+                        <h2 class="text-xl font-bold text-primary">Fokus Hari Ini</h2>
+                        <button onclick="openScheduleModal()" class="btn btn-primary px-4 py-2 rounded-lg font-semibold">
+                            <i data-lucide="plus" class="icon-sm"></i> Jadwal
+                        </button>
+                    </div>
+                    <div id="todayFocusList" class="space-y-3"></div>
+                </section>
+
+                <section class="glass p-6 fade-in">
+                    <h2 class="text-xl font-bold text-primary mb-4">Siswa Terbaru</h2>
+                    <div id="studentMiniList" class="space-y-3"></div>
+                </section>
+            </div>
+        </section>
+
+        <section id="tab-calendar" class="tab-panel">
+            <section class="glass p-6 fade-in">
+                <div class="flex justify-between items-center mb-4 flex-wrap gap-3">
+                    <div>
+                        <h2 class="text-xl font-bold text-primary">Kalender Kelas</h2>
+                        <p class="text-secondary text-sm mt-1">Klik tanggal kosong untuk membuat jadwal, atau klik event untuk edit.</p>
+                    </div>
+                    <button onclick="openScheduleModal()" class="btn btn-primary px-4 py-2 rounded-lg font-semibold">
+                        <i data-lucide="plus" class="icon-sm"></i> Tambah Jadwal
+                    </button>
+                </div>
+                <div id="calendar"></div>
+            </section>
+        </section>
+
+        <section id="tab-students" class="tab-panel">
+            <div class="dashboard-grid">
+                <section class="glass p-6 fade-in">
+                    <h2 class="text-xl font-bold text-primary mb-4">Daftarkan Siswa</h2>
+                    <div class="space-y-3">
+                        <input type="text" id="newName" placeholder="Nama lengkap" class="input-field px-4 py-3 rounded-lg">
+                        <input type="text" id="newUsername" placeholder="Email atau No WA" class="input-field px-4 py-3 rounded-lg">
+                        <input type="password" id="newMpin" placeholder="MPIN 6 digit" maxlength="6" class="input-field px-4 py-3 rounded-lg">
+                    </div>
+                    <button onclick="addStudent()" id="addStudentBtn" class="btn btn-primary px-4 py-3 rounded-lg font-semibold mt-4">
+                        <i data-lucide="user-plus" class="icon-sm"></i> Tambah Siswa
+                    </button>
+
+                    <div class="divider"></div>
+                    <h3 class="font-bold text-primary mb-3">Daftar Siswa</h3>
+                    <div id="studentList" class="space-y-2"></div>
+                </section>
+
+                <section class="glass p-6 fade-in">
+                    <h2 class="text-xl font-bold text-primary mb-4">Detail Siswa</h2>
+                    <div id="studentDetail"></div>
+                </section>
+            </div>
+        </section>
+
+        <section id="tab-lessons" class="tab-panel">
+            <section class="glass p-6 fade-in">
+                <div class="flex justify-between items-center mb-4 flex-wrap gap-3">
+                    <div>
+                        <h2 class="text-xl font-bold text-primary">Materi & Tugas</h2>
+                        <p class="text-secondary text-sm mt-1">Pilih siswa untuk mengatur learning path, resource, dan homework.</p>
+                    </div>
+                    <select id="studentSelect" onchange="loadLearningPath()" class="input-field md:w-1/2 px-4 py-3 rounded-lg">
+                        <option value="">Pilih siswa</option>
+                    </select>
+                </div>
+
+                <div id="progressSection" class="hidden mb-6">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-primary font-semibold">Progress Belajar</span>
+                        <span id="progressText" class="text-secondary text-sm">0%</span>
+                    </div>
+                    <div class="w-full bg-gray-700 rounded-full h-2.5">
+                        <div id="progressFill" class="bg-gradient-to-r from-purple-500 to-indigo-500 h-2.5 rounded-full" style="width: 0%"></div>
+                    </div>
+                </div>
+
+                <div id="learningPathList" class="space-y-3"></div>
+                <div id="addModuleSection" class="hidden mt-4">
+                    <button onclick="openModuleModal()" class="btn btn-success px-4 py-3 rounded-lg font-semibold">
+                        <i data-lucide="plus" class="icon-sm"></i> Tambah Materi
+                    </button>
+                </div>
+            </section>
+        </section>
+
+        <section id="tab-requests" class="tab-panel">
+            <section class="glass p-6 fade-in">
+                <h2 class="text-xl font-bold text-primary mb-4">Permintaan Reschedule</h2>
+                <div id="requestList" class="space-y-3"></div>
+            </section>
+        </section>
+
+        <section id="tab-broadcast" class="tab-panel">
+            <section class="glass p-6 fade-in">
+                <h2 class="text-xl font-bold text-primary mb-4">Kirim Notifikasi</h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <select id="notifRecipient" class="input-field px-4 py-3 rounded-lg">
+                        <option value="all">Semua siswa</option>
+                    </select>
+                    <input type="text" id="notifTitle" placeholder="Judul notifikasi" class="input-field px-4 py-3 rounded-lg">
+                    <input type="text" id="notifMessage" placeholder="Isi pesan" class="input-field px-4 py-3 rounded-lg">
+                </div>
+                <div class="template-actions mt-4">
+                    <button onclick="useNotificationTemplate('Kelas segera dimulai', 'Kelas akan dimulai sebentar lagi. Silakan bersiap.')" class="btn glass px-3 py-2 rounded-lg text-sm">Kelas dimulai</button>
+                    <button onclick="useNotificationTemplate('Jadwal baru', 'Jadwal kelas baru sudah ditambahkan. Cek dashboard siswa ya.')" class="btn glass px-3 py-2 rounded-lg text-sm">Jadwal baru</button>
+                    <button onclick="useNotificationTemplate('Reminder tugas', 'Jangan lupa menyelesaikan homework yang sudah diberikan.')" class="btn glass px-3 py-2 rounded-lg text-sm">Reminder tugas</button>
+                </div>
+                <button onclick="sendNotification()" class="btn btn-primary px-4 py-3 rounded-lg font-semibold mt-4">
+                    <i data-lucide="send" class="icon-sm"></i> Kirim
+                </button>
+            </section>
+        </section>
+    </main>
+
+    <div id="scheduleModal" class="modal-overlay">
+        <div class="modal-content">
+            <h3 class="text-xl font-bold text-primary mb-4">Jadwal Kelas</h3>
+            <input type="hidden" id="editScheduleId">
+            <div class="space-y-4">
+                <select id="scheduleStudent" class="input-field px-4 py-3 rounded-lg">
+                    <option value="">Pilih siswa</option>
+                </select>
+                <input type="text" id="scheduleTitle" placeholder="Judul pertemuan" class="input-field px-4 py-3 rounded-lg">
+                <input type="datetime-local" id="scheduleTime" class="input-field px-4 py-3 rounded-lg">
+                <input type="text" id="scheduleLink" placeholder="Link Zoom/Meet" class="input-field px-4 py-3 rounded-lg">
+                <select id="scheduleAttendance" class="input-field px-4 py-3 rounded-lg">
+                    <option value="pending">Attendance: pending</option>
+                    <option value="attended">Attendance: hadir</option>
+                    <option value="missed">Attendance: tidak hadir</option>
+                    <option value="rescheduled">Attendance: reschedule</option>
+                </select>
+                <textarea id="scheduleNote" placeholder="Catatan guru untuk kelas ini" class="input-field px-4 py-3 rounded-lg" rows="3"></textarea>
+            </div>
+            <div class="flex gap-3 mt-6">
+                <button onclick="saveSchedule()" class="btn btn-primary flex-1 py-3 rounded-lg font-semibold">Simpan</button>
+                <button onclick="closeModal('scheduleModal')" class="btn btn-danger flex-1 py-3 rounded-lg font-semibold">Batal</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="moduleModal" class="modal-overlay">
+        <div class="modal-content">
+            <h3 class="text-xl font-bold text-primary mb-4">Materi & Homework</h3>
+            <input type="hidden" id="editModuleId">
+            <div class="space-y-4">
+                <input type="text" id="moduleName" placeholder="Nama materi" class="input-field w-full px-4 py-3 rounded-lg">
+                <input type="text" id="moduleResource" placeholder="Link resource (opsional)" class="input-field w-full px-4 py-3 rounded-lg">
+                <textarea id="moduleHomework" placeholder="Homework atau tugas (opsional)" class="input-field w-full px-4 py-3 rounded-lg" rows="3"></textarea>
+            </div>
+            <div class="flex gap-3 mt-6">
+                <button onclick="saveModule()" class="btn btn-primary flex-1 py-3 rounded-lg font-semibold">Simpan</button>
+                <button onclick="closeModal('moduleModal')" class="btn btn-danger flex-1 py-3 rounded-lg font-semibold">Batal</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
+    <script src="js/shared.js"></script>
+    <script src="js/admin.js"></script>
+</body>
+
+</html>

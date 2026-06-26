@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Siswa - Kelas Coding</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/shared.css">
+    <link rel="stylesheet" href="css/student.css">
+</head>
+
+<body style="padding:1.5rem;">
+
+    <header class="glass p-6 mb-6 fade-in flex justify-between items-center flex-wrap gap-4">
+        <div>
+            <h1 class="text-2xl md:text-3xl font-bold text-primary">Dashboard Siswa</h1>
+            <p class="text-secondary mt-1" id="studentName">Memuat...</p>
+        </div>
+        <div class="flex gap-3 items-center">
+            <button onclick="toggleNotifPanel('studentNotificationPanel')" class="icon-btn glass relative" title="Notifikasi">
+                <i data-lucide="bell" class="icon-sm"></i>
+                <span id="studentNotifBadge" class="notification-badge hidden">0</span>
+            </button>
+            <button onclick="toggleTheme()" class="icon-btn glass" title="Tema">
+                <span id="themeIcon"></span>
+            </button>
+            <button onclick="logout()" class="btn btn-danger px-4 py-2 rounded-lg font-semibold">
+                <i data-lucide="log-out" class="icon-sm"></i>
+                Logout
+            </button>
+        </div>
+    </header>
+
+    <div id="studentNotificationPanel" class="notification-panel p-4">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-bold text-primary">Notifikasi</h3>
+            <button onclick="markAllRead('student')" class="text-sm text-secondary hover:text-primary">Tandai semua dibaca</button>
+        </div>
+        <div id="studentNotifList" class="space-y-2 max-h-96 overflow-y-auto"></div>
+    </div>
+
+    <nav class="tabs glass p-3 mb-6 fade-in" aria-label="Navigasi dashboard siswa">
+        <button class="tab-btn active" data-tab="home" onclick="switchStudentTab('home')">
+            <i data-lucide="home" class="icon-sm"></i> Home
+        </button>
+        <button class="tab-btn" data-tab="materials" onclick="switchStudentTab('materials')">
+            <i data-lucide="book-open" class="icon-sm"></i> Materi
+        </button>
+        <button class="tab-btn" data-tab="history" onclick="switchStudentTab('history')">
+            <i data-lucide="history" class="icon-sm"></i> Riwayat
+        </button>
+        <button class="tab-btn" data-tab="requests" onclick="switchStudentTab('requests')">
+            <i data-lucide="repeat-2" class="icon-sm"></i> Request
+        </button>
+    </nav>
+
+    <main>
+        <section id="tab-home" class="tab-panel active">
+            <div class="glass p-6 mb-6 fade-in">
+                <h2 class="text-xl font-bold text-primary mb-4">Jadwal Selanjutnya</h2>
+                <div id="nextSchedule" class="text-center py-8"></div>
+            </div>
+
+            <div class="glass p-6 fade-in">
+                <h2 class="text-xl font-bold text-primary mb-4">Progress Belajar</h2>
+                <div class="w-full bg-gray-700 rounded-full h-4 mb-4">
+                    <div id="progressFill" class="bg-gradient-to-r from-purple-500 to-indigo-500 h-4 rounded-full" style="width: 0%"></div>
+                </div>
+                <p id="progressText" class="text-secondary text-sm mb-4">0% selesai</p>
+                <div id="timelineList" class="timeline"></div>
+            </div>
+        </section>
+
+        <section id="tab-materials" class="tab-panel">
+            <div class="glass p-6 fade-in">
+                <h2 class="text-xl font-bold text-primary mb-4">Materi & Homework</h2>
+                <div id="learningPathList" class="space-y-3"></div>
+            </div>
+        </section>
+
+        <section id="tab-history" class="tab-panel">
+            <div class="glass p-6 fade-in">
+                <h2 class="text-xl font-bold text-primary mb-4">Riwayat Pertemuan</h2>
+                <div id="historyList" class="space-y-3"></div>
+            </div>
+        </section>
+
+        <section id="tab-requests" class="tab-panel">
+            <div class="glass p-6 fade-in">
+                <h2 class="text-xl font-bold text-primary mb-4">Permintaan Reschedule</h2>
+                <div id="requestList" class="space-y-3"></div>
+            </div>
+        </section>
+    </main>
+
+    <div id="requestModal" class="modal-overlay">
+        <div class="modal-content">
+            <h3 class="text-xl font-bold text-primary mb-4">Request Reschedule</h3>
+            <input type="hidden" id="requestScheduleId">
+            <div class="space-y-4">
+                <input type="datetime-local" id="requestTime" class="input-field px-4 py-3 rounded-lg">
+                <textarea id="requestReason" placeholder="Alasan atau waktu yang kamu inginkan" class="input-field px-4 py-3 rounded-lg" rows="4"></textarea>
+            </div>
+            <div class="flex gap-3 mt-6">
+                <button onclick="submitRescheduleRequest()" class="btn btn-primary flex-1 py-3 rounded-lg font-semibold">Kirim</button>
+                <button onclick="closeModal('requestModal')" class="btn btn-danger flex-1 py-3 rounded-lg font-semibold">Batal</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="js/shared.js"></script>
+    <script src="js/student.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Login - Kelas Coding</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="css/shared.css" />
+    <link rel="stylesheet" href="css/index.css" />
+  </head>
+
+  <body
+    class="login-page"
+    style="
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 1rem;
+    "
+  >
+    <button
+      onclick="toggleTheme()"
+      class="theme-toggle-btn fixed top-6 right-6 p-3 rounded-full glass"
+    >
+      <span id="themeIcon">🌙</span>
+    </button>
+
+    <div class="glass p-8 w-full max-w-md fade-in login-card">
+      <div class="text-center mb-8">
+        <h1 class="text-3xl font-bold text-primary mb-2">Kelas Coding</h1>
+        <p class="text-secondary">Masuk ke akun Anda</p>
+      </div>
+
+      <div class="space-y-4">
+        <div>
+          <label class="block text-secondary text-sm mb-2"
+            >Username (Email / No WA)</label
+          >
+          <input
+            type="text"
+            id="username"
+            placeholder="contoh: 08123456789"
+            class="input-field px-4 py-3 rounded-lg"
+          />
+        </div>
+        <div>
+          <label class="block text-secondary text-sm mb-2"
+            >MPIN / Password</label
+          >
+          <input
+            type="password"
+            id="password"
+            placeholder="••••••"
+            class="input-field px-4 py-3 rounded-lg"
+          />
+        </div>
+      </div>
+
+      <button
+        onclick="handleLogin()"
+        id="loginBtn"
+        class="btn btn-primary w-full py-3 rounded-lg font-semibold mt-6"
+      >
+        Masuk
+      </button>
+
+      <p class="text-secondary text-xs text-center mt-6">
+        Belum punya akun? Hubungi Admin untuk pendaftaran.
+      </p>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/shared.js"></script>
+    <script src="js/index.js"></script>
+  </body>
+</html>
