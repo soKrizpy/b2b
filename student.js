@@ -41,13 +41,14 @@ async function checkAuth() {
 
   // Tampilkan nama siswa
   const nameEl = document.getElementById("studentName");
-  if (nameEl) nameEl.textContent = `Halo, ${profile.full_name}!`;
+  if (nameEl) nameEl.textContent = `Halo, ${profile.full_name || "Siswa"}!`;
 
   // Load semua data
   await Promise.all([
     loadNextSchedule(),
     loadHistory(),
     loadLearningPath(),
+    loadRequests(),
     loadNotifications("student"),
   ]);
 
@@ -59,6 +60,16 @@ async function checkAuth() {
 }
 
 document.addEventListener("DOMContentLoaded", checkAuth);
+
+function switchStudentTab(tabName) {
+  document
+    .querySelectorAll(".tab-btn")
+    .forEach((btn) => btn.classList.toggle("active", btn.dataset.tab === tabName));
+  document
+    .querySelectorAll(".tab-panel")
+    .forEach((panel) => panel.classList.toggle("active", panel.id === `tab-${tabName}`));
+  refreshIcons();
+}
 
 // =========================================
 // LOGOUT
@@ -118,9 +129,12 @@ function renderNextSchedule() {
 
   container.innerHTML = `
     <div class="glass card-hover p-6 text-center">
-      <h3 class="text-2xl font-bold text-primary mb-2">${nextScheduleData.title}</h3>
+      <h3 class="text-2xl font-bold text-primary mb-2">${esc(nextScheduleData.title)}</h3>
       <p class="text-secondary mb-6">${dateStr}</p>
       <div id="joinButtonContainer"></div>
+      <button onclick="openRequestModal('${nextScheduleData.id}')" class="btn glass px-4 py-3 rounded-lg font-semibold mt-4 w-full">
+        🔁 Request Reschedule
+      </button>
     </div>`;
 
   updateJoinButton();
@@ -158,7 +172,7 @@ function updateJoinButton() {
         ? `Mulai dalam ${Math.floor(minutesUntilStart)} menit`
         : "Kelas sedang berlangsung";
     html = `
-      <button onclick="joinMeeting('${nextScheduleData.meeting_link}')"
+      <button onclick="joinMeeting('${esc(nextScheduleData.meeting_link)}')"
         class="btn btn-success px-8 py-4 rounded-lg font-bold text-lg w-full join-btn-active">
         🎥 JOIN MEETING<br>
         <span class="text-sm font-normal opacity-90">${status}</span>
@@ -177,8 +191,20 @@ function updateJoinButton() {
 }
 
 function joinMeeting(link) {
-  window.open(link, "_blank");
+  const url = safeUrl(link);
+  if (!url) {
+    toast("Link meeting tidak valid", "error");
+    return;
+  }
+  window.open(url, "_blank");
   toast("Membuka link meeting...", "success");
+}
+
+function openRequestModal(scheduleId) {
+  document.getElementById("requestScheduleId").value = scheduleId || "";
+  document.getElementById("requestTime").value = "";
+  document.getElementById("requestReason").value = "";
+  openModal("requestModal");
 }
 
 // =========================================
@@ -214,7 +240,7 @@ async function loadHistory() {
     .map(
       (s) => `
       <div class="glass p-4">
-        <h3 class="font-bold text-primary">${s.title}</h3>
+        <h3 class="font-bold text-primary">${esc(s.title)}</h3>
         <p class="text-secondary text-sm mt-1"> ${formatDate.toIndonesian(s.start_time)}</p>
       </div>`,
     )
@@ -226,7 +252,7 @@ async function loadHistory() {
 // =========================================
 async function loadLearningPath() {
   const list = document.getElementById("learningPathList");
-  if (!list) return;
+  const timeline = document.getElementById("timelineList");
 
   const { data: modules, error } = await sbClient
     .from("learning_paths")
@@ -236,19 +262,22 @@ async function loadLearningPath() {
 
   if (error) {
     console.error("Error loading learning path:", error);
+    toast("Gagal memuat materi: " + error.message, "error");
     return;
   }
 
   const progressFill = document.getElementById("progressFill");
   const progressText = document.getElementById("progressText");
-
-  if (!modules || modules.length === 0) {
-    list.innerHTML = `
+  const emptyHtml = `
       <div class="empty-state">
         <div class="icon">📖</div>
         <h3>Belum ada materi</h3>
         <p>Guru akan menambahkan materi untuk Anda</p>
       </div>`;
+
+  if (!modules || modules.length === 0) {
+    if (list) list.innerHTML = emptyHtml;
+    if (timeline) timeline.innerHTML = emptyHtml;
     if (progressFill) progressFill.style.width = "0%";
     if (progressText) progressText.textContent = "0% selesai";
     return;
@@ -261,17 +290,114 @@ async function loadLearningPath() {
   if (progressText)
     progressText.textContent = `${pct}% selesai (${completed}/${modules.length} materi)`;
 
-  list.innerHTML = modules
+  if (list) {
+    list.innerHTML = modules
+      .map((m) => {
+        const resourceUrl = safeUrl(m.resource_url);
+        return `
+      <div class="glass p-4">
+        <div class="flex items-start gap-3">
+          <span class="text-2xl">${m.is_completed ? "✅" : "📖"}</span>
+          <div class="flex-1">
+            <h3 class="font-bold text-primary ${m.is_completed ? "line-through opacity-50" : ""}">${esc(m.module_name)}</h3>
+            ${resourceUrl ? `<a class="text-secondary text-sm mt-2 inline-block hover:text-primary" href="${esc(resourceUrl)}" target="_blank" rel="noopener">🔗 Buka resource</a>` : ""}
+            ${m.homework_text ? `<p class="text-secondary text-sm mt-2">📝 ${esc(m.homework_text)}</p>` : ""}
+          </div>
+        </div>
+      </div>`;
+      })
+      .join("");
+  }
+
+  if (timeline) {
+    timeline.innerHTML = modules
+      .map(
+        (m, index) => `
+      <div class="glass p-3 mb-3">
+        <div class="flex items-center gap-3">
+          <span class="text-sm font-bold text-secondary">${index + 1}</span>
+          <span class="text-primary ${m.is_completed ? "line-through opacity-50" : ""}">${esc(m.module_name)}</span>
+          <span class="text-secondary text-sm">${m.is_completed ? "Selesai" : "Belum selesai"}</span>
+        </div>
+      </div>`,
+      )
+      .join("");
+  }
+}
+
+async function loadRequests() {
+  const list = document.getElementById("requestList");
+  if (!list) return;
+
+  const { data: requests, error } = await sbClient
+    .from("reschedule_requests")
+    .select("*, schedules:schedule_id(title,start_time)")
+    .eq("student_id", currentProfile.id)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("Error loading requests:", error);
+    toast("Gagal memuat request: " + error.message, "error");
+    return;
+  }
+
+  if (!requests || requests.length === 0) {
+    list.innerHTML = `
+      <div class="empty-state">
+        <div class="icon">🔁</div>
+        <h3>Belum ada request</h3>
+        <p>Request reschedule Anda akan muncul di sini</p>
+      </div>`;
+    return;
+  }
+
+  list.innerHTML = requests
     .map(
-      (m) => `
-      <div class="glass p-4 flex items-center gap-3">
-        <span class="text-2xl">${m.is_completed ? "✅" : ""}</span>
-        <span class="text-primary ${m.is_completed ? "line-through opacity-50" : ""}">
-          ${m.module_name}
-        </span>
+      (request) => `
+      <div class="glass p-4">
+        <h3 class="font-bold text-primary">${esc(request.schedules?.title || "Jadwal")}</h3>
+        <p class="text-secondary text-sm mt-1">Jadwal awal: ${request.schedules?.start_time ? formatDate.toIndonesian(request.schedules.start_time) : "-"}</p>
+        <p class="text-secondary text-sm mt-1">Waktu diminta: ${request.requested_time ? formatDate.toIndonesian(request.requested_time) : "Fleksibel"}</p>
+        <p class="text-secondary text-sm mt-2">${esc(request.reason || "-")}</p>
+        <p class="text-secondary text-xs mt-2">Status: ${esc(request.status || "pending")}</p>
       </div>`,
     )
     .join("");
+}
+
+async function submitRescheduleRequest() {
+  const scheduleId = document.getElementById("requestScheduleId")?.value;
+  const requestedTime = document.getElementById("requestTime")?.value;
+  const reason = document.getElementById("requestReason")?.value.trim();
+
+  if (!scheduleId) {
+    toast("Pilih jadwal yang ingin di-reschedule", "error");
+    return;
+  }
+
+  if (!reason) {
+    toast("Alasan request wajib diisi", "error");
+    return;
+  }
+
+  const { error } = await sbClient.from("reschedule_requests").insert([
+    {
+      student_id: currentProfile.id,
+      schedule_id: scheduleId,
+      requested_time: requestedTime || null,
+      reason,
+      status: "pending",
+    },
+  ]);
+
+  if (error) {
+    toast("Gagal mengirim request: " + error.message, "error");
+    return;
+  }
+
+  closeModal("requestModal");
+  toast("Request terkirim", "success");
+  await loadRequests();
 }
 
 // =========================================
@@ -336,8 +462,8 @@ async function loadNotifications(type) {
       <div class="notification-item ${!n.is_read ? "unread" : ""} p-3 rounded-lg">
         <div class="flex justify-between items-start">
           <div class="flex-1">
-            <h4 class="font-semibold text-primary text-sm">${n.title}</h4>
-            <p class="text-secondary text-xs mt-1">${n.message}</p>
+            <h4 class="font-semibold text-primary text-sm">${esc(n.title)}</h4>
+            <p class="text-secondary text-xs mt-1">${esc(n.message)}</p>
             <p class="text-secondary text-xs mt-2">${formatDate.toIndonesian(n.created_at)}</p>
           </div>
           ${

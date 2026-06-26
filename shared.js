@@ -19,6 +19,29 @@ function icon(name, className = "icon-sm") {
   return `<i data-lucide="${name}" class="${className}" aria-hidden="true"></i>`;
 }
 
+
+function esc(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function safeUrl(value) {
+  const url = String(value ?? "").trim();
+  if (!url) return "";
+  try {
+    const parsed = new URL(url, window.location.origin);
+    return ["http:", "https:", "mailto:", "tel:"].includes(parsed.protocol)
+      ? parsed.href
+      : "";
+  } catch (_) {
+    return "";
+  }
+}
+
 function refreshIcons() {
   if (window.lucide) {
     window.lucide.createIcons({
