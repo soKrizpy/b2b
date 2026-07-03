@@ -57,24 +57,29 @@
 
     <main>
         <section id="tab-home" class="tab-panel active">
-            <div class="glass p-6 mb-6 fade-in">
+            <div class="glass p-6 fade-in">
                 <h2 class="text-xl font-bold text-primary mb-4">Jadwal Selanjutnya</h2>
                 <div id="nextSchedule" class="text-center py-8"></div>
-            </div>
-
-            <div class="glass p-6 fade-in">
-                <h2 class="text-xl font-bold text-primary mb-4">Progress Belajar</h2>
-                <div class="w-full bg-gray-700 rounded-full h-4 mb-4">
-                    <div id="progressFill" class="bg-gradient-to-r from-purple-500 to-indigo-500 h-4 rounded-full" style="width: 0%"></div>
-                </div>
-                <p id="progressText" class="text-secondary text-sm mb-4">0% selesai</p>
-                <div id="timelineList" class="timeline"></div>
             </div>
         </section>
 
         <section id="tab-materials" class="tab-panel">
-            <div class="glass p-6 fade-in">
+            <div class="glass p-10 fade-in text-center" id="materialsLockedPlaceholder">
+                <div style="font-size:3rem;margin-bottom:1rem;">🔒</div>
+                <h2 class="text-xl font-bold text-primary mb-2">Materi Terkunci</h2>
+                <p class="text-secondary">Selesaikan minimal <strong>1 pertemuan</strong> bersama guru untuk membuka akses materi.</p>
+            </div>
+            <div class="glass p-6 fade-in" id="materialsContent" style="display:none;">
                 <h2 class="text-xl font-bold text-primary mb-4">Materi & Homework</h2>
+                <div class="mb-6">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-primary font-semibold text-sm">Progress Belajar</span>
+                        <span id="progressText" class="text-secondary text-sm">0% selesai</span>
+                    </div>
+                    <div class="w-full bg-gray-700 rounded-full h-2.5">
+                        <div id="progressFill" class="bg-gradient-to-r from-purple-500 to-indigo-500 h-2.5 rounded-full" style="width: 0%"></div>
+                    </div>
+                </div>
                 <div id="learningPathList" class="space-y-3"></div>
             </div>
         </section>
