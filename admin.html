@@ -354,44 +354,64 @@
 
     <div id="scheduleModal" class="modal-overlay">
       <div class="modal-content">
-        <h3 class="text-xl font-bold text-primary mb-4">Jadwal Kelas</h3>
+        <h3 class="text-xl font-bold text-primary mb-4" id="scheduleModalTitle">Jadwal Kelas</h3>
         <input type="hidden" id="editScheduleId" />
         <div class="space-y-4">
-          <select id="scheduleStudent" class="input-field px-4 py-3 rounded-lg">
-            <option value="">Pilih siswa</option>
+          <select id="scheduleType" class="input-field px-4 py-3 rounded-lg" onchange="toggleScheduleTypeFields()">
+            <option value="class">Jadwal Siswa (Class Schedule)</option>
+            <option value="slot">Slot Kosong (Available Slot)</option>
           </select>
-          <input
-            type="text"
-            id="scheduleTitle"
-            placeholder="Judul pertemuan"
-            class="input-field px-4 py-3 rounded-lg"
-          />
+
+          <div id="scheduleStudentGroup" class="space-y-4">
+            <select id="scheduleStudent" class="input-field px-4 py-3 rounded-lg">
+              <option value="">Pilih siswa</option>
+            </select>
+          </div>
+
+          <div id="scheduleTitleGroup" class="space-y-4">
+            <input
+              type="text"
+              id="scheduleTitle"
+              placeholder="Judul pertemuan"
+              class="input-field px-4 py-3 rounded-lg"
+            />
+          </div>
+
           <input
             type="datetime-local"
             id="scheduleTime"
             class="input-field px-4 py-3 rounded-lg"
           />
-          <input
-            type="text"
-            id="scheduleLink"
-            placeholder="Link Zoom/Meet"
-            class="input-field px-4 py-3 rounded-lg"
-          />
-          <select
-            id="scheduleAttendance"
-            class="input-field px-4 py-3 rounded-lg"
-          >
-            <option value="pending">Attendance: pending</option>
-            <option value="attended">Attendance: hadir</option>
-            <option value="missed">Attendance: tidak hadir</option>
-            <option value="rescheduled">Attendance: reschedule</option>
-          </select>
-          <textarea
-            id="scheduleNote"
-            placeholder="Catatan guru untuk kelas ini"
-            class="input-field px-4 py-3 rounded-lg"
-            rows="3"
-          ></textarea>
+
+          <div id="scheduleLinkGroup" class="space-y-4">
+            <input
+              type="text"
+              id="scheduleLink"
+              placeholder="Link Zoom/Meet"
+              class="input-field px-4 py-3 rounded-lg"
+            />
+          </div>
+
+          <div id="scheduleAttendanceGroup" class="space-y-4">
+            <select
+              id="scheduleAttendance"
+              class="input-field px-4 py-3 rounded-lg"
+            >
+              <option value="pending">Attendance: pending</option>
+              <option value="attended">Attendance: hadir</option>
+              <option value="missed">Attendance: tidak hadir</option>
+              <option value="rescheduled">Attendance: reschedule</option>
+            </select>
+          </div>
+
+          <div id="scheduleNoteGroup" class="space-y-4">
+            <textarea
+              id="scheduleNote"
+              placeholder="Catatan guru untuk kelas ini"
+              class="input-field px-4 py-3 rounded-lg"
+              rows="3"
+            ></textarea>
+          </div>
         </div>
         <div class="flex gap-3 mt-6">
           <button
@@ -399,6 +419,13 @@
             class="btn btn-primary flex-1 py-3 rounded-lg font-semibold"
           >
             Simpan
+          </button>
+          <button
+            id="btnDeleteSchedule"
+            onclick="deleteCurrentScheduleOrSlot()"
+            class="btn btn-danger flex-1 py-3 rounded-lg font-semibold hidden"
+          >
+            Hapus
           </button>
           <button
             onclick="closeModal('scheduleModal')"

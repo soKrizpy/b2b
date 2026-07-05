@@ -89,6 +89,7 @@ function updateMaterialsTabUI() {
     }
   }
 }
+
 async function checkAuth() {
   const user = await initUser();
   if (!user) {
@@ -96,7 +97,6 @@ async function checkAuth() {
     return;
   }
 
-  // PERBAIKAN: gunakan .maybeSingle() agar tidak error jika tidak ada data
   const { data: profile, error } = await sbClient
     .from("profiles")
     .select("*")
@@ -138,7 +138,7 @@ async function checkAuth() {
     await loadLearningPath();
   }
 
-  // Auto-refresh setiap 30 detik untuk update tombol join, jadwal, materi, riwayat, request, dan notifikasi
+  // Auto-refresh setiap 30 detik
   refreshInterval = setInterval(async () => {
     await Promise.all([
       loadUpcomingSchedules(),
@@ -539,44 +539,109 @@ async function loadRequests() {
       <div class="empty-state">
         <div class="icon">📅</div>
         <h3>Belum ada request reschedule</h3>
+        <p>Gunakan tombol "Request reschedule" pada kartu jadwal untuk meminta perubahan waktu.</p>
       </div>`;
     return;
   }
 
-  const statusLabels = {
-    pending: "Menunggu",
-    approved: "Disetujui",
-    rejected: "Ditolak",
+  const statusConfig = {
+    pending:  { label: "Menunggu konfirmasi guru", badge: "status-warning",  icon: "⏳" },
+    approved: { label: "Disetujui",                badge: "status-success",  icon: "✅" },
+    rejected: { label: "Ditolak",                  badge: "status-danger",   icon: "❌" },
   };
 
   list.innerHTML = data
-    .map(
-      (r) => `
-      <div class="glass p-4">
-        <h3 class="font-bold text-primary">${escHtml(r.schedules?.title || "Jadwal")}</h3>
-        ${
-          r.requested_time
-            ? `<p class="text-secondary text-sm mt-1">Waktu diminta: ${formatDate.toIndonesian(r.requested_time)}</p>`
-            : ""
-        }
-        <p class="text-secondary text-sm mt-1">${escHtml(r.reason)}</p>
-        <p class="text-secondary text-xs mt-2">
-          Status: <strong>${statusLabels[r.status] || r.status}</strong>
-        </p>
-      </div>`,
-    )
+    .map((r) => {
+      const cfg = statusConfig[r.status] || { label: r.status, badge: "status-info", icon: "📋" };
+
+      // For approved requests: show the new time that was applied
+      const updatedTimeNote =
+        r.status === "approved" && r.requested_time
+          ? `<p class="text-sm mt-2" style="color:var(--success,#22c55e)">
+               ✅ Jadwal dipindahkan ke: <strong>${formatDate.toIndonesian(r.requested_time)}</strong>
+             </p>`
+          : "";
+
+      // Admin note (shown when admin left a message)
+      const adminNoteHtml = r.admin_note
+        ? `<div class="glass p-3 mt-3" style="border-left:3px solid var(--accent)">
+             <p class="text-xs text-secondary mb-1">💬 Pesan dari guru:</p>
+             <p class="text-sm text-primary">${escHtml(r.admin_note)}</p>
+           </div>`
+        : "";
+
+      // Context: what schedule was this about
+      const scheduleInfo = r.schedules?.title
+        ? `<p class="text-secondary text-sm mt-1">📚 Jadwal: <strong>${escHtml(r.schedules.title)}</strong>
+             ${r.schedules.start_time ? `— ${formatDate.toIndonesian(r.schedules.start_time)}` : ""}</p>`
+        : `<p class="text-secondary text-sm mt-1">📚 Permintaan jadwal baru</p>`;
+
+      const borderColor = r.status === "approved"
+        ? "var(--success,#22c55e)"
+        : r.status === "rejected"
+        ? "var(--error,#ef4444)"
+        : "var(--accent)";
+
+      return `
+      <div class="glass p-4" style="border-left: 3px solid ${borderColor}">
+        <div class="flex justify-between items-start gap-2 flex-wrap">
+          <div style="flex:1">
+            <div class="flex items-center gap-2 flex-wrap">
+              <span class="font-bold text-primary">${cfg.icon} ${escHtml(r.schedules?.title || "Permintaan Jadwal Baru")}</span>
+              <span class="status-pill ${cfg.badge}" style="font-size:0.7rem;padding:2px 8px">${cfg.label}</span>
+            </div>
+            ${scheduleInfo}
+            ${r.requested_time
+              ? `<p class="text-secondary text-sm mt-1">🕐 Waktu yang diminta: ${formatDate.toIndonesian(r.requested_time)}</p>`
+              : ""}
+            <p class="text-secondary text-sm mt-2">💬 Alasan: ${escHtml(r.reason)}</p>
+            ${updatedTimeNote}
+            ${adminNoteHtml}
+            <p class="text-secondary text-xs mt-3">Dikirim: ${formatDate.toIndonesian(r.created_at)}</p>
+          </div>
+        </div>
+      </div>`;
+    })
     .join("");
 }
 
-function openRescheduleRequest(scheduleId = "") {
+async function openRescheduleRequest(scheduleId = "") {
   const schedule = upcomingSchedules.find((item) => String(item.id) === String(scheduleId));
   const scheduleField = document.getElementById("requestScheduleId");
   const timeField = document.getElementById("requestTime");
   const reasonField = document.getElementById("requestReason");
 
   if (scheduleField) scheduleField.value = schedule?.id || "";
-  if (timeField) timeField.value = schedule ? formatDate.toDateTimeLocal(schedule.start_time) : "";
   if (reasonField) reasonField.value = "";
+
+  // Populate available slots dropdown
+  if (timeField) {
+    timeField.innerHTML = '<option value="">Memuat slot kosong...</option>';
+
+    // Fetch available slots
+    const { data: slots, error } = await sbClient
+      .from("available_slots")
+      .select("*")
+      .eq("status", "available")
+      .gte("start_time", new Date().toISOString())
+      .order("start_time", { ascending: true });
+
+    if (error) {
+      console.error("Error loading available slots:", error);
+      timeField.innerHTML = '<option value="">Gagal memuat slot</option>';
+    } else if (!slots || slots.length === 0) {
+      timeField.innerHTML = '<option value="">Tidak ada slot kosong tersedia</option>';
+    } else {
+      timeField.innerHTML = '<option value="">-- Pilih slot kosong --</option>';
+      slots.forEach((slot) => {
+        const option = document.createElement("option");
+        option.value = slot.start_time; // Store the start_time as option value
+        option.dataset.slotId = slot.id; // Store the slot UUID
+        option.textContent = formatDate.toIndonesian(slot.start_time);
+        timeField.appendChild(option);
+      });
+    }
+  }
 
   openModal("requestModal");
 }
@@ -585,15 +650,20 @@ async function submitRescheduleRequest() {
   if (!currentProfile) return;
 
   const scheduleId = document.getElementById("requestScheduleId")?.value;
-  const requestedTime = document.getElementById("requestTime")?.value;
+  const timeField = document.getElementById("requestTime");
   const reason = document.getElementById("requestReason")?.value.trim();
 
   if (!reason) {
     toast("Alasan wajib diisi", "error");
     return;
   }
-  if (!scheduleId && !requestedTime) {
-    toast("Pilih jadwal atau isi waktu yang diinginkan", "error");
+
+  const selectedOption = timeField?.options[timeField.selectedIndex];
+  const requestedTime = selectedOption?.value || null;
+  const slotId = selectedOption?.dataset.slotId || null;
+
+  if (!requestedTime) {
+    toast("Silakan pilih slot kosong yang tersedia", "error");
     return;
   }
 
@@ -601,9 +671,8 @@ async function submitRescheduleRequest() {
     {
       student_id: currentProfile.id,
       schedule_id: scheduleId || null,
-      requested_time: requestedTime
-        ? new Date(requestedTime).toISOString()
-        : null,
+      requested_time: new Date(requestedTime).toISOString(),
+      slot_id: slotId,
       reason,
       status: "pending",
     },
