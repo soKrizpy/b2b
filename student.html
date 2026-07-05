@@ -104,8 +104,13 @@
             <h3 class="text-xl font-bold text-primary mb-4">Request Reschedule</h3>
             <input type="hidden" id="requestScheduleId">
             <div class="space-y-4">
-                <input type="datetime-local" id="requestTime" class="input-field px-4 py-3 rounded-lg">
-                <textarea id="requestReason" placeholder="Alasan atau waktu yang kamu inginkan" class="input-field px-4 py-3 rounded-lg" rows="4"></textarea>
+                <div>
+                    <label for="requestTime" class="text-secondary text-sm block mb-1">Pilih Slot Waktu Kosong:</label>
+                    <select id="requestTime" class="input-field px-4 py-3 rounded-lg">
+                        <option value="">Memuat slot kosong...</option>
+                    </select>
+                </div>
+                <textarea id="requestReason" placeholder="Tulis alasan reschedule..." class="input-field px-4 py-3 rounded-lg" rows="4"></textarea>
             </div>
             <div class="flex gap-3 mt-6">
                 <button onclick="submitRescheduleRequest()" class="btn btn-primary flex-1 py-3 rounded-lg font-semibold">Kirim</button>

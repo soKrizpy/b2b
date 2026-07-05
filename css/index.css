@@ -53,6 +53,7 @@ body.light-mode .login-card {
     font-size: 2rem;
     font-weight: 800;
     letter-spacing: -0.04em;
+    /* Dark: soft lavender → saturated violet */
     background: linear-gradient(135deg, #c4b5fd 0%, #a78bfa 40%, #8b5cf6 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
@@ -60,7 +61,8 @@ body.light-mode .login-card {
 }
 
 body.light-mode .login-card h1 {
-    background: linear-gradient(135deg, #6d28d9 0%, #7c3aed 50%, #8b5cf6 100%);
+    /* Light: deep indigo → vivid violet — punchy on bright bg */
+    background: linear-gradient(135deg, #3730a3 0%, #6d28d9 50%, #8b5cf6 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -129,7 +131,7 @@ body::after {
 body::before {
     width: 400px;
     height: 400px;
-    background: radial-gradient(circle, rgba(139, 92, 246, 0.18) 0%, transparent 70%);
+    background: radial-gradient(circle, rgba(124, 58, 237, 0.2) 0%, transparent 70%);
     top: -100px;
     left: -100px;
     animation: orbFloat 8s ease-in-out infinite;
@@ -138,7 +140,7 @@ body::before {
 body::after {
     width: 350px;
     height: 350px;
-    background: radial-gradient(circle, rgba(109, 40, 217, 0.14) 0%, transparent 70%);
+    background: radial-gradient(circle, rgba(109, 40, 217, 0.15) 0%, transparent 70%);
     bottom: -80px;
     right: -80px;
     animation: orbFloat 10s ease-in-out infinite reverse;

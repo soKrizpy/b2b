@@ -1,6 +1,7 @@
 let allStudents = [];
 let allSchedules = [];
 let allRequests = [];
+let allSlots = []; // Global available slots
 let calendar = null;
 let selectedStudentId = "";
 
@@ -34,11 +35,24 @@ async function checkAuth() {
 }
 document.addEventListener("DOMContentLoaded", checkAuth);
 
+async function loadAvailableSlots() {
+  const data = await apiHandler.handle(
+    sbClient
+      .from("available_slots")
+      .select("*")
+      .order("start_time", { ascending: true }),
+  );
+  if (data) {
+    allSlots = data;
+  }
+}
+
 async function loadDashboardData() {
   await Promise.all([
     loadStudents(),
     loadSchedules(),
     loadRequests(),
+    loadAvailableSlots(),
     loadNotifications("admin"),
   ]);
   renderStudentList();
@@ -413,12 +427,30 @@ function renderCalendar() {
   const el = document.getElementById("calendar");
   if (!el || !window.FullCalendar) return;
 
-  const events = allSchedules.map((schedule) => ({
-    id: String(schedule.id),
-    title: `${schedule.title} - ${schedule.profiles?.full_name || "Siswa"}`,
-    start: schedule.start_time,
-    classNames: [`status-${schedule.status}`],
-  }));
+  const events = [];
+
+  // Add student schedules
+  allSchedules.forEach((schedule) => {
+    events.push({
+      id: String(schedule.id),
+      title: `${schedule.title} - ${schedule.profiles?.full_name || "Siswa"}`,
+      start: schedule.start_time,
+      classNames: [`status-${schedule.status}`],
+    });
+  });
+
+  // Add available slots
+  allSlots.forEach((slot) => {
+    if (slot.status === "available") {
+      events.push({
+        id: `slot-${slot.id}`,
+        title: `[Slot Kosong]`,
+        start: slot.start_time,
+        color: "#10b981", // Beautiful emerald green
+        classNames: ["status-upcoming"],
+      });
+    }
+  });
 
   if (!calendar) {
     calendar = new FullCalendar.Calendar(el, {
@@ -478,6 +510,31 @@ function renderScheduleCard(schedule, options = {}) {
     </div>`;
 }
 
+function toggleScheduleTypeFields() {
+  const type = document.getElementById("scheduleType").value;
+  const isSlot = type === "slot";
+
+  document.getElementById("scheduleStudentGroup").style.display = isSlot
+    ? "none"
+    : "block";
+  document.getElementById("scheduleTitleGroup").style.display = isSlot
+    ? "none"
+    : "block";
+  document.getElementById("scheduleLinkGroup").style.display = isSlot
+    ? "none"
+    : "block";
+  document.getElementById("scheduleAttendanceGroup").style.display = isSlot
+    ? "none"
+    : "block";
+  document.getElementById("scheduleNoteGroup").style.display = isSlot
+    ? "none"
+    : "block";
+
+  document.getElementById("scheduleModalTitle").textContent = isSlot
+    ? "Slot Kosong (Available Slot)"
+    : "Jadwal Kelas";
+}
+
 function openScheduleModal(scheduleId = null, studentId = "", startTime = "") {
   document.getElementById("editScheduleId").value = scheduleId || "";
   document.getElementById("scheduleStudent").value = studentId || "";
@@ -486,14 +543,76 @@ function openScheduleModal(scheduleId = null, studentId = "", startTime = "") {
   document.getElementById("scheduleLink").value = "";
   document.getElementById("scheduleAttendance").value = "pending";
   document.getElementById("scheduleNote").value = "";
+
+  const isEditing = !!scheduleId;
+  const btnDelete = document.getElementById("btnDeleteSchedule");
+  if (btnDelete) {
+    if (isEditing) {
+      btnDelete.classList.remove("hidden");
+    } else {
+      btnDelete.classList.add("hidden");
+    }
+  }
+
+  const typeSelector = document.getElementById("scheduleType");
+  if (scheduleId && scheduleId.startsWith("slot-")) {
+    typeSelector.value = "slot";
+  } else {
+    typeSelector.value = "class";
+  }
+
+  toggleScheduleTypeFields();
   openModal("scheduleModal");
 }
 
 async function saveSchedule() {
   const id = document.getElementById("editScheduleId").value;
+  const type = document.getElementById("scheduleType").value;
+  const time = document.getElementById("scheduleTime").value;
+
+  if (!validators.required(time)) {
+    toast("Waktu wajib diisi", "error");
+    return;
+  }
+
+  const formattedTime = new Date(time).toISOString();
+
+  // If slot kosong (available slot)
+  if (type === "slot") {
+    const slotData = {
+      start_time: formattedTime,
+      status: "available",
+    };
+
+    if (id && id.startsWith("slot-")) {
+      const slotUuid = id.substring(5); // remove 'slot-'
+      await apiHandler.handle(
+        sbClient.from("available_slots").update(slotData).eq("id", slotUuid),
+        async () => {
+          toast("Slot kosong berhasil diperbarui", "success");
+          closeModal("scheduleModal");
+          await Promise.all([loadSchedules(), loadAvailableSlots()]);
+          renderCalendar();
+        },
+      );
+      return;
+    }
+
+    await apiHandler.handle(
+      sbClient.from("available_slots").insert([slotData]),
+      async () => {
+        toast("Slot kosong berhasil dibuat", "success");
+        closeModal("scheduleModal");
+        await Promise.all([loadSchedules(), loadAvailableSlots()]);
+        renderCalendar();
+      },
+    );
+    return;
+  }
+
+  // Otherwise, standard student class schedule
   const studentId = document.getElementById("scheduleStudent").value;
   const title = document.getElementById("scheduleTitle").value.trim();
-  const time = document.getElementById("scheduleTime").value;
   const link = document.getElementById("scheduleLink").value.trim();
   const attendance = document.getElementById("scheduleAttendance").value;
   const note = document.getElementById("scheduleNote").value.trim();
@@ -501,23 +620,25 @@ async function saveSchedule() {
   if (
     !validators.required(studentId) ||
     !validators.required(title) ||
-    !validators.required(time) ||
     !validators.required(link)
   ) {
-    toast("Siswa, judul, waktu, dan link wajib diisi", "error");
+    toast(
+      "Siswa, judul, dan link Zoom/Meet wajib diisi untuk jadwal kelas",
+      "error",
+    );
     return;
   }
 
   const scheduleData = {
     student_id: studentId,
     title,
-    start_time: new Date(time).toISOString(),
+    start_time: formattedTime,
     meeting_link: link,
     attendance_status: attendance,
     teacher_note: note || null,
   };
 
-  if (id) {
+  if (id && !id.startsWith("slot-")) {
     await apiHandler.handle(
       sbClient.from("schedules").update(scheduleData).eq("id", id),
       async () => {
@@ -532,9 +653,16 @@ async function saveSchedule() {
   const inserted = await apiHandler.handle(
     sbClient.from("schedules").insert([scheduleData]).select(),
     async () => {
+      // Delete any available slot at this time since it is now booked as a class
+      await sbClient
+        .from("available_slots")
+        .delete()
+        .eq("start_time", formattedTime);
+
       toast("Jadwal dibuat", "success");
       closeModal("scheduleModal");
-      await loadSchedules();
+      await Promise.all([loadSchedules(), loadAvailableSlots()]);
+      renderCalendar();
     },
   );
 
@@ -548,10 +676,24 @@ async function saveSchedule() {
 }
 
 async function editSchedule(id) {
+  if (id && id.startsWith("slot-")) {
+    const slotUuid = id.substring(5);
+    const slot = allSlots.find((s) => s.id === slotUuid);
+    if (!slot) return;
+    openScheduleModal(id, "", formatDate.toDateTimeLocal(slot.start_time));
+    return;
+  }
+
   const data = await apiHandler.handle(
     sbClient.from("schedules").select("*").eq("id", id).single(),
   );
   if (!data) return;
+
+  openScheduleModal(
+    data.id,
+    data.student_id,
+    formatDate.toDateTimeLocal(data.start_time),
+  );
 
   document.getElementById("editScheduleId").value = data.id;
   document.getElementById("scheduleStudent").value = data.student_id;
@@ -563,10 +705,30 @@ async function editSchedule(id) {
   document.getElementById("scheduleAttendance").value =
     data.attendance_status || "pending";
   document.getElementById("scheduleNote").value = data.teacher_note || "";
-  openModal("scheduleModal");
 }
 
 async function deleteSchedule(id) {
+  if (id && id.startsWith("slot-")) {
+    const slotUuid = id.substring(5);
+    if (
+      await showConfirm(
+        "Hapus Slot Kosong",
+        "Yakin hapus slot kosong ini?",
+        "danger",
+      )
+    ) {
+      await apiHandler.handle(
+        sbClient.from("available_slots").delete().eq("id", slotUuid),
+        async () => {
+          toast("Slot kosong dihapus", "success");
+          await Promise.all([loadSchedules(), loadAvailableSlots()]);
+          renderCalendar();
+        },
+      );
+    }
+    return;
+  }
+
   if (await showConfirm("Hapus Jadwal", "Yakin hapus jadwal ini?", "danger")) {
     await apiHandler.handle(
       sbClient.from("schedules").delete().eq("id", id),
@@ -576,6 +738,13 @@ async function deleteSchedule(id) {
       },
     );
   }
+}
+
+async function deleteCurrentScheduleOrSlot() {
+  const id = document.getElementById("editScheduleId").value;
+  if (!id) return;
+  await deleteSchedule(id);
+  closeModal("scheduleModal");
 }
 
 async function markSchedule(id, status) {
@@ -776,54 +945,154 @@ async function loadRequests() {
   renderOverview();
 }
 
+// Filter state for requests tab
+let requestFilter = "pending";
+
+function setRequestFilter(filter) {
+  requestFilter = filter;
+  document.querySelectorAll(".req-filter-btn").forEach((btn) => {
+    btn.classList.toggle("active", btn.dataset.filter === filter);
+  });
+  renderRequests();
+}
+
 function renderRequests() {
   const list = document.getElementById("requestList");
-  if (!allRequests.length) {
-    list.innerHTML = `<div class="empty-state">${icon("repeat-2", "icon-lg")}<h3>Belum ada request</h3></div>`;
+
+  // Filter buttons HTML
+  const filterBar = `
+    <div class="flex gap-2 flex-wrap mb-4">
+      <button class="req-filter-btn btn glass px-3 py-2 rounded-lg text-sm ${requestFilter === "pending" ? "active" : ""}" data-filter="pending" onclick="setRequestFilter('pending')">
+        ${icon("clock")} Pending
+      </button>
+      <button class="req-filter-btn btn glass px-3 py-2 rounded-lg text-sm ${requestFilter === "all" ? "active" : ""}" data-filter="all" onclick="setRequestFilter('all')">
+        ${icon("list")} Semua
+      </button>
+      <button class="req-filter-btn btn glass px-3 py-2 rounded-lg text-sm ${requestFilter === "approved" ? "active" : ""}" data-filter="approved" onclick="setRequestFilter('approved')">
+        ${icon("check-circle")} Disetujui
+      </button>
+      <button class="req-filter-btn btn glass px-3 py-2 rounded-lg text-sm ${requestFilter === "rejected" ? "active" : ""}" data-filter="rejected" onclick="setRequestFilter('rejected')">
+        ${icon("x-circle")} Ditolak
+      </button>
+    </div>`;
+
+  const filtered =
+    requestFilter === "all"
+      ? allRequests
+      : allRequests.filter((r) => r.status === requestFilter);
+
+  if (!filtered.length) {
+    list.innerHTML =
+      filterBar +
+      `<div class="empty-state">${icon("repeat-2", "icon-lg")}<h3>${requestFilter === "pending" ? "Tidak ada request pending" : "Belum ada request"}</h3></div>`;
     refreshIcons();
     return;
   }
 
-  list.innerHTML = allRequests
-    .map(
-      (request) => `
-      <div class="item-row">
-        <div class="flex justify-between items-start gap-3 flex-wrap">
-          <div>
-            <h3 class="font-bold text-primary">${esc(request.profiles?.full_name || "Siswa")}</h3>
-            <div class="meta-line">
-              <span>${icon("calendar")} ${esc(request.schedules?.title || "Jadwal")}</span>
-              <span>${icon("clock")} ${request.requested_time ? formatDate.toIndonesian(request.requested_time) : "Waktu fleksibel"}</span>
-              ${pill(request.status)}
+  list.innerHTML =
+    filterBar +
+    filtered
+      .map((request) => {
+        const originalTime = request.schedules?.start_time
+          ? `<span class="text-secondary text-sm">${icon("calendar-clock")} Jadwal asal: ${formatDate.toIndonesian(request.schedules.start_time)}</span>`
+          : "";
+
+        const requestedTimeLabel = request.requested_time
+          ? `<span class="text-accent text-sm font-semibold">${icon("calendar-check")} Waktu diminta: ${formatDate.toIndonesian(request.requested_time)}</span>`
+          : `<span class="text-secondary text-sm">${icon("help-circle")} Waktu: Fleksibel (tidak spesifik)</span>`;
+
+        const scheduleContext = request.schedule_id
+          ? `<span>${icon("book-open")} ${esc(request.schedules?.title || "Jadwal")}</span>`
+          : `<span class="text-warning">${icon("plus-circle")} Permintaan jadwal baru</span>`;
+
+        const autoApplyHint =
+          request.status === "pending" &&
+          request.schedule_id &&
+          request.requested_time
+            ? `<p class="text-success text-xs mt-2">${icon("zap")} Menyetujui akan otomatis memindahkan jadwal ke waktu yang diminta.</p>`
+            : request.status === "pending" &&
+                request.schedule_id &&
+                !request.requested_time
+              ? `<p class="text-warning text-xs mt-2">${icon("alert-triangle")} Waktu tidak spesifik — jadwal tidak akan berubah otomatis jika disetujui.</p>`
+              : request.status === "pending" && !request.schedule_id
+                ? `<p class="text-info text-xs mt-2">${icon("info")} Menyetujui akan membuka form untuk membuat jadwal baru untuk siswa ini.</p>`
+                : "";
+
+        const adminNoteDisplay = request.admin_note
+          ? `<p class="text-secondary text-xs mt-2 italic">${icon("message-square")} Catatan guru: ${esc(request.admin_note)}</p>`
+          : "";
+
+        return `
+        <div class="item-row request-card" id="request-${request.id}">
+          <div class="flex justify-between items-start gap-3 flex-wrap">
+            <div style="flex:1;min-width:0">
+              <div class="flex items-center gap-2 flex-wrap mb-1">
+                <h3 class="font-bold text-primary">${esc(request.profiles?.full_name || "Siswa")}</h3>
+                ${pill(request.status)}
+              </div>
+              <div class="meta-line flex-col" style="gap:4px;align-items:flex-start;">
+                ${scheduleContext}
+                ${originalTime}
+                ${requestedTimeLabel}
+              </div>
+              <p class="text-secondary text-sm mt-2">${icon("message-circle")} ${esc(request.reason)}</p>
+              ${autoApplyHint}
+              ${adminNoteDisplay}
+              <p class="text-secondary text-xs mt-2">${icon("clock")} Dikirim: ${formatDate.toIndonesian(request.created_at)}</p>
             </div>
-            <p class="text-secondary text-sm mt-2">${esc(request.reason)}</p>
+            ${
+              request.status === "pending"
+                ? `<div class="flex flex-col gap-2" style="min-width:200px">
+                    <input type="text" id="admin-note-${request.id}" placeholder="Catatan (opsional)" class="input-field px-3 py-2 rounded-lg text-sm" />
+                    <button onclick="resolveRequest('${request.id}', 'approved')" class="btn btn-success px-3 py-2 rounded-lg text-sm">${icon("check")} Setuju &amp; Terapkan</button>
+                    <button onclick="resolveRequest('${request.id}', 'rejected')" class="btn btn-danger px-3 py-2 rounded-lg text-sm">${icon("x")} Tolak</button>
+                  </div>`
+                : `<div class="text-secondary text-sm">${icon("check-circle")} Sudah diproses</div>`
+            }
           </div>
-          ${
-            request.status === "pending"
-              ? `<div class="flex gap-2 flex-wrap">
-                  <button onclick="resolveRequest('${request.id}', 'approved')" class="btn btn-success px-3 py-2 rounded-lg text-sm">${icon("check")} Setuju</button>
-                  <button onclick="resolveRequest('${request.id}', 'rejected')" class="btn btn-danger px-3 py-2 rounded-lg text-sm">${icon("x")} Tolak</button>
-                </div>`
-              : ""
-          }
-        </div>
-      </div>`,
-    )
-    .join("");
+        </div>`;
+      })
+      .join("");
   refreshIcons();
 }
 
 async function resolveRequest(id, status) {
+  // Fetch full request data with joined schedule info
   const request = await apiHandler.handle(
     sbClient
       .from("reschedule_requests")
-      .select("*, schedules:schedule_id(title, start_time)")
+      .select(
+        "*, profiles:student_id(full_name), schedules:schedule_id(title, start_time, meeting_link)",
+      )
       .eq("id", id)
       .single(),
   );
   if (!request) return;
 
+  // Read optional admin note from the inline input
+  const adminNoteInput = document.getElementById(`admin-note-${id}`);
+  const adminNote = adminNoteInput?.value.trim() || null;
+
+  const studentName = request.profiles?.full_name || "siswa";
+  const scheduleTitle = request.schedules?.title || "kelas";
+
+  // ── CASE 1: Approve with schedule_id + requested_time ──────────────────────
+  // This is the primary auto-apply path: update the existing schedule's time.
   if (status === "approved" && request.schedule_id && request.requested_time) {
+    const originalTime = request.schedules?.start_time
+      ? formatDate.toIndonesian(request.schedules.start_time)
+      : "waktu asal";
+    const newTime = formatDate.toIndonesian(request.requested_time);
+
+    const confirmed = await showConfirm(
+      "Setujui & Terapkan Reschedule",
+      `Jadwal "${scheduleTitle}" untuk ${studentName} akan dipindahkan:\n\n` +
+        `Dari: ${originalTime}\nKe:   ${newTime}\n\nLanjutkan?`,
+      "warning",
+    );
+    if (!confirmed) return;
+
+    // Auto-update the schedule row
     const updatedSchedule = await apiHandler.handle(
       sbClient
         .from("schedules")
@@ -831,35 +1100,168 @@ async function resolveRequest(id, status) {
           start_time: request.requested_time,
           status: "upcoming",
           attendance_status: "rescheduled",
-          teacher_note: request.reason,
+          teacher_note: adminNote || request.reason,
         })
         .eq("id", request.schedule_id)
         .select()
         .single(),
     );
-    if (!updatedSchedule) return;
+    if (!updatedSchedule) return; // Error already shown by apiHandler
+
+    // Delete the booked slot
+    if (request.slot_id) {
+      await sbClient.from("available_slots").delete().eq("id", request.slot_id);
+    } else if (request.requested_time) {
+      await sbClient
+        .from("available_slots")
+        .delete()
+        .eq("start_time", request.requested_time);
+    }
+
+    // Persist request status + admin note
+    await apiHandler.handle(
+      sbClient
+        .from("reschedule_requests")
+        .update({
+          status: "approved",
+          admin_note: adminNote,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", id),
+    );
+
+    await sendNotificationToStudent(
+      request.student_id,
+      "Jadwal berhasil dipindahkan ✅",
+      `Permintaan reschedule kelas "${scheduleTitle}" disetujui. Jadwal baru: ${newTime}.`,
+    );
+    toast("Jadwal otomatis diperbarui & notifikasi terkirim", "success");
+    await Promise.all([loadRequests(), loadSchedules(), loadAvailableSlots()]);
+    return;
   }
 
-  await apiHandler.handle(
-    sbClient
-      .from("reschedule_requests")
-      .update({ status, updated_at: new Date().toISOString() })
-      .eq("id", id),
-    async () => {
-      const title =
-        status === "approved" ? "Request reschedule disetujui" : "Request reschedule ditolak";
-      const message =
-        status === "approved"
-          ? request.requested_time
-            ? `Jadwal "${request.schedules?.title || "kelas"}" dipindahkan ke ${formatDate.toIndonesian(request.requested_time)}.`
-            : `Request untuk "${request.schedules?.title || "kelas"}" disetujui.`
-          : `Request untuk "${request.schedules?.title || "kelas"}" ditolak. Silakan hubungi guru jika perlu jadwal lain.`;
+  // ── CASE 2: Approve with schedule_id but NO requested_time ─────────────────
+  // Student wants to reschedule but didn't specify a time.
+  // Approve the request but warn admin that schedule is NOT auto-changed.
+  if (status === "approved" && request.schedule_id && !request.requested_time) {
+    const confirmed = await showConfirm(
+      "Setujui Request (Tanpa Waktu Baru)",
+      `Siswa ${studentName} tidak mencantumkan waktu baru.\n\n` +
+        `Request akan disetujui tetapi jadwal "${scheduleTitle}" TIDAK berubah otomatis. ` +
+        `Ubah jadwal secara manual setelah ini jika diperlukan.`,
+      "warning",
+    );
+    if (!confirmed) return;
 
-      await sendNotificationToStudent(request.student_id, title, message);
-      toast("Request diperbarui", "success");
-      await Promise.all([loadRequests(), loadSchedules()]);
-    },
-  );
+    await apiHandler.handle(
+      sbClient
+        .from("reschedule_requests")
+        .update({
+          status: "approved",
+          admin_note: adminNote,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", id),
+      async () => {
+        await sendNotificationToStudent(
+          request.student_id,
+          "Request reschedule disetujui",
+          `Permintaan untuk kelas "${scheduleTitle}" disetujui. Guru akan menghubungi kamu untuk jadwal baru.`,
+        );
+        toast("Request disetujui — ingat ubah jadwal secara manual", "success");
+        await Promise.all([loadRequests(), loadSchedules()]);
+      },
+    );
+    return;
+  }
+
+  // ── CASE 3: Approve with NO schedule_id ────────────────────────────────────
+  // Student is requesting a brand-new class (no existing schedule linked).
+  // Mark request approved, then open the schedule creation modal pre-filled.
+  if (status === "approved" && !request.schedule_id) {
+    const confirmed = await showConfirm(
+      "Setujui Permintaan Jadwal Baru",
+      `${studentName} meminta jadwal baru.${
+        request.requested_time
+          ? `\nWaktu yang diminta: ${formatDate.toIndonesian(request.requested_time)}.`
+          : ""
+      }\n\nForm tambah jadwal akan terbuka — lengkapi dan simpan untuk membuat jadwal.`,
+      "warning",
+    );
+    if (!confirmed) return;
+
+    await apiHandler.handle(
+      sbClient
+        .from("reschedule_requests")
+        .update({
+          status: "approved",
+          admin_note: adminNote,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", id),
+      async () => {
+        await sendNotificationToStudent(
+          request.student_id,
+          "Permintaan jadwal disetujui",
+          `Guru sedang membuatkan jadwal untukmu.${
+            request.requested_time
+              ? ` Waktu yang diminta (${formatDate.toIndonesian(request.requested_time)}) sedang diproses.`
+              : ""
+          }`,
+        );
+        toast(
+          "Request disetujui — buka form jadwal untuk melengkapi",
+          "success",
+        );
+        await loadRequests();
+      },
+    );
+
+    // Open schedule modal pre-filled with student + requested time
+    openScheduleModal(
+      null,
+      request.student_id,
+      request.requested_time
+        ? formatDate.toDateTimeLocal(request.requested_time)
+        : "",
+    );
+    return;
+  }
+
+  // ── CASE 4: Reject (any scenario) ──────────────────────────────────────────
+  if (status === "rejected") {
+    const confirmed = await showConfirm(
+      "Tolak Request",
+      `Tolak permintaan reschedule dari ${studentName} untuk "${scheduleTitle}"?`,
+      "danger",
+    );
+    if (!confirmed) return;
+
+    await apiHandler.handle(
+      sbClient
+        .from("reschedule_requests")
+        .update({
+          status: "rejected",
+          admin_note: adminNote,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", id),
+      async () => {
+        await sendNotificationToStudent(
+          request.student_id,
+          "Request reschedule ditolak",
+          `Permintaan untuk kelas "${scheduleTitle}" ditolak.${
+            adminNote
+              ? ` Catatan guru: ${adminNote}`
+              : " Silakan hubungi guru jika perlu jadwal lain."
+          }`,
+        );
+        toast("Request ditolak", "success");
+        await Promise.all([loadRequests(), loadSchedules()]);
+      },
+    );
+    return;
+  }
 }
 
 // --- NOTIFICATIONS ---

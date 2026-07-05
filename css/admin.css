@@ -61,7 +61,6 @@ body {
     font-size: 2.5rem;
     font-weight: 800;
     letter-spacing: -0.04em;
-    color: var(--text-primary);
     line-height: 1;
     margin-top: 8px;
     background: linear-gradient(135deg, var(--text-primary), var(--accent-light));
@@ -167,14 +166,14 @@ body {
 
 /* ---- Progress bar in learning path ---- */
 #progressSection {
-    background: rgba(139, 92, 246, 0.05);
+    background: rgba(124, 58, 237, 0.06);
     border: 1px solid var(--glass-border);
     border-radius: 14px;
     padding: 16px;
 }
 
 body.light-mode #progressSection {
-    background: rgba(139, 92, 246, 0.04);
+    background: rgba(109, 40, 217, 0.05);
 }
 
 #progressText {
