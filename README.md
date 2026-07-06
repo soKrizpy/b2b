@@ -43,3 +43,22 @@ It uses **Supabase** for Authentication and Database directly via the official S
 - Added `.gitignore` to prevent IDE artifacts from being tracked.
 - Fixed severe INP performance issues related to synchronous tab switching and icon rendering loops.
 - Re-implemented missing color utility classes (`.text-success`, `.text-warning`, `.text-info`) into `shared.css` that were actively used in JS template literals.
+
+## 🔮 Future Feature Suggestions
+Here are some highly recommended features to implement next to improve the platform for both teachers and students:
+
+### For Admins (Teachers)
+- **Analytics & Reporting Dashboard**: A visual overview showing total hours taught, student attendance rates, and revenue/package tracking.
+- **Batch Operations**: The ability to approve/reject multiple reschedule requests at once, or assign the same material to a group of students simultaneously.
+- **Payment & Invoice Tracking**: A tab to monitor which students have paid for their current package and flag those who are overdue.
+- **Multi-Teacher Support**: If the platform grows, add Row Level Security (RLS) and filters so multiple teachers can log in and only see their assigned students.
+
+### For Students
+- **Homework Submission System**: Allow students to submit links (e.g., GitHub, Replit) or upload files directly on the material cards, and receive teacher feedback/grades.
+- **Visual Learning Roadmap**: Instead of a flat list of materials, present a visual path/tree showing what they have mastered and what comes next.
+- **Profile Management**: Allow students to update their own contact information, passwords, and profile pictures.
+
+### System & Technical Enhancements
+- **Push Notifications & Reminders**: Implement Supabase Edge Functions or a simple CRON job to automatically send WhatsApp or Email reminders 1 hour before a scheduled class.
+- **Real-time Data Sync**: Utilize **Supabase Realtime** so that when an admin updates a schedule, the student's screen updates instantly without needing a manual refresh.
+- **Progressive Web App (PWA)**: Add a `manifest.json` and a Service Worker so students and teachers can install the dashboard as a native-feeling app on their iOS/Android devices.
