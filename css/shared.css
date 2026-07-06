@@ -205,6 +205,15 @@ p {
 .text-accent {
   color: var(--accent) !important;
 }
+.text-success {
+  color: var(--success) !important;
+}
+.text-warning {
+  color: var(--warning) !important;
+}
+.text-info {
+  color: var(--accent-light) !important;
+}
 
 .text-3xl {
   font-size: 1.875rem;

@@ -22,7 +22,6 @@ async function login(email, password) {
     return;
   }
 
-  console.log("LOGIN SUCCESS:", data.user);
   await redirectByRole(data.user);
 }
 
@@ -59,8 +58,6 @@ async function redirectByRole(user, retried = false) {
   const profile = await apiHandler.handle(
     sbClient.from("profiles").select("role").eq("id", user.id).maybeSingle(),
   );
-
-  console.log("PROFILE:", profile);
 
   if (!profile) {
     if (retried) {
@@ -106,7 +103,6 @@ async function createProfile(user) {
     return false;
   }
 
-  console.log("Profile berhasil dibuat");
   return true;
 }
 
@@ -117,7 +113,6 @@ async function checkSession() {
   const { data } = await sbClient.auth.getSession();
 
   if (data.session) {
-    console.log("SESSION FOUND:", data.session.user);
     await redirectByRole(data.session.user);
   }
 }
