@@ -69,21 +69,22 @@ async function logout() {
 }
 
 function switchAdminTab(tabName) {
-  document
-    .querySelectorAll(".tab-btn")
-    .forEach((btn) =>
-      btn.classList.toggle("active", btn.dataset.tab === tabName),
-    );
-  document
-    .querySelectorAll(".tab-panel")
-    .forEach((panel) =>
-      panel.classList.toggle("active", panel.id === `tab-${tabName}`),
-    );
+  requestAnimationFrame(() => {
+    document
+      .querySelectorAll(".tab-btn")
+      .forEach((btn) =>
+        btn.classList.toggle("active", btn.dataset.tab === tabName),
+      );
+    document
+      .querySelectorAll(".tab-panel")
+      .forEach((panel) =>
+        panel.classList.toggle("active", panel.id === `tab-${tabName}`),
+      );
 
-  if (tabName === "calendar" && calendar) {
-    setTimeout(() => calendar.render(), 50);
-  }
-  refreshIcons();
+    if (tabName === "calendar" && calendar) {
+      setTimeout(() => calendar.render(), 50);
+    }
+  });
 }
 
 function statusLabel(status) {
@@ -135,12 +136,12 @@ async function loadStudents() {
   scheduleStudent.innerHTML = '<option value="">Pilih siswa</option>';
   notifRecipient.innerHTML = '<option value="all">Semua siswa</option>';
 
-  data.forEach((student) => {
-    const option = `<option value="${student.id}">${esc(student.full_name)}</option>`;
-    studentSelect.innerHTML += option;
-    scheduleStudent.innerHTML += option;
-    notifRecipient.innerHTML += option;
-  });
+  const optionsHtml = data
+    .map((student) => `<option value="${student.id}">${esc(student.full_name)}</option>`)
+    .join("");
+  studentSelect.innerHTML += optionsHtml;
+  scheduleStudent.innerHTML += optionsHtml;
+  notifRecipient.innerHTML += optionsHtml;
 
   renderStudentList();
   if (!selectedStudentId && data[0]) selectedStudentId = data[0].id;
@@ -214,7 +215,7 @@ function renderStudentList() {
     : `<div class="empty-state">${icon("users", "icon-lg")}<h3>Belum ada siswa</h3></div>`;
 
   list.innerHTML = html;
-  refreshIcons();
+  requestAnimationFrame(() => refreshIcons());
 
   const priorityStudents = getPriorityStudents();
   mini.innerHTML = priorityStudents.length
@@ -249,7 +250,7 @@ function renderStudentList() {
         )
         .join("")
     : `<div class="empty-state">${icon("users", "icon-lg")}<h3>Belum ada siswa</h3></div>`;
-  refreshIcons();
+  requestAnimationFrame(() => refreshIcons());
 }
 
 function selectStudent(studentId) {

@@ -19,30 +19,23 @@ function switchStudentTab(tabName) {
       "Selesaikan minimal 1 pertemuan dengan guru untuk membuka Materi 📚",
       "error",
     );
-    // Ensure home tab stays active
+    tabName = "home"; // fall back to home
+  }
+
+  // Yield to browser first so the click is registered visually,
+  // then do the heavier DOM updates.
+  requestAnimationFrame(() => {
     document
       .querySelectorAll(".tab-btn")
       .forEach((btn) =>
-        btn.classList.toggle("active", btn.dataset.tab === "home"),
+        btn.classList.toggle("active", btn.dataset.tab === tabName),
       );
     document
       .querySelectorAll(".tab-panel")
       .forEach((panel) =>
-        panel.classList.toggle("active", panel.id === "tab-home"),
+        panel.classList.toggle("active", panel.id === `tab-${tabName}`),
       );
-    return;
-  }
-
-  document
-    .querySelectorAll(".tab-btn")
-    .forEach((btn) =>
-      btn.classList.toggle("active", btn.dataset.tab === tabName),
-    );
-  document
-    .querySelectorAll(".tab-panel")
-    .forEach((panel) =>
-      panel.classList.toggle("active", panel.id === `tab-${tabName}`),
-    );
+  });
 }
 
 // =========================================
@@ -73,8 +66,8 @@ function updateMaterialsTabUI() {
       materialsBtn.classList.remove("tab-locked");
       materialsBtn.title = "";
     }
-    if (lockedPlaceholder) lockedPlaceholder.style.display = "none";
-    if (materialsContent) materialsContent.style.display = "block";
+    if (lockedPlaceholder) lockedPlaceholder.hidden = true;
+    if (materialsContent) materialsContent.hidden = false;
   } else {
     // Locked — show lock screen, hide content
     if (materialsBtn) {
@@ -82,8 +75,8 @@ function updateMaterialsTabUI() {
       materialsBtn.title =
         "Selesaikan minimal 1 pertemuan untuk membuka Materi";
     }
-    if (lockedPlaceholder) lockedPlaceholder.style.display = "block";
-    if (materialsContent) materialsContent.style.display = "none";
+    if (lockedPlaceholder) lockedPlaceholder.hidden = false;
+    if (materialsContent) materialsContent.hidden = true;
     // If currently on materials tab, kick back to home
     const activePanel = document.querySelector(".tab-panel.active");
     if (activePanel && activePanel.id === "tab-materials") {
