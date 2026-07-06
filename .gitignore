@@ -1,0 +1,10 @@
+# IDEs and Editors
+.vscode/
+.continue/
+
+# Testing
+test-results/
+
+# Agent artifacts
+project_info__1.md
+task_progress.md

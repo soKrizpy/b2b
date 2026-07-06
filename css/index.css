@@ -3,7 +3,7 @@
    ========================================= */
 
 /* Full-screen centered layout */
-body.login-body {
+body.login-page {
     display: flex;
     align-items: center;
     justify-content: center;

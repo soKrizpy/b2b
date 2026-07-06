@@ -2,14 +2,6 @@
    ADMIN.CSS — Admin / Teacher Dashboard
    ========================================= */
 
-/* ---- Layout ---- */
-body {
-    padding: 1.5rem;
-}
-@media (min-width: 768px) {
-    body { padding: 2rem; }
-}
-
 /* ---- Header title ---- */
 .glass h1 {
     font-size: 1.625rem;

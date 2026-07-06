@@ -2,14 +2,6 @@
    STUDENT.CSS — Student Dashboard
    ========================================= */
 
-/* ---- Layout ---- */
-body {
-    padding: 1.5rem;
-}
-@media (min-width: 768px) {
-    body { padding: 2rem; }
-}
-
 /* ---- Header card ---- */
 .header-card h1 {
     font-size: 1.625rem;
@@ -205,3 +197,189 @@ body {
     background: transparent;
     color: inherit;
 }
+
+/* =========================================
+   HOME TAB — Two-column layout
+   ========================================= */
+.student-home-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 280px;
+    gap: 1.25rem;
+    align-items: start;
+}
+
+.student-sidebar {
+    position: sticky;
+    top: 1.5rem;
+}
+
+@media (max-width: 860px) {
+    .student-home-layout {
+        grid-template-columns: 1fr;
+    }
+    .student-sidebar {
+        position: static;
+    }
+}
+
+/* =========================================
+   MINI CALENDAR
+   ========================================= */
+.mini-cal-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 2px;
+}
+
+.mini-cal-hdr {
+    text-align: center;
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    padding-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.mini-cal-day {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    aspect-ratio: 1;
+    border-radius: 8px;
+    cursor: default;
+    transition: background 0.15s ease;
+}
+
+.mini-cal-day.has-session {
+    background: var(--glass-bg-hover);
+}
+
+.mini-cal-day.cal-today .cal-num {
+    background: var(--accent);
+    color: #fff;
+    border-radius: 50%;
+    width: 26px;
+    height: 26px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+}
+
+.mini-cal-day.empty {
+    pointer-events: none;
+}
+
+.cal-num {
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--text-primary);
+    line-height: 1;
+}
+
+.cal-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    margin-top: 2px;
+    flex-shrink: 0;
+}
+
+.cal-dot-upcoming  { background: var(--accent-light); }
+.cal-dot-completed { background: var(--success); }
+.cal-dot-cancelled { background: var(--error); opacity: 0.7; }
+
+.cal-legend {
+    display: flex;
+    gap: 1rem;
+    margin-top: 10px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.cal-legend span {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+}
+
+/* =========================================
+   PACKAGE PROGRESS WIDGET
+   ========================================= */
+.pkg-widget {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.pkg-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem 1rem;
+    flex: 1;
+}
+
+.pkg-stat {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+}
+
+.pkg-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    margin-top: 3px;
+}
+
+.pkg-stat-num {
+    font-size: 1.25rem;
+    font-weight: 800;
+    color: var(--text-primary);
+    letter-spacing: -0.03em;
+    line-height: 1.2;
+}
+
+.pkg-stat-lbl {
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.pkg-donut-wrap {
+    flex-shrink: 0;
+}
+
+.pkg-donut {
+    display: block;
+    overflow: visible;
+}
+
+/* =========================================
+   CLEANUP & UTILITIES
+   ========================================= */
+.cal-month-label {
+    color: var(--accent-light);
+}
+
+.cal-nav-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+}
+
+.pkg-loading {
+    padding: 1.5rem 0;
+}
+
+.lock-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+}
+

@@ -1488,8 +1488,12 @@ body.light-mode .w-full.bg-gray-700 {
 /* =========================================
    25. RESPONSIVE BODY PADDING
    ========================================= */
+body.dashboard-body {
+  padding: 1.5rem;
+}
+
 @media (min-width: 768px) {
-  body {
+  body.dashboard-body {
     padding: 2rem;
   }
 }

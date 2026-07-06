@@ -4,6 +4,8 @@
 let currentProfile = null;
 let nextScheduleData = null;
 let upcomingSchedules = [];
+let allSchedulesForSidebar = []; // all statuses — used by calendar + package widget
+let calViewDate = new Date();    // which month the mini calendar is showing
 let refreshInterval = null;
 let hasCompletedSession = false; // gate for Materi tab
 
@@ -127,6 +129,7 @@ async function checkAuth() {
   // Load semua data
   await Promise.all([
     loadUpcomingSchedules(),
+    loadSidebarData(),
     loadHistory(),
     loadNotifications("student"),
     loadRequests(),
@@ -142,6 +145,7 @@ async function checkAuth() {
   refreshInterval = setInterval(async () => {
     await Promise.all([
       loadUpcomingSchedules(),
+      loadSidebarData(),
       loadHistory(),
       loadNotifications("student"),
       loadRequests(),
@@ -311,6 +315,211 @@ function joinMeetingById(scheduleId) {
 }
 
 // escHtml and esc are provided by shared.js
+
+// =========================================
+// SIDEBAR — load all schedules once
+// =========================================
+async function loadSidebarData() {
+  const { data, error } = await sbClient
+    .from("schedules")
+    .select("id, title, start_time, status")
+    .eq("student_id", currentProfile.id)
+    .order("start_time", { ascending: true });
+
+  if (error) {
+    console.error("Error loading sidebar data:", error);
+    return;
+  }
+
+  allSchedulesForSidebar = data || [];
+  renderMiniCalendar();
+  renderPackageProgress();
+}
+
+// =========================================
+// MINI CALENDAR
+// =========================================
+function calNav(delta) {
+  calViewDate = new Date(calViewDate.getFullYear(), calViewDate.getMonth() + delta, 1);
+  renderMiniCalendar();
+}
+
+function renderMiniCalendar() {
+  const label = document.getElementById("calMonthLabel");
+  const cal = document.getElementById("miniCal");
+  if (!cal) return;
+
+  const year = calViewDate.getFullYear();
+  const month = calViewDate.getMonth();
+
+  if (label) {
+    label.textContent = calViewDate.toLocaleDateString("id-ID", { month: "long", year: "numeric" });
+  }
+
+  // Build a set of dates that have sessions, keyed by "YYYY-MM-DD" → status
+  const sessionMap = {};
+  allSchedulesForSidebar.forEach((s) => {
+    const d = new Date(s.start_time);
+    if (d.getFullYear() === year && d.getMonth() === month) {
+      const key = `${year}-${String(month + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      // Priority: upcoming > completed > cancelled
+      if (!sessionMap[key] || s.status === "upcoming") {
+        sessionMap[key] = s.status;
+      }
+    }
+  });
+
+  const firstDay = new Date(year, month, 1).getDay(); // 0=Sun
+  // Convert to Mon-start (0=Mon … 6=Sun)
+  const startOffset = (firstDay + 6) % 7;
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const today = new Date();
+  const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+
+  const dayNames = ["Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min"];
+
+  let html = `<div class="mini-cal-grid">`;
+
+  // Day headers
+  dayNames.forEach((d) => {
+    html += `<div class="mini-cal-hdr">${d}</div>`;
+  });
+
+  // Empty cells before first day
+  for (let i = 0; i < startOffset; i++) {
+    html += `<div class="mini-cal-day empty"></div>`;
+  }
+
+  // Days
+  for (let d = 1; d <= daysInMonth; d++) {
+    const key = `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+    const status = sessionMap[key];
+    const isToday = key === todayKey;
+
+    let dotHtml = "";
+    if (status === "upcoming") {
+      dotHtml = `<span class="cal-dot cal-dot-upcoming"></span>`;
+    } else if (status === "completed") {
+      dotHtml = `<span class="cal-dot cal-dot-completed"></span>`;
+    } else if (status === "cancelled") {
+      dotHtml = `<span class="cal-dot cal-dot-cancelled"></span>`;
+    }
+
+    html += `
+      <div class="mini-cal-day${isToday ? " cal-today" : ""}${status ? " has-session" : ""}">
+        <span class="cal-num">${d}</span>
+        ${dotHtml}
+      </div>`;
+  }
+
+  html += `</div>`;
+
+  // Legend
+  html += `
+    <div class="cal-legend">
+      <span><span class="cal-dot cal-dot-upcoming"></span> Akan datang</span>
+      <span><span class="cal-dot cal-dot-completed"></span> Selesai</span>
+    </div>`;
+
+  cal.innerHTML = html;
+  refreshIcons();
+}
+
+// =========================================
+// PACKAGE PROGRESS WIDGET
+// =========================================
+function renderPackageProgress() {
+  const el = document.getElementById("packageProgress");
+  if (!el) return;
+
+  const total   = allSchedulesForSidebar.length;
+  const completed = allSchedulesForSidebar.filter(s => s.status === "completed").length;
+  const upcoming  = allSchedulesForSidebar.filter(s => s.status === "upcoming").length;
+  const cancelled = allSchedulesForSidebar.filter(s => s.status === "cancelled").length;
+  const remaining = Math.max(0, total - completed - cancelled);
+
+  if (total === 0) {
+    el.innerHTML = `
+      <div class="empty-state pkg-loading">
+        <p>Belum ada paket aktif</p>
+      </div>`;
+    return;
+  }
+
+  // Donut chart via SVG
+  const size = 110;
+  const r = 42;
+  const cx = size / 2;
+  const cy = size / 2;
+  const circumference = 2 * Math.PI * r;
+
+  function arc(value, total, color, offset) {
+    if (total === 0 || value === 0) return "";
+    const pct = value / total;
+    const dash = pct * circumference;
+    const gap  = circumference - dash;
+    return `<circle
+      cx="${cx}" cy="${cy}" r="${r}"
+      fill="none" stroke="${color}" stroke-width="11"
+      stroke-dasharray="${dash.toFixed(2)} ${gap.toFixed(2)}"
+      stroke-dashoffset="${(-offset).toFixed(2)}"
+      stroke-linecap="round"
+      style="transition:stroke-dasharray 0.8s ease"/>`;
+  }
+
+  // Offsets: start from top (−90°)
+  const startOffset = circumference * 0.25;
+  const completedArc = (completed / total) * circumference;
+  const upcomingArc  = (upcoming  / total) * circumference;
+
+  const donut = `
+    <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" class="pkg-donut">
+      <!-- track -->
+      <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="var(--glass-border)" stroke-width="11"/>
+      ${arc(completed, total, "var(--success)",  startOffset)}
+      ${arc(upcoming,  total, "var(--accent-light)", startOffset + completedArc)}
+      ${arc(cancelled, total, "var(--error)",    startOffset + completedArc + upcomingArc)}
+      <text x="${cx}" y="${cy - 6}" text-anchor="middle" fill="var(--text-primary)"
+            font-size="20" font-weight="800" font-family="Inter,sans-serif">${total}</text>
+      <text x="${cx}" y="${cy + 12}" text-anchor="middle" fill="var(--text-secondary)"
+            font-size="9" font-family="Inter,sans-serif">TOTAL</text>
+    </svg>`;
+
+  el.innerHTML = `
+    <div class="pkg-widget">
+      <div class="pkg-stats">
+        <div class="pkg-stat">
+          <span class="pkg-dot" style="background:var(--success)"></span>
+          <div>
+            <div class="pkg-stat-num">${completed}</div>
+            <div class="pkg-stat-lbl">Selesai</div>
+          </div>
+        </div>
+        <div class="pkg-stat">
+          <span class="pkg-dot" style="background:var(--accent-light)"></span>
+          <div>
+            <div class="pkg-stat-num">${upcoming}</div>
+            <div class="pkg-stat-lbl">Akan datang</div>
+          </div>
+        </div>
+        <div class="pkg-stat">
+          <span class="pkg-dot" style="background:var(--glass-border-hover)"></span>
+          <div>
+            <div class="pkg-stat-num">${remaining}</div>
+            <div class="pkg-stat-lbl">Sisa</div>
+          </div>
+        </div>
+        <div class="pkg-stat">
+          <span class="pkg-dot" style="background:var(--error)"></span>
+          <div>
+            <div class="pkg-stat-num">${cancelled}</div>
+            <div class="pkg-stat-lbl">Dibatalkan</div>
+          </div>
+        </div>
+      </div>
+      <div class="pkg-donut-wrap">${donut}</div>
+    </div>`;
+}
 
 // =========================================
 // HISTORY

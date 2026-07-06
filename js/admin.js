@@ -464,7 +464,7 @@ function renderCalendar() {
         right: "dayGridMonth,timeGridWeek,timeGridDay",
       },
       dateClick(info) {
-        openScheduleModal(null, "", `${info.dateStr}T09:00`);
+        openAvailableSlotModal(null, `${info.dateStr}T09:00`);
       },
       eventClick(info) {
         editSchedule(info.event.id);
@@ -513,6 +513,7 @@ function renderScheduleCard(schedule, options = {}) {
 function toggleScheduleTypeFields() {
   const type = document.getElementById("scheduleType").value;
   const isSlot = type === "slot";
+  const isEditing = !!document.getElementById("editScheduleId").value;
 
   document.getElementById("scheduleStudentGroup").style.display = isSlot
     ? "none"
@@ -529,13 +530,39 @@ function toggleScheduleTypeFields() {
   document.getElementById("scheduleNoteGroup").style.display = isSlot
     ? "none"
     : "block";
+  document.getElementById("slotRepeatGroup").style.display =
+    isSlot && !isEditing ? "block" : "none";
 
   document.getElementById("scheduleModalTitle").textContent = isSlot
-    ? "Slot Kosong (Available Slot)"
-    : "Jadwal Kelas";
+    ? isEditing
+      ? "Edit Slot Kosong"
+      : "Slot Kosong Berulang"
+    : isEditing
+      ? "Edit Jadwal Kelas"
+      : "Jadwal Siswa Baru";
 }
 
-function openScheduleModal(scheduleId = null, studentId = "", startTime = "") {
+function toggleSlotRepeatOptions() {
+  const enabled = document.getElementById("slotRepeatEnabled")?.checked;
+  const options = document.getElementById("slotRepeatOptions");
+  if (options) options.classList.toggle("hidden", !enabled);
+}
+
+function openClassScheduleModal(scheduleId = null, studentId = "", startTime = "") {
+  openScheduleModal(scheduleId, studentId, startTime, "class");
+}
+
+function openAvailableSlotModal(slotId = null, startTime = "") {
+  const id = slotId ? `slot-${slotId}` : null;
+  openScheduleModal(id, "", startTime, "slot");
+}
+
+function openScheduleModal(
+  scheduleId = null,
+  studentId = "",
+  startTime = "",
+  scheduleType = null,
+) {
   document.getElementById("editScheduleId").value = scheduleId || "";
   document.getElementById("scheduleStudent").value = studentId || "";
   document.getElementById("scheduleTitle").value = "";
@@ -543,6 +570,10 @@ function openScheduleModal(scheduleId = null, studentId = "", startTime = "") {
   document.getElementById("scheduleLink").value = "";
   document.getElementById("scheduleAttendance").value = "pending";
   document.getElementById("scheduleNote").value = "";
+  document.getElementById("slotRepeatEnabled").checked = false;
+  document.getElementById("slotRepeatInterval").value = "weekly";
+  document.getElementById("slotRepeatCount").value = "4";
+  toggleSlotRepeatOptions();
 
   const isEditing = !!scheduleId;
   const btnDelete = document.getElementById("btnDeleteSchedule");
@@ -555,7 +586,9 @@ function openScheduleModal(scheduleId = null, studentId = "", startTime = "") {
   }
 
   const typeSelector = document.getElementById("scheduleType");
-  if (scheduleId && scheduleId.startsWith("slot-")) {
+  if (scheduleType) {
+    typeSelector.value = scheduleType;
+  } else if (scheduleId && scheduleId.startsWith("slot-")) {
     typeSelector.value = "slot";
   } else {
     typeSelector.value = "class";
@@ -579,15 +612,13 @@ async function saveSchedule() {
 
   // If slot kosong (available slot)
   if (type === "slot") {
-    const slotData = {
-      start_time: formattedTime,
-      status: "available",
-    };
-
     if (id && id.startsWith("slot-")) {
       const slotUuid = id.substring(5); // remove 'slot-'
       await apiHandler.handle(
-        sbClient.from("available_slots").update(slotData).eq("id", slotUuid),
+        sbClient
+          .from("available_slots")
+          .update({ start_time: formattedTime, status: "available" })
+          .eq("id", slotUuid),
         async () => {
           toast("Slot kosong berhasil diperbarui", "success");
           closeModal("scheduleModal");
@@ -598,10 +629,36 @@ async function saveSchedule() {
       return;
     }
 
+    const repeatEnabled = document.getElementById("slotRepeatEnabled").checked;
+    const repeatInterval = document.getElementById("slotRepeatInterval").value;
+    const repeatCount = repeatEnabled
+      ? Number.parseInt(document.getElementById("slotRepeatCount").value, 10)
+      : 1;
+
+    if (!Number.isInteger(repeatCount) || repeatCount < 1 || repeatCount > 24) {
+      toast("Jumlah slot harus antara 1 sampai 24", "error");
+      return;
+    }
+
+    const intervalDays = repeatInterval === "daily" ? 1 : 7;
+    const slotRows = Array.from({ length: repeatCount }, (_, index) => {
+      const slotTime = new Date(time);
+      slotTime.setDate(slotTime.getDate() + index * intervalDays);
+      return {
+        start_time: slotTime.toISOString(),
+        status: "available",
+      };
+    });
+
     await apiHandler.handle(
-      sbClient.from("available_slots").insert([slotData]),
+      sbClient.from("available_slots").insert(slotRows),
       async () => {
-        toast("Slot kosong berhasil dibuat", "success");
+        toast(
+          repeatCount === 1
+            ? "Slot kosong berhasil dibuat"
+            : `${repeatCount} slot kosong berhasil dibuat`,
+          "success",
+        );
         closeModal("scheduleModal");
         await Promise.all([loadSchedules(), loadAvailableSlots()]);
         renderCalendar();

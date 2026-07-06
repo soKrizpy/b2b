@@ -10,7 +10,7 @@
     <link rel="stylesheet" href="css/student.css">
 </head>
 
-<body style="padding:1.5rem;">
+<body class="dashboard-body">
 
     <header class="glass p-6 mb-6 fade-in flex justify-between items-center flex-wrap gap-4">
         <div>
@@ -57,19 +57,58 @@
 
     <main>
         <section id="tab-home" class="tab-panel active">
-            <div class="glass p-6 fade-in">
-                <h2 class="text-xl font-bold text-primary mb-4">Jadwal Selanjutnya</h2>
-                <div id="nextSchedule" class="text-center py-8"></div>
+            <div class="student-home-layout">
+                <!-- LEFT: upcoming schedules -->
+                <div>
+                    <div class="glass p-6 fade-in">
+                        <h2 class="text-xl font-bold text-primary mb-4">Jadwal Selanjutnya</h2>
+                        <div id="nextSchedule" class="text-center py-8"></div>
+                    </div>
+                </div>
+
+                <!-- RIGHT: sidebar -->
+                <aside class="student-sidebar space-y-4">
+
+                    <!-- Mini Calendar -->
+                    <div class="glass p-5 fade-in">
+                        <div class="flex justify-between items-center mb-4">
+                            <h2 class="text-base font-bold text-primary">
+                                Jadwal Bulan
+                            <span id="calMonthLabel" class="cal-month-label"></span>
+                            </h2>
+                            <div class="flex gap-1">
+                                <button onclick="calNav(-1)" class="icon-btn glass cal-nav-btn" title="Bulan sebelumnya">
+                                    <i data-lucide="chevron-left" class="icon-sm"></i>
+                                </button>
+                                <button onclick="calNav(1)" class="icon-btn glass cal-nav-btn" title="Bulan berikutnya">
+                                    <i data-lucide="chevron-right" class="icon-sm"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div id="miniCal"></div>
+                    </div>
+
+                    <!-- Package Progress -->
+                    <div class="glass p-5 fade-in">
+                        <h2 class="text-base font-bold text-primary mb-4">Progress Paket</h2>
+                        <div id="packageProgress">
+                            <div class="empty-state pkg-loading">
+                                <p>Memuat...</p>
+                            </div>
+                        </div>
+                    </div>
+
+                </aside>
             </div>
         </section>
 
         <section id="tab-materials" class="tab-panel">
             <div class="glass p-10 fade-in text-center" id="materialsLockedPlaceholder">
-                <div style="font-size:3rem;margin-bottom:1rem;">🔒</div>
+                <div class="lock-icon">🔒</div>
                 <h2 class="text-xl font-bold text-primary mb-2">Materi Terkunci</h2>
                 <p class="text-secondary">Selesaikan minimal <strong>1 pertemuan</strong> bersama guru untuk membuka akses materi.</p>
             </div>
-            <div class="glass p-6 fade-in" id="materialsContent" style="display:none;">
+            <div class="glass p-6 fade-in" id="materialsContent" hidden>
                 <h2 class="text-xl font-bold text-primary mb-4">Materi & Homework</h2>
                 <div class="mb-6">
                     <div class="flex justify-between items-center mb-2">
@@ -77,7 +116,7 @@
                         <span id="progressText" class="text-secondary text-sm">0% selesai</span>
                     </div>
                     <div class="w-full bg-gray-700 rounded-full h-2.5">
-                        <div id="progressFill" class="bg-gradient-to-r from-purple-500 to-indigo-500 h-2.5 rounded-full" style="width: 0%"></div>
+                        <div id="progressFill" class="bg-gradient-to-r from-purple-500 to-indigo-500 h-2.5 rounded-full"></div>
                     </div>
                 </div>
                 <div id="learningPathList" class="space-y-3"></div>
