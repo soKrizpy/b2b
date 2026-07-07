@@ -39,6 +39,7 @@ It uses **Supabase** for Authentication and Database directly via the official S
    - Do not use `console.log()` to dump user profile objects or session tokens into the production browser console. Use `console.error()` strictly for errors.
 
 ## 📝 Recent Work & Optimization History
+- Applied a new Neon UI aesthetic across the platform, featuring Purple Neon borders for Dark Mode and Blue Neon borders for Light Mode.
 - Centralized all `js/` and `css/` files to their respective folders. Removed redundant root files.
 - Added `.gitignore` to prevent IDE artifacts from being tracked.
 - Fixed severe INP performance issues related to synchronous tab switching and icon rendering loops.
