@@ -2,6 +2,18 @@
    ADMIN.CSS — Admin / Teacher Dashboard
    ========================================= */
 
+/* ---- Header — must stack above calendar ---- */
+header {
+    position: relative;
+    z-index: 100;
+}
+
+/* ---- Timezone widget ---- */
+.tz-widget {
+    position: relative;
+    z-index: 200;
+}
+
 /* ---- Header title ---- */
 .glass h1 {
     font-size: 1.625rem;

@@ -138,31 +138,127 @@ function escHtml(str) {
 // Compatibility alias — admin.js calls esc() in many places
 var esc = escHtml;
 
+// =========================================
+// TIMEZONE SYSTEM
+// =========================================
+const TIMEZONE_OPTIONS = [
+  { label: "WIB (GMT+7)",     tz: "Asia/Jakarta" },
+  { label: "WITA (GMT+8)",    tz: "Asia/Makassar" },
+  { label: "WIT (GMT+9)",     tz: "Asia/Jayapura" },
+  { label: "SGT (GMT+8)",     tz: "Asia/Singapore" },
+  { label: "MYT (GMT+8)",     tz: "Asia/Kuala_Lumpur" },
+  { label: "ICT (GMT+7)",     tz: "Asia/Bangkok" },
+  { label: "PHT (GMT+8)",     tz: "Asia/Manila" },
+  { label: "JST (GMT+9)",     tz: "Asia/Tokyo" },
+  { label: "IST (GMT+5:30)",  tz: "Asia/Kolkata" },
+  { label: "GST (GMT+4)",     tz: "Asia/Dubai" },
+  { label: "UTC (GMT+0)",     tz: "UTC" },
+  { label: "CET (GMT+1)",     tz: "Europe/Paris" },
+  { label: "EST (GMT-5)",     tz: "America/New_York" },
+  { label: "CST (GMT-6)",     tz: "America/Chicago" },
+  { label: "MST (GMT-7)",     tz: "America/Denver" },
+  { label: "PST (GMT-8)",     tz: "America/Los_Angeles" },
+  { label: "AEST (GMT+10)",   tz: "Australia/Sydney" },
+];
+
+function getAutoTimezone() {
+  return Intl.DateTimeFormat().resolvedOptions().timeZone;
+}
+
+function getUserTimezone() {
+  return localStorage.getItem("userTimezone") || getAutoTimezone();
+}
+
+function setUserTimezone(tz) {
+  localStorage.setItem("userTimezone", tz);
+  // Re-render all date displays
+  document.dispatchEvent(new CustomEvent("timezone-changed", { detail: { tz } }));
+}
+
+function getTimezoneLabel(tz) {
+  const match = TIMEZONE_OPTIONS.find(o => o.tz === tz);
+  if (match) return match.label;
+  // Fallback: show offset
+  try {
+    const offset = new Date().toLocaleString("en", { timeZone: tz, timeZoneName: "short" }).split(" ").pop();
+    return `${offset}`;
+  } catch { return tz; }
+}
+
+function renderTimezoneWidget(buttonId = "tzBtn") {
+  const currentTz = getUserTimezone();
+  const label = getTimezoneLabel(currentTz);
+  return `
+    <div class="tz-widget" style="position:relative;">
+      <button id="${buttonId}" onclick="toggleTzDropdown('${buttonId}')" class="btn glass px-3 py-2 rounded-lg text-sm flex items-center gap-2" title="Timezone">
+        ${icon("globe")} <span id="${buttonId}Label">${label}</span>
+      </button>
+      <div id="${buttonId}Dropdown" class="tz-dropdown hidden" style="position:absolute;right:0;top:110%;z-index:9999;min-width:200px;max-height:280px;overflow-y:auto;background:var(--glass-bg);border:1px solid var(--glass-border);border-radius:12px;box-shadow:0 12px 40px rgba(0,0,0,0.5);backdrop-filter:blur(16px);">
+        ${TIMEZONE_OPTIONS.map(o => `
+          <button onclick="selectTimezone('${o.tz}','${buttonId}')" class="tz-option w-full text-left px-4 py-2 text-sm hover:bg-white/10 ${currentTz === o.tz ? 'text-primary font-bold' : 'text-secondary'}" style="background:none;border:none;cursor:pointer;display:block;">
+            ${o.label}
+          </button>`).join("")}
+      </div>
+    </div>`;
+}
+
+function toggleTzDropdown(buttonId) {
+  const dd = document.getElementById(`${buttonId}Dropdown`);
+  if (dd) dd.classList.toggle("hidden");
+}
+
+function selectTimezone(tz, buttonId) {
+  setUserTimezone(tz);
+  const label = getTimezoneLabel(tz);
+  const lblEl = document.getElementById(`${buttonId}Label`);
+  if (lblEl) lblEl.textContent = label;
+  toggleTzDropdown(buttonId);
+  // Refresh icons for the globe icon
+  refreshIcons();
+}
+
+// Close tz dropdown on outside click
+document.addEventListener("click", (e) => {
+  if (!e.target.closest(".tz-widget")) {
+    document.querySelectorAll(".tz-dropdown").forEach(d => d.classList.add("hidden"));
+  }
+}, true);
+
 const formatDate = {
   toIndonesian: (dateStr) => {
     if (!dateStr) return "-";
+    const tz = getUserTimezone();
     return new Date(dateStr).toLocaleString("id-ID", {
+      timeZone: tz,
       weekday: "long",
       year: "numeric",
       month: "long",
       day: "numeric",
       hour: "2-digit",
       minute: "2-digit",
+      hour12: false,
     });
   },
   toDateTimeLocal: (dateStr) => {
     if (!dateStr) return "";
-    return new Date(dateStr).toISOString().slice(0, 16);
+    const tz = getUserTimezone();
+    const d = new Date(dateStr);
+    // Format as YYYY-MM-DDTHH:mm in the user's timezone
+    const parts = new Intl.DateTimeFormat("en-CA", {
+      timeZone: tz,
+      year: "numeric", month: "2-digit", day: "2-digit",
+      hour: "2-digit", minute: "2-digit", hour12: false,
+    }).formatToParts(d);
+    const get = (type) => parts.find(p => p.type === type)?.value || "00";
+    const hh = get("hour") === "24" ? "00" : get("hour");
+    return `${get("year")}-${get("month")}-${get("day")}T${hh}:${get("minute")}`;
   },
   isToday: (dateStr) => {
     if (!dateStr) return false;
-    const d = new Date(dateStr);
-    const now = new Date();
-    return (
-      d.getFullYear() === now.getFullYear() &&
-      d.getMonth() === now.getMonth() &&
-      d.getDate() === now.getDate()
-    );
+    const tz = getUserTimezone();
+    const opts = { timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit" };
+    return new Intl.DateTimeFormat("en-CA", opts).format(new Date(dateStr)) ===
+           new Intl.DateTimeFormat("en-CA", opts).format(new Date());
   },
   isPast: (dateStr) => {
     if (!dateStr) return false;

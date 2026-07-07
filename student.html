@@ -18,6 +18,7 @@
             <p class="text-secondary mt-1" id="studentName">Memuat...</p>
         </div>
         <div class="flex gap-3 items-center">
+            <div id="studentTzWidget"></div>
             <button onclick="toggleNotifPanel('studentNotificationPanel')" class="icon-btn glass relative" title="Notifikasi">
                 <i data-lucide="bell" class="icon-sm"></i>
                 <span id="studentNotifBadge" class="notification-badge hidden">0</span>
@@ -70,9 +71,9 @@
                 <aside class="student-sidebar space-y-4">
 
                     <!-- Mini Calendar -->
-                    <div class="glass p-5 fade-in">
+                    <div class="glass p-6 fade-in">
                         <div class="flex justify-between items-center mb-4">
-                            <h2 class="text-base font-bold text-primary">
+                            <h2 class="text-lg font-bold text-primary flex items-center gap-2 flex-wrap">
                                 Jadwal Bulan
                             <span id="calMonthLabel" class="cal-month-label"></span>
                             </h2>
@@ -89,8 +90,8 @@
                     </div>
 
                     <!-- Package Progress -->
-                    <div class="glass p-5 fade-in">
-                        <h2 class="text-base font-bold text-primary mb-4">Progress Paket</h2>
+                    <div class="glass p-6 fade-in">
+                        <h2 class="text-lg font-bold text-primary mb-4">Progress Paket</h2>
                         <div id="packageProgress">
                             <div class="empty-state pkg-loading">
                                 <p>Memuat...</p>

@@ -39,9 +39,11 @@ It uses **Supabase** for Authentication and Database directly via the official S
    - Do not use `console.log()` to dump user profile objects or session tokens into the production browser console. Use `console.error()` strictly for errors.
 
 ## 📝 Recent Work & Optimization History
+- **Timezone Management**: Added auto-detect and manual timezone selection with global UI widget. Upgraded FullCalendar and schedule views to render times accurately in 24-hour format across timezones.
+- **Schedule Management**: Implemented smart "Slot Kosong" logic to auto-generate 52 weeks of available slots. Added scoped editing (this slot only vs this and future slots) for rutinan schedules.
+- **UI Polish**: Updated calendar events to display student names instead of class titles for better at-a-glance readability. Fixed text contrast issues on light mode calendar events.
 - Applied a new Neon UI aesthetic across the platform, featuring Purple Neon borders for Dark Mode and Blue Neon borders for Light Mode.
 - Centralized all `js/` and `css/` files to their respective folders. Removed redundant root files.
-- Added `.gitignore` to prevent IDE artifacts from being tracked.
 - Fixed severe INP performance issues related to synchronous tab switching and icon rendering loops.
 - Re-implemented missing color utility classes (`.text-success`, `.text-warning`, `.text-info`) into `shared.css` that were actively used in JS template literals.
 

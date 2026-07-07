@@ -149,7 +149,22 @@ async function checkAuth() {
     }
     updateJoinButton();
   }, 30000);
+  // Mount timezone widget
+  const tzEl = document.getElementById("studentTzWidget");
+  if (tzEl) {
+    tzEl.innerHTML = renderTimezoneWidget("studentTzBtn");
+    refreshIcons();
+  }
 }
+
+// Re-render date-dependent views when timezone changes
+document.addEventListener("timezone-changed", () => {
+  if (typeof renderNextSchedule === "function") renderNextSchedule();
+  if (typeof renderCalendarMini === "function") renderCalendarMini();
+  if (typeof renderUpcomingList === "function") renderUpcomingList();
+  if (typeof renderHistory === "function") renderHistory();
+  refreshIcons();
+});
 
 document.addEventListener("DOMContentLoaded", checkAuth);
 

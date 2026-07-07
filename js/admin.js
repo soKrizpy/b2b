@@ -58,8 +58,24 @@ async function loadDashboardData() {
   renderStudentList();
   renderOverview();
   renderCalendar();
+
+  // Mount timezone widget
+  const tzEl = document.getElementById("adminTzWidget");
+  if (tzEl) {
+    tzEl.innerHTML = renderTimezoneWidget("adminTzBtn");
+    refreshIcons();
+  }
+
   refreshIcons();
 }
+
+// Re-render all date-dependent views when timezone changes
+document.addEventListener("timezone-changed", () => {
+  renderOverview();
+  renderCalendar();
+  renderStudentDetail();
+  refreshIcons();
+});
 
 async function logout() {
   if (await showConfirm("Logout", "Yakin ingin keluar?")) {
@@ -434,7 +450,7 @@ function renderCalendar() {
   allSchedules.forEach((schedule) => {
     events.push({
       id: String(schedule.id),
-      title: `${schedule.title} - ${schedule.profiles?.full_name || "Siswa"}`,
+      title: schedule.profiles?.full_name || "Siswa",
       start: schedule.start_time,
       classNames: [`status-${schedule.status}`],
     });
@@ -463,6 +479,16 @@ function renderCalendar() {
         left: "prev,next today",
         center: "title",
         right: "dayGridMonth,timeGridWeek,timeGridDay",
+      },
+      eventTimeFormat: {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false,
+      },
+      slotLabelFormat: {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false,
       },
       dateClick(info) {
         openAvailableSlotModal(null, `${info.dateStr}T09:00`);
@@ -533,20 +559,26 @@ function toggleScheduleTypeFields() {
     : "block";
   document.getElementById("slotRepeatGroup").style.display =
     isSlot && !isEditing ? "block" : "none";
+  document.getElementById("slotRepeatGroup").classList.toggle("hidden", !(isSlot && !isEditing));
+  
+  const scopeGroup = document.getElementById("slotEditScopeGroup");
+  if (scopeGroup) {
+    const showScope = isSlot && isEditing;
+    scopeGroup.style.display = showScope ? "block" : "none";
+    scopeGroup.classList.toggle("hidden", !showScope);
+  }
 
   document.getElementById("scheduleModalTitle").textContent = isSlot
     ? isEditing
       ? "Edit Slot Kosong"
-      : "Slot Kosong Berulang"
+      : "Slot Kosong Rutinan"
     : isEditing
-      ? "Edit Jadwal Kelas"
-      : "Jadwal Siswa Baru";
+      ? "Edit Sesi 1-on-1"
+      : "Sesi 1-on-1 Baru";
 }
 
 function toggleSlotRepeatOptions() {
-  const enabled = document.getElementById("slotRepeatEnabled")?.checked;
-  const options = document.getElementById("slotRepeatOptions");
-  if (options) options.classList.toggle("hidden", !enabled);
+  // Always shown now
 }
 
 function openClassScheduleModal(scheduleId = null, studentId = "", startTime = "") {
@@ -571,10 +603,16 @@ function openScheduleModal(
   document.getElementById("scheduleLink").value = "";
   document.getElementById("scheduleAttendance").value = "pending";
   document.getElementById("scheduleNote").value = "";
-  document.getElementById("slotRepeatEnabled").checked = false;
-  document.getElementById("slotRepeatInterval").value = "weekly";
-  document.getElementById("slotRepeatCount").value = "4";
-  toggleSlotRepeatOptions();
+  
+  const repeatIntervalEl = document.getElementById("slotRepeatInterval");
+  if (repeatIntervalEl) repeatIntervalEl.value = "weekly";
+  
+  const repeatCountEl = document.getElementById("slotRepeatCount");
+  if (repeatCountEl) repeatCountEl.value = "4";
+
+  // Reset edit scope radio to 'single'
+  const singleRadio = document.querySelector('input[name="slotEditScope"][value="single"]');
+  if (singleRadio) singleRadio.checked = true;
 
   const isEditing = !!scheduleId;
   const btnDelete = document.getElementById("btnDeleteSchedule");
@@ -615,6 +653,47 @@ async function saveSchedule() {
   if (type === "slot") {
     if (id && id.startsWith("slot-")) {
       const slotUuid = id.substring(5); // remove 'slot-'
+      const scope = document.querySelector('input[name="slotEditScope"]:checked')?.value || "single";
+      
+      if (scope === "future") {
+        const originalSlot = allSlots.find((s) => s.id === slotUuid);
+        if (originalSlot) {
+            const origDate = new Date(originalSlot.start_time);
+            const origDay = origDate.getDay();
+            const origHour = origDate.getHours();
+            const origMin = origDate.getMinutes();
+            
+            const slotsToUpdate = allSlots.filter((s) => {
+                const d = new Date(s.start_time);
+                return s.status === 'available' && 
+                       d >= origDate &&
+                       d.getDay() === origDay &&
+                       d.getHours() === origHour &&
+                       d.getMinutes() === origMin;
+            });
+            
+            const newDate = new Date(formattedTime);
+            const diffMs = newDate.getTime() - origDate.getTime();
+            
+            const updatePromises = slotsToUpdate.map((slot) => {
+               const slotDate = new Date(slot.start_time);
+               const updatedSlotTime = new Date(slotDate.getTime() + diffMs);
+               
+               return sbClient
+                 .from("available_slots")
+                 .update({ start_time: updatedSlotTime.toISOString(), status: "available" })
+                 .eq("id", slot.id);
+            });
+            
+            await Promise.all(updatePromises);
+            toast("Semua slot rutinan berhasil diperbarui", "success");
+            closeModal("scheduleModal");
+            await Promise.all([loadSchedules(), loadAvailableSlots()]);
+            renderCalendar();
+            return;
+        }
+      }
+
       await apiHandler.handle(
         sbClient
           .from("available_slots")
@@ -630,18 +709,10 @@ async function saveSchedule() {
       return;
     }
 
-    const repeatEnabled = document.getElementById("slotRepeatEnabled").checked;
-    const repeatInterval = document.getElementById("slotRepeatInterval").value;
-    const repeatCount = repeatEnabled
-      ? Number.parseInt(document.getElementById("slotRepeatCount").value, 10)
-      : 1;
+    const repeatInterval = "weekly";
+    const repeatCount = 52;
 
-    if (!Number.isInteger(repeatCount) || repeatCount < 1 || repeatCount > 24) {
-      toast("Jumlah slot harus antara 1 sampai 24", "error");
-      return;
-    }
-
-    const intervalDays = repeatInterval === "daily" ? 1 : 7;
+    const intervalDays = 7;
     const slotRows = Array.from({ length: repeatCount }, (_, index) => {
       const slotTime = new Date(time);
       slotTime.setDate(slotTime.getDate() + index * intervalDays);
@@ -738,7 +809,7 @@ async function editSchedule(id) {
     const slotUuid = id.substring(5);
     const slot = allSlots.find((s) => s.id === slotUuid);
     if (!slot) return;
-    openScheduleModal(id, "", formatDate.toDateTimeLocal(slot.start_time));
+    openScheduleModal(id, "", formatDate.toDateTimeLocal(slot.start_time), "slot");
     return;
   }
 
@@ -768,6 +839,42 @@ async function editSchedule(id) {
 async function deleteSchedule(id) {
   if (id && id.startsWith("slot-")) {
     const slotUuid = id.substring(5);
+    const scope = document.querySelector('input[name="slotEditScope"]:checked')?.value || "single";
+    
+    if (scope === "future") {
+      if (await showConfirm("Hapus Rutinan", "Yakin hapus slot ini dan SEMUA rutinan setelahnya?", "danger")) {
+        const originalSlot = allSlots.find(s => s.id === slotUuid);
+        if (originalSlot) {
+            const origDate = new Date(originalSlot.start_time);
+            const origDay = origDate.getDay();
+            const origHour = origDate.getHours();
+            const origMin = origDate.getMinutes();
+            
+            const slotsToDelete = allSlots.filter(s => {
+                const d = new Date(s.start_time);
+                return s.status === 'available' && 
+                       d >= origDate &&
+                       d.getDay() === origDay &&
+                       d.getHours() === origHour &&
+                       d.getMinutes() === origMin;
+            });
+            
+            const idsToDelete = slotsToDelete.map(s => s.id);
+            
+            await apiHandler.handle(
+                sbClient.from("available_slots").delete().in('id', idsToDelete),
+                async () => {
+                    toast(`${idsToDelete.length} slot dihapus`, "success");
+                    await Promise.all([loadSchedules(), loadAvailableSlots()]);
+                    renderCalendar();
+                    closeModal("scheduleModal");
+                }
+            );
+        }
+      }
+      return;
+    }
+
     if (
       await showConfirm(
         "Hapus Slot Kosong",
@@ -781,6 +888,7 @@ async function deleteSchedule(id) {
           toast("Slot kosong dihapus", "success");
           await Promise.all([loadSchedules(), loadAvailableSlots()]);
           renderCalendar();
+          closeModal("scheduleModal");
         },
       );
     }

@@ -1935,3 +1935,16 @@ body.light-mode .pagination button.active {
 .copy-btn:hover {
   opacity: 1;
 }
+
+/* =========================================
+   FULLCALENDAR — Light mode text fix
+   Force white text on colored event blocks
+   ========================================= */
+body.light-mode .fc-event,
+body.light-mode .fc-event-title,
+body.light-mode .fc-event-time,
+body.light-mode .fc-daygrid-event,
+body.light-mode .fc-timegrid-event .fc-event-title,
+body.light-mode .fc-timegrid-event .fc-event-time {
+  color: #ffffff !important;
+}

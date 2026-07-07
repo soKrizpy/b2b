@@ -2,6 +2,18 @@
    STUDENT.CSS — Student Dashboard
    ========================================= */
 
+/* ---- Header — must stack above content ---- */
+header {
+    position: relative;
+    z-index: 100;
+}
+
+/* ---- Timezone widget ---- */
+.tz-widget {
+    position: relative;
+    z-index: 200;
+}
+
 /* ---- Header card ---- */
 .header-card h1 {
     font-size: 1.625rem;
@@ -314,6 +326,8 @@
 .pkg-widget {
     display: flex;
     align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
     gap: 1rem;
 }
 

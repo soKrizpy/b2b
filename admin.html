@@ -29,6 +29,7 @@
         </p>
       </div>
       <div class="flex gap-3 items-center">
+        <div id="adminTzWidget"></div>
         <button
           onclick="toggleNotifPanel('adminNotificationPanel')"
           class="icon-btn glass relative"
@@ -146,7 +147,7 @@
                   onclick="openClassScheduleModal()"
                   class="btn btn-primary px-4 py-2 rounded-lg font-semibold"
                 >
-                  <i data-lucide="plus" class="icon-sm"></i> Jadwal
+                  <i data-lucide="plus" class="icon-sm"></i> Sesi 1-on-1
                 </button>
                 <button
                   onclick="openAvailableSlotModal()"
@@ -178,8 +179,8 @@
             <div>
               <h2 class="text-xl font-bold text-primary">Kalender Kelas</h2>
               <p class="text-secondary text-sm mt-1">
-                Buat jadwal siswa satu kali atau publikasikan slot kosong
-                berulang untuk request siswa.
+                Buat sesi 1-on-1 untuk trial/demo atau publikasikan slot kosong
+                rutinan mingguan untuk request siswa.
               </p>
             </div>
             <div class="flex gap-2 flex-wrap">
@@ -187,7 +188,7 @@
                 onclick="openClassScheduleModal()"
                 class="btn btn-primary px-4 py-2 rounded-lg font-semibold"
               >
-                <i data-lucide="plus" class="icon-sm"></i> Jadwal Siswa
+                <i data-lucide="plus" class="icon-sm"></i> Sesi 1-on-1
               </button>
               <button
                 onclick="openAvailableSlotModal()"
@@ -376,8 +377,8 @@
         <input type="hidden" id="editScheduleId" />
         <div class="space-y-4">
           <select id="scheduleType" class="hidden" onchange="toggleScheduleTypeFields()">
-            <option value="class">Jadwal Siswa (Class Schedule)</option>
-            <option value="slot">Slot Kosong (Available Slot)</option>
+            <option value="class">Sesi 1-on-1 (Trial/Demo)</option>
+            <option value="slot">Slot Kosong (Rutinan Mingguan)</option>
           </select>
 
           <div id="scheduleStudentGroup" class="space-y-4">
@@ -402,29 +403,20 @@
           />
 
           <div id="slotRepeatGroup" class="space-y-3 hidden">
-            <label class="flex items-center gap-2 text-secondary text-sm">
-              <input
-                type="checkbox"
-                id="slotRepeatEnabled"
-                class="w-5 h-5"
-                onchange="toggleSlotRepeatOptions()"
-              />
-              Buat slot berulang
-            </label>
-            <div id="slotRepeatOptions" class="grid grid-cols-1 md:grid-cols-2 gap-3 hidden">
-              <select id="slotRepeatInterval" class="input-field px-4 py-3 rounded-lg">
-                <option value="weekly">Mingguan</option>
-                <option value="daily">Harian</option>
-              </select>
-              <input
-                type="number"
-                id="slotRepeatCount"
-                min="1"
-                max="24"
-                value="4"
-                class="input-field px-4 py-3 rounded-lg"
-                placeholder="Jumlah slot"
-              />
+            <p class="text-secondary text-sm">Slot akan dibuat otomatis selama setahun (52 minggu) pada hari dan jam yang sama.</p>
+          </div>
+          
+          <div id="slotEditScopeGroup" class="space-y-3 hidden">
+            <label class="block text-primary font-bold text-sm mb-2">Pilih yang ingin diubah/dihapus:</label>
+            <div class="flex gap-4">
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="radio" name="slotEditScope" value="single" checked class="w-4 h-4 text-primary" />
+                <span class="text-sm">Hanya slot ini</span>
+              </label>
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="radio" name="slotEditScope" value="future" class="w-4 h-4 text-primary" />
+                <span class="text-sm">Slot ini & seterusnya</span>
+              </label>
             </div>
           </div>
 
