@@ -11,42 +11,51 @@
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap");
 
 /* =========================================
-   2. CSS VARIABLES — DARK MODE
-   Base: near-black purple | Accent: rich violet + soft lavender
+   2. CSS VARIABLES — DARK MODE (Purple Neon)
+   Base: near-black purple | Accent: neon purple
    ========================================= */
 :root {
-  /* Backgrounds — very dark, desaturated purple-black */
-  --bg-1: #08060f;
-  --bg-2: #100d1f;
-  --bg-3: #17132e;
+  /* Backgrounds — simple dark gradient */
+  --bg-1: #050510;
+  --bg-2: #0a0a1a;
+  --bg-3: #110d21;
 
-  /* Glass — low-opacity violet with warm shimmer */
-  --glass-bg: rgba(124, 58, 237, 0.08);
-  --glass-bg-hover: rgba(124, 58, 237, 0.14);
-  --glass-border: rgba(167, 139, 250, 0.16);
-  --glass-border-hover: rgba(167, 139, 250, 0.34);
+  /* Glass — neon purple borders */
+  --neon-color: #a855f7;
+  --neon-color-hover: #c084fc;
+  
+  --glass-bg: rgba(10, 10, 20, 0.7);
+  --glass-bg-hover: rgba(15, 15, 30, 0.85);
+  --glass-border: var(--neon-color);
+  --glass-border-hover: var(--neon-color-hover);
+  
+  /* Glowing neon border effect */
   --glass-shadow:
-    0 8px 32px rgba(0, 0, 0, 0.6),
-    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    0 0 10px rgba(168, 85, 247, 0.5),
+    inset 0 0 10px rgba(168, 85, 247, 0.2);
+    
+  --glass-shadow-hover:
+    0 0 20px rgba(168, 85, 247, 0.8),
+    inset 0 0 15px rgba(168, 85, 247, 0.4);
 
-  /* Text — warm off-white, not pure white (reduces harshness) */
-  --text-primary: #ede9fe;
-  --text-secondary: rgba(196, 181, 253, 0.7);
-  --text-muted: rgba(167, 139, 250, 0.45);
+  /* Text — white and light gray (no glow) */
+  --text-primary: #ffffff;
+  --text-secondary: #cbd5e1;
+  --text-muted: #94a3b8;
   --text-on-accent: #ffffff;
 
   /* Inputs */
-  --input-bg: rgba(109, 40, 217, 0.1);
-  --input-border: rgba(167, 139, 250, 0.2);
-  --input-border-focus: rgba(167, 139, 250, 0.55);
-  --input-text: #ede9fe;
-  --placeholder-text: rgba(167, 139, 250, 0.38);
+  --input-bg: rgba(15, 15, 30, 0.8);
+  --input-border: var(--neon-color);
+  --input-border-focus: var(--neon-color-hover);
+  --input-text: #ffffff;
+  --placeholder-text: #94a3b8;
 
-  /* Accent — saturated violet, light lavender highlight */
-  --accent: #7c3aed;
-  --accent-light: #a78bfa;
-  --accent-dark: #6d28d9;
-  --accent-glow: rgba(124, 58, 237, 0.38);
+  /* Accent */
+  --accent: #a855f7;
+  --accent-light: #c084fc;
+  --accent-dark: #9333ea;
+  --accent-glow: rgba(168, 85, 247, 0.5);
 
   /* Status */
   --success: #10b981;
@@ -57,60 +66,68 @@
   --warning-glow: rgba(245, 158, 11, 0.28);
 
   /* Select dropdown bg */
-  --select-option-bg: #100d1f;
+  --select-option-bg: #0a0a1a;
 
   /* Scrollbar */
-  --scrollbar-track: rgba(124, 58, 237, 0.06);
-  --scrollbar-thumb: rgba(124, 58, 237, 0.38);
+  --scrollbar-track: rgba(168, 85, 247, 0.06);
+  --scrollbar-thumb: rgba(168, 85, 247, 0.38);
 
   /* Notification panel */
-  --notif-panel-bg: rgba(8, 6, 15, 0.97);
+  --notif-panel-bg: rgba(5, 5, 16, 0.97);
 
   /* Skeleton */
-  --skeleton-base: rgba(124, 58, 237, 0.1);
-  --skeleton-shine: rgba(167, 139, 250, 0.18);
+  --skeleton-base: rgba(168, 85, 247, 0.1);
+  --skeleton-shine: rgba(192, 132, 252, 0.18);
 }
 
 /* =========================================
-   3. LIGHT MODE OVERRIDES
-   Base: bright lavender-white | Accent: vivid deep violet
-   Distinction: high brightness, saturated borders, warm white panels
+   3. LIGHT MODE OVERRIDES (Blue Neon)
+   Base: light clean background | Accent: neon blue
    ========================================= */
 body.light-mode {
-  /* Backgrounds — very light lavender, almost white */
+  /* Backgrounds — simple bright gradient */
   --bg-1: #fdfcff;
-  --bg-2: #f5f0ff;
-  --bg-3: #ece4ff;
+  --bg-2: #f4f6fc;
+  --bg-3: #e2e8f0;
 
-  /* Glass — bright white panels, violet-tinted borders */
+  /* Glass — neon blue borders */
+  --neon-color: #3b82f6;
+  --neon-color-hover: #60a5fa;
+  
   --glass-bg: rgba(255, 255, 255, 0.82);
-  --glass-bg-hover: rgba(255, 255, 255, 0.96);
-  --glass-border: rgba(109, 40, 217, 0.18);
-  --glass-border-hover: rgba(109, 40, 217, 0.42);
+  --glass-bg-hover: rgba(255, 255, 255, 0.95);
+  --glass-border: var(--neon-color);
+  --glass-border-hover: var(--neon-color-hover);
+  
+  /* Glowing neon border effect */
   --glass-shadow:
-    0 4px 24px rgba(109, 40, 217, 0.1),
-    inset 0 1px 0 rgba(255, 255, 255, 1);
+    0 0 10px rgba(59, 130, 246, 0.4),
+    inset 0 0 8px rgba(59, 130, 246, 0.15);
+    
+  --glass-shadow-hover:
+    0 0 20px rgba(59, 130, 246, 0.7),
+    inset 0 0 12px rgba(59, 130, 246, 0.3);
 
-  /* Text — deep indigo on white, high contrast */
-  --text-primary: #1e1548;
-  --text-secondary: #4a3f82;
-  --text-muted: #8a7cbf;
+  /* Text — deep indigo/gray on white, high contrast */
+  --text-primary: #0f172a;
+  --text-secondary: #334155;
+  --text-muted: #64748b;
   --text-on-accent: #ffffff;
 
   /* Inputs */
   --input-bg: rgba(255, 255, 255, 0.9);
-  --input-border: rgba(109, 40, 217, 0.2);
-  --input-border-focus: rgba(109, 40, 217, 0.52);
-  --input-text: #1e1548;
-  --placeholder-text: rgba(74, 63, 130, 0.45);
+  --input-border: var(--neon-color);
+  --input-border-focus: var(--neon-color-hover);
+  --input-text: #0f172a;
+  --placeholder-text: #64748b;
 
-  /* Accent — deeper, more saturated violet for visibility on white */
-  --accent: #6d28d9;
-  --accent-light: #7c3aed;
-  --accent-dark: #5b21b6;
-  --accent-glow: rgba(109, 40, 217, 0.18);
+  /* Accent */
+  --accent: #3b82f6;
+  --accent-light: #60a5fa;
+  --accent-dark: #2563eb;
+  --accent-glow: rgba(59, 130, 246, 0.3);
 
-  /* Status — slightly adjusted for light backgrounds */
+  /* Status */
   --success: #059669;
   --success-glow: rgba(5, 150, 105, 0.2);
   --error: #e11d48;
@@ -122,15 +139,15 @@ body.light-mode {
   --select-option-bg: #fdfcff;
 
   /* Scrollbar */
-  --scrollbar-track: rgba(109, 40, 217, 0.06);
-  --scrollbar-thumb: rgba(109, 40, 217, 0.28);
+  --scrollbar-track: rgba(59, 130, 246, 0.06);
+  --scrollbar-thumb: rgba(59, 130, 246, 0.28);
 
   /* Notification panel */
   --notif-panel-bg: rgba(253, 252, 255, 0.98);
 
   /* Skeleton */
-  --skeleton-base: rgba(109, 40, 217, 0.07);
-  --skeleton-shine: rgba(109, 40, 217, 0.14);
+  --skeleton-base: rgba(59, 130, 246, 0.07);
+  --skeleton-shine: rgba(59, 130, 246, 0.14);
 }
 
 /* =========================================
@@ -157,10 +174,7 @@ body {
   font-size: 15px;
   line-height: 1.6;
   color: var(--text-primary);
-  background:
-    radial-gradient(ellipse at 20% 10%, rgba(124, 58, 237, 0.2) 0%, transparent 55%),
-    radial-gradient(ellipse at 80% 90%, rgba(109, 40, 217, 0.14) 0%, transparent 50%),
-    linear-gradient(160deg, var(--bg-1) 0%, var(--bg-2) 55%, var(--bg-3) 100%);
+  background: linear-gradient(160deg, var(--bg-1) 0%, var(--bg-2) 55%, var(--bg-3) 100%);
   min-height: 100vh;
   transition:
     background 0.5s ease,
@@ -168,10 +182,7 @@ body {
 }
 
 body.light-mode {
-  background:
-    radial-gradient(ellipse at 15% 0%, rgba(167, 139, 250, 0.22) 0%, transparent 50%),
-    radial-gradient(ellipse at 85% 100%, rgba(109, 40, 217, 0.12) 0%, transparent 50%),
-    linear-gradient(160deg, var(--bg-1) 0%, var(--bg-2) 55%, var(--bg-3) 100%);
+  background: linear-gradient(160deg, var(--bg-1) 0%, var(--bg-2) 55%, var(--bg-3) 100%);
 }
 
 /* =========================================
@@ -273,8 +284,8 @@ p {
   background: var(--glass-bg);
   backdrop-filter: blur(24px) saturate(180%);
   -webkit-backdrop-filter: blur(24px) saturate(180%);
-  border: 1px solid var(--glass-border);
-  border-radius: 20px;
+  border: 1.5px solid var(--glass-border);
+  border-radius: 12px; /* Slight radius but mostly angular */
   box-shadow: var(--glass-shadow);
   transition:
     background 0.3s ease,
@@ -292,9 +303,7 @@ p {
 .card-hover:hover {
   transform: translateY(-3px);
   border-color: var(--glass-border-hover);
-  box-shadow:
-    var(--glass-shadow),
-    0 0 24px var(--accent-glow);
+  box-shadow: var(--glass-shadow-hover);
 }
 
 /* =========================================

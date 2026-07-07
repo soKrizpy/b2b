@@ -29,19 +29,20 @@ body.p-4 {
 .login-card {
     width: 100%;
     max-width: 420px;
-    box-shadow:
-        0 32px 80px rgba(0, 0, 0, 0.55),
-        0 0 0 1px rgba(167, 139, 250, 0.12),
-        inset 0 1px 0 rgba(255, 255, 255, 0.08);
     border-radius: 28px;
     overflow: hidden;
+    position: relative;
+    z-index: 1;
+    /* Adding extra glow specifically for the login card */
+    box-shadow: 
+        0 0 25px var(--neon-color), 
+        inset 0 0 15px rgba(0, 0, 0, 0.5) !important;
 }
 
 body.light-mode .login-card {
-    box-shadow:
-        0 32px 80px rgba(109, 40, 217, 0.18),
-        0 0 0 1px rgba(139, 92, 246, 0.2),
-        inset 0 1px 0 rgba(255, 255, 255, 1);
+    box-shadow: 
+        0 0 25px var(--neon-color), 
+        inset 0 0 15px rgba(255, 255, 255, 0.5) !important;
 }
 
 /* Logo / brand section */
@@ -131,7 +132,7 @@ body::after {
 body::before {
     width: 400px;
     height: 400px;
-    background: radial-gradient(circle, rgba(124, 58, 237, 0.2) 0%, transparent 70%);
+    background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
     top: -100px;
     left: -100px;
     animation: orbFloat 8s ease-in-out infinite;
@@ -140,7 +141,7 @@ body::before {
 body::after {
     width: 350px;
     height: 350px;
-    background: radial-gradient(circle, rgba(109, 40, 217, 0.15) 0%, transparent 70%);
+    background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
     bottom: -80px;
     right: -80px;
     animation: orbFloat 10s ease-in-out infinite reverse;
