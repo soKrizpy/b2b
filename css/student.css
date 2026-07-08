@@ -69,6 +69,19 @@ header {
     100% { transform: scale(1.06); opacity: 0; }
 }
 
+/* ---- LATE button (after 20 min window) ---- */
+.btn-late {
+    background: linear-gradient(135deg, rgba(251, 146, 60, 0.15) 0%, rgba(239, 68, 68, 0.1) 100%);
+    color: rgb(251, 146, 60);
+    border: 1px solid rgba(251, 146, 60, 0.3);
+    cursor: not-allowed;
+}
+
+.btn-late:hover {
+    background: linear-gradient(135deg, rgba(251, 146, 60, 0.15) 0%, rgba(239, 68, 68, 0.1) 100%);
+    border-color: rgba(251, 146, 60, 0.3);
+}
+
 /* ---- Schedule card ---- */
 #nextSchedule {
     padding-top: 0.5rem;

@@ -188,13 +188,25 @@ async function logout() {
 // =========================================
 // UPCOMING SCHEDULES WITH DYNAMIC BUTTONS
 // =========================================
+
+// How many minutes after start until "Terlambat" kicks in
+const LATE_THRESHOLD_MIN   = 20;
+// How many hours after start until the card moves to Riwayat
+const ARCHIVE_THRESHOLD_HR = 5;
+
 async function loadUpcomingSchedules() {
+  const archiveCutoff = new Date(
+    Date.now() - ARCHIVE_THRESHOLD_HR * 60 * 60 * 1000,
+  ).toISOString();
+
+  // Fetch upcoming schedules whose start_time is still within the archive window
+  // (i.e. not yet 5 hours in the past) so we can still show them until they age out.
   const { data: schedules, error } = await sbClient
     .from("schedules")
     .select("*")
     .eq("student_id", currentProfile.id)
     .eq("status", "upcoming")
-    .gte("start_time", new Date().toISOString())
+    .gte("start_time", archiveCutoff)          // ignore anything older than 5 h
     .order("start_time", { ascending: true })
     .limit(3);
 
@@ -203,9 +215,38 @@ async function loadUpcomingSchedules() {
     return;
   }
 
-  upcomingSchedules = schedules || [];
+  const now = new Date();
+
+  // Split into cards-that-should-be-archived vs visible
+  const toArchive = (schedules || []).filter((s) => {
+    const minutesSinceStart = (now - new Date(s.start_time)) / (1000 * 60);
+    return minutesSinceStart >= ARCHIVE_THRESHOLD_HR * 60;
+  });
+
+  // Auto-mark archived schedules as "completed" in DB (silently)
+  for (const s of toArchive) {
+    sbClient
+      .from("schedules")
+      .update({ status: "completed", attendance_status: "missed" })
+      .eq("id", s.id)
+      .then(({ error: err }) => {
+        if (err) console.error("Auto-archive error:", err);
+      });
+  }
+
+  // Only show cards that have NOT been archived yet
+  upcomingSchedules = (schedules || []).filter((s) => {
+    const minutesSinceStart = (now - new Date(s.start_time)) / (1000 * 60);
+    return minutesSinceStart < ARCHIVE_THRESHOLD_HR * 60;
+  });
+
   nextScheduleData = upcomingSchedules[0] || null;
   renderUpcomingSchedules();
+
+  // Reload history so freshly archived items appear there immediately
+  if (toArchive.length > 0) {
+    loadHistory();
+  }
 }
 
 // Backward-compatible name for any old inline/debug references.
@@ -245,7 +286,7 @@ function renderScheduleOverviewCard(schedule, index) {
   const relativeTime = formatDate.relative(schedule.start_time);
 
   return `
-    <div class="glass card-hover p-6 student-schedule-card">
+    <div class="glass card-hover p-6 student-schedule-card" id="scheduleCard-${schedule.id}">
       <div>
         <div class="schedule-card-topline">
           <span>${index === 0 ? "Jadwal terdekat" : `Jadwal ${index + 1}`}</span>
@@ -264,43 +305,57 @@ function renderScheduleOverviewCard(schedule, index) {
 }
 
 function updateJoinButton() {
+  const now = new Date();
+
   upcomingSchedules.forEach((schedule) => {
     const container = document.getElementById(`joinButtonContainer-${schedule.id}`);
     if (!container) return;
 
-    const now = new Date();
-    const scheduleTime = new Date(schedule.start_time);
-    const timeDiff = scheduleTime - now;
-    const minutesUntilStart = timeDiff / (1000 * 60);
+    const scheduleTime      = new Date(schedule.start_time);
+    const minutesUntilStart = (scheduleTime - now) / (1000 * 60);
     const minutesSinceStart = -minutesUntilStart;
 
     let html = "";
 
     if (minutesUntilStart > 10) {
-      const h = Math.floor(minutesUntilStart / 60);
-      const m = Math.floor(minutesUntilStart % 60);
+      // --- NOT YET: show countdown ---
+      const totalMin = Math.ceil(minutesUntilStart - 10); // minutes until the button activates
+      const h = Math.floor(totalMin / 60);
+      const m = totalMin % 60;
       const timeLeft = h > 0 ? `${h} jam ${m} menit` : `${m} menit`;
       html = `
         <button disabled class="btn btn-disabled px-4 py-3 rounded-lg font-bold w-full">
           Belum waktunya<br>
-          <span class="text-sm font-normal opacity-75">Aktif ${timeLeft} lagi</span>
+          <span class="text-sm font-normal opacity-75">Aktif dalam ${timeLeft}</span>
         </button>`;
-    } else if (minutesUntilStart <= 10 && minutesSinceStart < 40) {
-      const status =
+
+    } else if (minutesSinceStart < LATE_THRESHOLD_MIN) {
+      // --- ACTIVE: within join window (−10 min → +20 min) ---
+      const statusText =
         minutesUntilStart > 0
-          ? `Mulai dalam ${Math.floor(minutesUntilStart)} menit`
+          ? `Mulai dalam ${Math.ceil(minutesUntilStart)} menit`
           : "Kelas sedang berlangsung";
       html = `
         <button onclick="joinMeetingById('${schedule.id}')"
           class="btn btn-success px-4 py-3 rounded-lg font-bold w-full join-btn-active">
-          Join meeting<br>
-          <span class="text-sm font-normal opacity-90">${status}</span>
+          Masuk Kelas<br>
+          <span class="text-sm font-normal opacity-90">${statusText}</span>
         </button>`;
+
+    } else if (minutesSinceStart < ARCHIVE_THRESHOLD_HR * 60) {
+      // --- LATE: after 20 min, before 5-hour archive cutoff ---
+      html = `
+        <button disabled class="btn btn-late px-4 py-3 rounded-lg font-bold w-full">
+          Terlambat<br>
+          <span class="text-sm font-normal opacity-75">Waktu bergabung telah habis</span>
+        </button>`;
+
     } else {
+      // --- ARCHIVED: 5 hours passed — this branch rarely renders because
+      //     loadUpcomingSchedules already filters these out, but kept as safety net ---
       html = `
         <button disabled class="btn btn-disabled px-4 py-3 rounded-lg font-bold w-full">
-          Kelas selesai<br>
-          <span class="text-sm font-normal opacity-75">Kelas telah berakhir</span>
+          Kelas selesai
         </button>`;
     }
 
@@ -317,9 +372,38 @@ function joinMeeting(link) {
   toast("Membuka link meeting...", "success");
 }
 
-function joinMeetingById(scheduleId) {
-  const schedule = upcomingSchedules.find((item) => String(item.id) === String(scheduleId));
-  joinMeeting(schedule?.meeting_link || "");
+async function joinMeetingById(scheduleId) {
+  const schedule = upcomingSchedules.find(
+    (item) => String(item.id) === String(scheduleId),
+  );
+  if (!schedule) return;
+
+  // Open the meeting link first so the student isn't kept waiting
+  joinMeeting(schedule.meeting_link || "");
+
+  // Mark the session as completed + attended in the DB
+  const { error } = await sbClient
+    .from("schedules")
+    .update({ status: "completed", attendance_status: "attended" })
+    .eq("id", scheduleId);
+
+  if (error) {
+    console.error("Failed to mark attendance:", error);
+    // Non-fatal — the student is already in the meeting
+  } else {
+    // Remove the completed card from the local list and re-render so
+    // the next schedule slides into position
+    upcomingSchedules = upcomingSchedules.filter(
+      (s) => String(s.id) !== String(scheduleId),
+    );
+    nextScheduleData = upcomingSchedules[0] || null;
+    renderUpcomingSchedules();
+
+    // Refresh sidebar stats and history
+    loadSidebarData();
+    loadHistory();
+    checkMaterialsAccess();
+  }
 }
 
 // escHtml and esc are provided by shared.js
