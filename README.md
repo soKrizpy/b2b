@@ -39,6 +39,7 @@ It uses **Supabase** for Authentication and Database directly via the official S
    - Do not use `console.log()` to dump user profile objects or session tokens into the production browser console. Use `console.error()` strictly for errors.
 
 ## 📝 Recent Work & Optimization History
+- **Student Attendance**: Implemented a self-join marking system ("Masuk Kelas") allowing students to securely confirm their own attendance and mark class sessions as completed using new Supabase Row Level Security (RLS) policies.
 - **Timezone Management**: Added auto-detect and manual timezone selection with global UI widget. Upgraded FullCalendar and schedule views to render times accurately in 24-hour format across timezones.
 - **Schedule Management**: Implemented smart "Slot Kosong" logic to auto-generate 52 weeks of available slots. Added scoped editing (this slot only vs this and future slots) for rutinan schedules.
 - **UI Polish**: Updated calendar events to display student names instead of class titles for better at-a-glance readability. Fixed text contrast issues on light mode calendar events.
