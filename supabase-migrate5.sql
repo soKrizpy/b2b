@@ -26,7 +26,7 @@ CREATE POLICY "schedules_student_attend"
     -- All other fields must remain unchanged (enforced by the app layer).
     student_id = auth.uid()
     AND status = 'completed'
-    AND attendance_status = 'attended'
+    AND attendance_status IN ('attended', 'missed')
   );
 
 -- Reload PostgREST schema cache

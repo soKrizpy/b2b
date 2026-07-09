@@ -19,14 +19,17 @@ function icon(name, className = "icon-sm") {
   return `<i data-lucide="${name}" class="${className}" aria-hidden="true"></i>`;
 }
 
+let _refreshIconsTimer = null;
 function refreshIcons() {
-  if (window.lucide) {
+  if (!window.lucide) return;
+  clearTimeout(_refreshIconsTimer);
+  _refreshIconsTimer = setTimeout(() => {
     window.lucide.createIcons({
       attrs: {
         "stroke-width": 1.8,
       },
     });
-  }
+  }, 10);
 }
 
 function setThemeIcons() {
