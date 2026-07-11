@@ -45,8 +45,7 @@
           onclick="logout()"
           class="btn btn-danger px-4 py-2 rounded-lg font-semibold"
         >
-          <i data-lucide="log-out" class="icon-sm"></i>
-          Logout
+          <i data-lucide="log-out" class="icon-sm"></i> <span class="hide-on-mobile">Logout</span>
         </button>
       </div>
     </header>
@@ -73,42 +72,42 @@
         data-tab="overview"
         onclick="switchAdminTab('overview')"
       >
-        <i data-lucide="layout-dashboard" class="icon-sm"></i> Ringkasan
+        <i data-lucide="layout-dashboard" class="icon-sm"></i> <span class="hide-on-mobile">Ringkasan</span>
       </button>
       <button
         class="tab-btn"
         data-tab="calendar"
         onclick="switchAdminTab('calendar')"
       >
-        <i data-lucide="calendar-days" class="icon-sm"></i> Kalender
+        <i data-lucide="calendar-days" class="icon-sm"></i> <span class="hide-on-mobile">Kalender</span>
       </button>
       <button
         class="tab-btn"
         data-tab="students"
         onclick="switchAdminTab('students')"
       >
-        <i data-lucide="users" class="icon-sm"></i> Siswa
+        <i data-lucide="users" class="icon-sm"></i> <span class="hide-on-mobile">Siswa</span>
       </button>
       <button
         class="tab-btn"
         data-tab="lessons"
         onclick="switchAdminTab('lessons')"
       >
-        <i data-lucide="book-open" class="icon-sm"></i> Materi
+        <i data-lucide="book-open" class="icon-sm"></i> <span class="hide-on-mobile">Materi</span>
       </button>
       <button
         class="tab-btn"
         data-tab="requests"
         onclick="switchAdminTab('requests')"
       >
-        <i data-lucide="repeat-2" class="icon-sm"></i> Request
+        <i data-lucide="repeat-2" class="icon-sm"></i> <span class="hide-on-mobile">Request</span>
       </button>
       <button
         class="tab-btn"
         data-tab="broadcast"
         onclick="switchAdminTab('broadcast')"
       >
-        <i data-lucide="megaphone" class="icon-sm"></i> Pesan
+        <i data-lucide="megaphone" class="icon-sm"></i> <span class="hide-on-mobile">Pesan</span>
       </button>
     </nav>
 
@@ -153,7 +152,7 @@
                   onclick="openAvailableSlotModal()"
                   class="btn btn-success px-4 py-2 rounded-lg font-semibold"
                 >
-                  <i data-lucide="calendar-plus" class="icon-sm"></i> Slot
+                  <i data-lucide="calendar-plus" class="icon-sm"></i> <span class="hide-on-mobile">Slot</span>
                 </button>
               </div>
             </div>
@@ -194,7 +193,7 @@
                 onclick="openAvailableSlotModal()"
                 class="btn btn-success px-4 py-2 rounded-lg font-semibold"
               >
-                <i data-lucide="calendar-plus" class="icon-sm"></i> Slot Kosong
+                <i data-lucide="calendar-plus" class="icon-sm"></i> <span class="hide-on-mobile">Slot Kosong</span>
               </button>
             </div>
           </div>
@@ -235,7 +234,7 @@
               id="addStudentBtn"
               class="btn btn-primary px-4 py-3 rounded-lg font-semibold mt-4"
             >
-              <i data-lucide="user-plus" class="icon-sm"></i> Tambah Siswa
+              <i data-lucide="user-plus" class="icon-sm"></i> <span class="hide-on-mobile">Tambah Siswa</span>
             </button>
 
             <div class="divider"></div>
@@ -288,7 +287,7 @@
               onclick="openModuleModal()"
               class="btn btn-success px-4 py-3 rounded-lg font-semibold"
             >
-              <i data-lucide="plus" class="icon-sm"></i> Tambah Materi
+              <i data-lucide="plus" class="icon-sm"></i> <span class="hide-on-mobile">Tambah Materi</span>
             </button>
           </div>
         </section>
@@ -365,7 +364,7 @@
             onclick="sendNotification()"
             class="btn btn-primary px-4 py-3 rounded-lg font-semibold mt-4"
           >
-            <i data-lucide="send" class="icon-sm"></i> Kirim
+            <i data-lucide="send" class="icon-sm"></i> <span class="hide-on-mobile">Kirim</span>
           </button>
         </section>
       </section>

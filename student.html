@@ -27,8 +27,7 @@
                 <span id="themeIcon"></span>
             </button>
             <button onclick="logout()" class="btn btn-danger px-4 py-2 rounded-lg font-semibold">
-                <i data-lucide="log-out" class="icon-sm"></i>
-                Logout
+                <i data-lucide="log-out" class="icon-sm"></i> <span class="hide-on-mobile">Logout</span>
             </button>
         </div>
     </header>
@@ -43,16 +42,16 @@
 
     <nav class="tabs glass p-3 mb-6 fade-in" aria-label="Navigasi dashboard siswa">
         <button class="tab-btn active" data-tab="home" onclick="switchStudentTab('home')">
-            <i data-lucide="home" class="icon-sm"></i> Home
+            <i data-lucide="home" class="icon-sm"></i> <span class="hide-on-mobile">Home</span>
         </button>
         <button class="tab-btn" data-tab="materials" onclick="switchStudentTab('materials')">
-            <i data-lucide="book-open" class="icon-sm"></i> Materi
+            <i data-lucide="book-open" class="icon-sm"></i> <span class="hide-on-mobile">Materi</span>
         </button>
         <button class="tab-btn" data-tab="history" onclick="switchStudentTab('history')">
-            <i data-lucide="history" class="icon-sm"></i> Riwayat
+            <i data-lucide="history" class="icon-sm"></i> <span class="hide-on-mobile">Riwayat</span>
         </button>
         <button class="tab-btn" data-tab="requests" onclick="switchStudentTab('requests')">
-            <i data-lucide="repeat-2" class="icon-sm"></i> Request
+            <i data-lucide="repeat-2" class="icon-sm"></i> <span class="hide-on-mobile">Request</span>
         </button>
     </nav>
 
@@ -79,11 +78,9 @@
                             </h2>
                             <div class="flex gap-1">
                                 <button onclick="calNav(-1)" class="icon-btn glass cal-nav-btn" title="Bulan sebelumnya">
-                                    <i data-lucide="chevron-left" class="icon-sm"></i>
-                                </button>
+                                    <i data-lucide="chevron-left" class="icon-sm"></i> <span class="hide-on-mobile"> </span></button>
                                 <button onclick="calNav(1)" class="icon-btn glass cal-nav-btn" title="Bulan berikutnya">
-                                    <i data-lucide="chevron-right" class="icon-sm"></i>
-                                </button>
+                                    <i data-lucide="chevron-right" class="icon-sm"></i> <span class="hide-on-mobile"> </span></button>
                             </div>
                         </div>
                         <div id="miniCal"></div>
