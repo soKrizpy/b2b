@@ -24,7 +24,7 @@ function switchStudentTab(tabName) {
 
   // Yield to browser first so the click is registered visually,
   // then do the heavier DOM updates.
-  requestAnimationFrame(() => {
+  requestAnimationFrame(async () => {
     document
       .querySelectorAll(".tab-btn")
       .forEach((btn) =>
@@ -35,6 +35,15 @@ function switchStudentTab(tabName) {
       .forEach((panel) =>
         panel.classList.toggle("active", panel.id === `tab-${tabName}`),
       );
+      
+    // LAZY LOAD DATA based on tab
+    if (tabName === "materials" && hasCompletedSession) {
+      await loadLearningPath();
+    } else if (tabName === "history") {
+      await loadHistory();
+    } else if (tabName === "requests") {
+      await loadRequests();
+    }
   });
 }
 
@@ -119,36 +128,46 @@ async function checkAuth() {
   const nameEl = document.getElementById("studentName");
   if (nameEl) nameEl.textContent = `Halo, ${profile.full_name}!`;
 
-  // Load semua data
+  // Load essential data
   await Promise.all([
     loadUpcomingSchedules(),
     loadSidebarData(),
-    loadHistory(),
-    loadNotifications("student"),
-    loadRequests(),
+    loadNotifications("student")
   ]);
 
-  // Check completed sessions FIRST, then load materials only if unlocked
+  // Check completed sessions FIRST
   await checkMaterialsAccess();
-  if (hasCompletedSession) {
+  
+  const activeTab = document.querySelector(".tab-btn.active")?.dataset.tab || "home";
+  if (activeTab === "materials" && hasCompletedSession) {
     await loadLearningPath();
+  } else if (activeTab === "history") {
+    await loadHistory();
+  } else if (activeTab === "requests") {
+    await loadRequests();
   }
 
-  // Auto-refresh setiap 30 detik
-  refreshInterval = setInterval(async () => {
-    await Promise.all([
-      loadUpcomingSchedules(),
-      loadSidebarData(),
-      loadHistory(),
-      loadNotifications("student"),
-      loadRequests(),
-    ]);
-    await checkMaterialsAccess();
-    if (hasCompletedSession) {
-      await loadLearningPath();
+  // Auto-refresh setiap 30 detik (safe recursive setTimeout)
+  const refreshData = async () => {
+    try {
+      await Promise.all([
+        loadUpcomingSchedules(),
+        loadSidebarData(),
+        loadNotifications("student")
+      ]);
+      await checkMaterialsAccess();
+      updateJoinButton();
+      
+      // Update active tab data if needed
+      const currentTab = document.querySelector(".tab-btn.active")?.dataset.tab;
+      if (currentTab === "history") loadHistory();
+      if (currentTab === "requests") loadRequests();
+      if (currentTab === "materials" && hasCompletedSession) loadLearningPath();
+    } finally {
+      refreshInterval = setTimeout(refreshData, 30000);
     }
-    updateJoinButton();
-  }, 30000);
+  };
+  refreshInterval = setTimeout(refreshData, 30000);
   // Mount timezone widget
   const tzEl = document.getElementById("studentTzWidget");
   if (tzEl) {
@@ -179,7 +198,7 @@ async function logout() {
   );
   if (!confirmed) return;
 
-  if (refreshInterval) clearInterval(refreshInterval);
+  if (refreshInterval) clearTimeout(refreshInterval);
   await sbClient.auth.signOut();
   toast("Berhasil logout", "success");
   window.location.href = "index.html";
@@ -399,10 +418,49 @@ async function joinMeetingById(scheduleId) {
     nextScheduleData = upcomingSchedules[0] || null;
     renderUpcomingSchedules();
 
+    // NEW LOGIC: Unlock the next topic
+    await unlockNextTopic();
+
     // Refresh sidebar stats and history
     loadSidebarData();
-    loadHistory();
+    const activeTab = document.querySelector(".tab-btn.active")?.dataset.tab;
+    if (activeTab === "history") {
+      loadHistory();
+    }
     checkMaterialsAccess();
+  }
+}
+
+async function unlockNextTopic() {
+  if (!currentProfile) return;
+  // 1. Get student enrollments
+  const { data: enrollments, error } = await sbClient
+    .from("module_enrollments")
+    .select('id, topic_progress(id, is_unlocked, is_completed, topics(order_index))')
+    .eq("student_id", currentProfile.id)
+    .eq("status", "enrolled");
+
+  if (error || !enrollments || enrollments.length === 0) return;
+
+  // 2. Unlock the first locked topic in the active enrollment
+  for (const enrollment of enrollments) {
+    let progress = enrollment.topic_progress || [];
+    // Sort by topic order_index safely
+    progress.sort((a, b) => (a.topics?.order_index || 0) - (b.topics?.order_index || 0));
+
+    // Find the first locked topic
+    const lockedTopic = progress.find(tp => !tp.is_unlocked);
+    if (lockedTopic) {
+      const { error: updateErr } = await sbClient
+        .from("topic_progress")
+        .update({ is_unlocked: true, unlocked_at: new Date().toISOString() })
+        .eq("id", lockedTopic.id);
+        
+      if (!updateErr) {
+        toast("Topik baru telah terbuka!", "success");
+      }
+      break; // Only unlock one topic per attendance
+    }
   }
 }
 
@@ -654,17 +712,20 @@ async function loadHistory() {
 }
 
 // =========================================
-// LEARNING PATH
+// LEARNING PATH (New: module_enrollments)
 // =========================================
 async function loadLearningPath() {
   const list = document.getElementById("learningPathList");
   if (!list) return;
 
-  const { data: modules, error } = await sbClient
-    .from("learning_paths")
-    .select("*")
-    .eq("student_id", currentProfile.id)
-    .order("order_index", { ascending: true });
+  const { data: enrollments, error } = await sbClient
+    .from("module_enrollments")
+    .select(`
+      id, status, enrolled_at,
+      modules(id, title, description),
+      topic_progress(id, is_completed, topic_id)
+    `)
+    .eq("student_id", currentProfile.id);
 
   if (error) {
     console.error("Error loading learning path:", error);
@@ -674,7 +735,7 @@ async function loadLearningPath() {
   const progressFill = document.getElementById("progressFill");
   const progressText = document.getElementById("progressText");
 
-  if (!modules || modules.length === 0) {
+  if (!enrollments || enrollments.length === 0) {
     list.innerHTML = `
       <div class="empty-state">
         <div class="icon">📖</div>
@@ -686,24 +747,43 @@ async function loadLearningPath() {
     return;
   }
 
-  const completed = modules.filter((m) => m.is_completed).length;
-  const pct = Math.round((completed / modules.length) * 100);
+  // Overall progress = average across all enrolled modules
+  const totalTopics = enrollments.length * 12;
+  const completedTopics = enrollments.reduce(
+    (sum, e) => sum + (e.topic_progress?.filter(tp => tp.is_completed).length || 0), 0
+  );
+  const pct = totalTopics > 0 ? Math.round((completedTopics / totalTopics) * 100) : 0;
 
   if (progressFill) progressFill.style.width = `${pct}%`;
-  if (progressText)
-    progressText.textContent = `${pct}% selesai (${completed}/${modules.length} materi)`;
+  if (progressText) progressText.textContent = `${pct}% selesai (${completedTopics}/${totalTopics} topik)`;
 
-  list.innerHTML = modules
-    .map(
-      (m) => `
-      <div class="glass p-4 flex items-center gap-3">
-        <span class="text-2xl">${m.is_completed ? "✅" : ""}</span>
-        <span class="text-primary ${m.is_completed ? "line-through opacity-50" : ""}">
-          ${escHtml(m.module_name)}
-        </span>
-      </div>`,
-    )
-    .join("");
+  list.innerHTML = enrollments.map(enrollment => {
+    const doneCount = enrollment.topic_progress?.filter(tp => tp.is_completed).length || 0;
+    const modPct = Math.round((doneCount / 12) * 100);
+    const allDone = doneCount >= 12;
+
+    return `
+      <div class="glass p-4">
+        <div class="flex justify-between items-start gap-3 flex-wrap">
+          <div style="flex:1">
+            <h3 class="font-bold text-primary">${escHtml(enrollment.modules?.title || 'Modul')}</h3>
+            ${enrollment.modules?.description ? `<p class="text-secondary text-sm mt-1">${escHtml(enrollment.modules.description)}</p>` : ''}
+            <div class="flex items-center gap-2 mt-2">
+              <div style="flex:1;height:6px;background:var(--glass-border,#333);border-radius:3px;overflow:hidden">
+                <div style="width:${modPct}%;height:100%;background:var(--accent,#6366f1);border-radius:3px;transition:width 0.5s ease"></div>
+              </div>
+              <span class="text-secondary text-xs">${doneCount}/12 topik</span>
+            </div>
+          </div>
+          <div>
+            ${allDone
+              ? `<a href="materi.html" class="btn btn-warning px-3 py-2 rounded-lg text-sm font-bold">🎓 Mulai Ujian</a>`
+              : `<a href="materi.html" class="btn btn-primary px-3 py-2 rounded-lg text-sm">📚 Lanjut Belajar</a>`
+            }
+          </div>
+        </div>
+      </div>`;
+  }).join('');
 }
 
 // =========================================
@@ -814,7 +894,7 @@ async function markAllRead(type) {
 
 // Cleanup saat halaman ditutup
 window.addEventListener("beforeunload", () => {
-  if (refreshInterval) clearInterval(refreshInterval);
+  if (refreshInterval) clearTimeout(refreshInterval);
 });
 
 // =========================================

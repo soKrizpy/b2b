@@ -54,6 +54,7 @@ async function loadDashboardData() {
     loadRequests(),
     loadAvailableSlots(),
     loadNotifications("admin"),
+    loadModuleLibrary(),
   ]);
   renderStudentList();
   renderOverview();
@@ -931,168 +932,336 @@ async function markSchedule(id, status) {
 const markAsCompleted = (id) => markSchedule(id, "completed");
 const markAsCancelled = (id) => markSchedule(id, "cancelled");
 
-// --- LEARNING PATH ---
-async function loadLearningPath() {
-  const studentId =
-    document.getElementById("studentSelect").value || selectedStudentId;
-  const list = document.getElementById("learningPathList");
-  const progressSection = document.getElementById("progressSection");
-  const addModuleSection = document.getElementById("addModuleSection");
 
-  selectedStudentId = studentId;
+// =============================================================
+// --- MODULE MANAGEMENT (Admin) ---
+// =============================================================
 
-  if (!studentId) {
-    list.innerHTML = `<div class="empty-state">${icon("user-round", "icon-lg")}<h3>Pilih siswa</h3></div>`;
-    progressSection.classList.add("hidden");
-    addModuleSection.classList.add("hidden");
-    refreshIcons();
-    return;
-  }
+let allModules = []; // cached module library
 
-  document.getElementById("studentSelect").value = studentId;
-  progressSection.classList.remove("hidden");
-  addModuleSection.classList.remove("hidden");
-
+async function loadModuleLibrary() {
   const data = await apiHandler.handle(
-    sbClient
-      .from("learning_paths")
-      .select("*")
-      .eq("student_id", studentId)
-      .order("order_index", { ascending: true }),
+    sbClient.from('modules').select('*, topics(id, title, order_index)').order('created_at', { ascending: true }),
   );
+  if (data === null) return;
+  allModules = data;
 
-  if (!data || data.length === 0) {
-    list.innerHTML = `<div class="empty-state">${icon("book-open", "icon-lg")}<h3>Belum ada materi</h3></div>`;
-    document.getElementById("progressFill").style.width = "0%";
-    document.getElementById("progressText").textContent = "0% selesai";
+  const list = document.getElementById('moduleLibraryList');
+  if (!list) return;
+
+  if (!allModules.length) {
+    list.innerHTML = `<div class="empty-state">${icon('book-open', 'icon-lg')}<h3>Belum ada modul</h3><p>Klik "Buat Modul" untuk memulai</p></div>`;
     refreshIcons();
     return;
   }
 
-  const completed = data.filter((m) => m.is_completed).length;
-  const percentage = Math.round((completed / data.length) * 100);
-  document.getElementById("progressFill").style.width = `${percentage}%`;
-  document.getElementById("progressText").textContent =
-    `${percentage}% selesai (${completed}/${data.length} materi)`;
+  list.innerHTML = allModules.map(m => {
+    const topicCount = m.topics?.length || 0;
+    const topicList = (m.topics || [])
+      .sort((a, b) => a.order_index - b.order_index)
+      .map(t => `
+        <div class="flex justify-between items-center py-1 px-2 rounded" style="background:var(--glass-bg)">
+          <span class="text-sm text-secondary">${esc(t.title)}</span>
+          <button onclick="openQuizModal('topic_quiz','${t.id}','${esc(t.title)}')" class="btn glass px-2 py-1 rounded text-xs">
+            ${icon('help-circle')} Kuis
+          </button>
+        </div>`).join('');
 
-  list.innerHTML = data
-    .map(
-      (m, i) => `
+    return `
       <div class="item-row">
         <div class="flex justify-between items-start gap-3 flex-wrap">
-          <div>
-            <div class="meta-line"><span>${i + 1}.</span> ${pill(m.is_completed ? "completed" : "pending")} ${m.homework_done ? pill("attended") : ""}</div>
-            <h3 class="font-bold text-primary mt-2 ${m.is_completed ? "line-through opacity-50" : ""}">${esc(m.module_name)}</h3>
-            ${m.resource_url ? `<a class="meta-line" href="${esc(m.resource_url)}" target="_blank" rel="noopener">${icon("link")} Resource</a>` : ""}
-            ${m.homework_text ? `<p class="text-secondary text-sm mt-2">${icon("clipboard-check")} ${esc(m.homework_text)}</p>` : ""}
+          <div style="flex:1;min-width:0">
+            <h3 class="font-bold text-primary">${esc(m.title)}</h3>
+            ${m.description ? `<p class="text-secondary text-sm mt-1">${esc(m.description)}</p>` : ''}
+            <div class="meta-line mt-2">
+              <span>${icon('layers')} ${topicCount}/12 topik</span>
+              ${topicCount >= 12 ? `<span class="text-success">${icon('check-circle')} Lengkap</span>` : `<span class="text-warning">${icon('alert-circle')} Belum lengkap</span>`}
+            </div>
           </div>
           <div class="flex gap-2 flex-wrap">
-            <button onclick="toggleModule('${m.id}', ${!m.is_completed})" class="btn btn-success px-3 py-2 rounded-lg text-sm">${icon("check")} ${m.is_completed ? "Buka" : "Selesai"}</button>
-            <button onclick="editModule('${m.id}')" class="btn btn-primary px-3 py-2 rounded-lg text-sm">${icon("pencil")} Edit</button>
-            <button onclick="deleteModule('${m.id}')" class="btn btn-danger px-3 py-2 rounded-lg text-sm">${icon("trash-2")} Hapus</button>
+            <button onclick="openQuizModal('module_exam','${m.id}','${esc(m.title)} — Ujian')" class="btn btn-warning px-3 py-2 rounded-lg text-sm">
+              ${icon('file-check')} Ujian
+            </button>
+            <button onclick="deleteModuleById('${m.id}')" class="btn btn-danger px-3 py-2 rounded-lg text-sm">
+              ${icon('trash-2')} Hapus
+            </button>
           </div>
         </div>
-      </div>`,
-    )
-    .join("");
+        ${topicList ? `<div class="mt-3 space-y-1">${topicList}</div>` : ''}
+      </div>`;
+  }).join('');
   refreshIcons();
 }
 
 function openModuleModal() {
-  document.getElementById("editModuleId").value = "";
-  document.getElementById("moduleName").value = "";
-  document.getElementById("moduleResource").value = "";
-  document.getElementById("moduleHomework").value = "";
-  openModal("moduleModal");
+  document.getElementById('editModuleId').value = '';
+  document.getElementById('moduleName').value = '';
+  document.getElementById('moduleDescription').value = '';
+  const topicContainer = document.getElementById('topicInputs');
+  if (topicContainer) topicContainer.innerHTML = '';
+  // Pre-populate 12 blank topic rows
+  for (let i = 0; i < 12; i++) addTopicField();
+  openModal('moduleModal');
+  refreshIcons();
+}
+
+function addTopicField() {
+  const container = document.getElementById('topicInputs');
+  if (!container) return;
+  const current = container.querySelectorAll('.topic-group').length;
+  if (current >= 12) { toast('Maksimal 12 topik per modul', 'error'); return; }
+  const idx = current + 1;
+  const div = document.createElement('div');
+  div.className = 'topic-group flex gap-2 items-center';
+  div.innerHTML = `
+    <span class="text-secondary text-sm font-bold" style="min-width:22px">${idx}.</span>
+    <input class="topic-title input-field flex-1 px-3 py-2 rounded-lg text-sm" placeholder="Judul Topik ${idx}" />
+    <input class="topic-url input-field flex-1 px-3 py-2 rounded-lg text-sm" placeholder="URL Materi (opsional)" />
+    <button type="button" onclick="this.closest('.topic-group').remove()" class="btn btn-danger px-2 py-2 rounded-lg text-xs">${icon('x')}</button>
+  `;
+  container.appendChild(div);
+  refreshIcons();
 }
 
 async function saveModule() {
-  const studentId =
-    document.getElementById("studentSelect").value || selectedStudentId;
-  const id = document.getElementById("editModuleId").value;
-  const moduleName = document.getElementById("moduleName").value.trim();
-  const resourceUrl = document.getElementById("moduleResource").value.trim();
-  const homeworkText = document.getElementById("moduleHomework").value.trim();
+  const title = document.getElementById('moduleName').value.trim();
+  const description = document.getElementById('moduleDescription').value.trim();
+  if (!title) { toast('Nama modul wajib diisi', 'error'); return; }
 
-  if (!studentId) {
-    toast("Pilih siswa dulu", "error");
-    return;
+  const topicGroups = document.querySelectorAll('#topicInputs .topic-group');
+  const topics = [];
+  topicGroups.forEach((group, idx) => {
+    const tTitle = group.querySelector('.topic-title')?.value.trim();
+    const tUrl = group.querySelector('.topic-url')?.value.trim();
+    if (tTitle) topics.push({ title: tTitle, content_url: tUrl || null, order_index: idx + 1 });
+  });
+
+  if (topics.length === 0) { toast('Tambahkan minimal 1 topik', 'error'); return; }
+  if (topics.length > 12) { toast('Maksimal 12 topik per modul', 'error'); return; }
+
+  const btn = document.getElementById('saveModuleBtn');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Menyimpan...'; }
+
+  try {
+    const { data: modData, error: modError } = await sbClient
+      .from('modules')
+      .insert([{ title, description: description || null }])
+      .select();
+    if (modError) throw modError;
+    const newModule = modData[0];
+
+    const topicInserts = topics.map(t => ({ module_id: newModule.id, ...t }));
+    const { error: topicError } = await sbClient.from('topics').insert(topicInserts);
+    if (topicError) throw topicError;
+
+    toast('Modul berhasil dibuat! Tambahkan kuis untuk setiap topik.', 'success');
+    closeModal('moduleModal');
+    await loadModuleLibrary();
+  } catch (e) {
+    console.error(e);
+    toast(e.message || 'Gagal menyimpan modul', 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = `${icon('save')} Simpan Modul`; refreshIcons(); }
   }
-  if (!validators.required(moduleName)) {
-    toast("Nama materi wajib diisi", "error");
-    return;
-  }
+}
 
-  const payload = {
-    module_name: moduleName,
-    resource_url: resourceUrl || null,
-    homework_text: homeworkText || null,
-  };
-
-  if (id) {
+async function deleteModuleById(moduleId) {
+  if (await showConfirm('Hapus Modul', 'Yakin hapus modul ini beserta semua topik dan kuisnya?', 'danger')) {
     await apiHandler.handle(
-      sbClient.from("learning_paths").update(payload).eq("id", id),
-      async () => {
-        toast("Materi diupdate", "success");
-        closeModal("moduleModal");
-        await loadLearningPath();
-      },
+      sbClient.from('modules').delete().eq('id', moduleId),
+      async () => { toast('Modul dihapus', 'success'); await loadModuleLibrary(); },
     );
-    return;
   }
+}
 
-  const existing = await apiHandler.handle(
-    sbClient.from("learning_paths").select("id").eq("student_id", studentId),
-  );
+// =============================================================
+// --- QUIZ & EXAM MANAGEMENT ---
+// =============================================================
+
+function openQuizModal(parentType, parentId, label) {
+  document.getElementById('quizParentType').value = parentType;
+  document.getElementById('quizParentId').value = parentId;
+  document.getElementById('quizModalTitle').textContent =
+    parentType === 'module_exam' ? `Soal Ujian: ${label}` : `Kuis Topik: ${label}`;
+  document.getElementById('quizModalSubtitle').textContent =
+    parentType === 'module_exam'
+      ? 'Pertanyaan ujian modul. Ujian terbuka setelah siswa menyelesaikan 12 topik.'
+      : 'Pertanyaan kuis untuk topik ini. Siswa harus mengerjakan kuis untuk menyelesaikan topik.';
+  document.getElementById('quizQuestions').innerHTML = '';
+  addQuestionField(); // start with one blank question
+  openModal('quizModal');
+  refreshIcons();
+}
+
+function addQuestionField() {
+  const container = document.getElementById('quizQuestions');
+  if (!container) return;
+  const qNum = container.querySelectorAll('.question-block').length + 1;
+  const div = document.createElement('div');
+  div.className = 'question-block item-row';
+  div.innerHTML = `
+    <div class="flex justify-between items-center mb-2">
+      <span class="font-bold text-primary text-sm">Soal ${qNum}</span>
+      <button type="button" onclick="this.closest('.question-block').remove()" class="btn btn-danger px-2 py-1 rounded text-xs">${icon('trash-2')} Hapus</button>
+    </div>
+    <input class="q-text input-field w-full px-3 py-2 rounded-lg text-sm mb-2" placeholder="Teks pertanyaan..." />
+    <div class="space-y-1 q-options">
+      ${['A','B','C','D'].map((letter, i) => `
+        <div class="flex items-center gap-2">
+          <input type="radio" name="correct_q${qNum}" value="${i}" class="q-correct" />
+          <span class="text-secondary text-sm font-bold">${letter}.</span>
+          <input class="opt-input input-field flex-1 px-3 py-2 rounded-lg text-sm" placeholder="Jawaban ${letter}" />
+        </div>`).join('')}
+    </div>
+    <p class="text-secondary text-xs mt-2">${icon('info')} Pilih radio button di kiri untuk menandai jawaban benar</p>
+  `;
+  container.appendChild(div);
+  refreshIcons();
+}
+
+async function saveQuizQuestions() {
+  const parentType = document.getElementById('quizParentType').value;
+  const parentId = document.getElementById('quizParentId').value;
+  const blocks = document.querySelectorAll('#quizQuestions .question-block');
+
+  if (!blocks.length) { toast('Tambahkan minimal 1 pertanyaan', 'error'); return; }
+
+  const inserts = [];
+  let valid = true;
+  blocks.forEach((block, idx) => {
+    const qText = block.querySelector('.q-text')?.value.trim();
+    const optInputs = block.querySelectorAll('.opt-input');
+    const options = Array.from(optInputs).map(el => el.value.trim());
+    const correctRadio = block.querySelector('.q-correct:checked');
+
+    if (!qText || options.some(o => !o) || !correctRadio) {
+      toast(`Soal ${idx + 1}: Isi pertanyaan, semua opsi, dan pilih jawaban benar`, 'error');
+      valid = false;
+      return;
+    }
+    inserts.push({
+      parent_type: parentType,
+      parent_id: parentId,
+      question_text: qText,
+      options: JSON.stringify(options),
+      correct_index: parseInt(correctRadio.value, 10),
+    });
+  });
+
+  if (!valid) return;
 
   await apiHandler.handle(
-    sbClient.from("learning_paths").insert([
-      {
-        student_id: studentId,
-        ...payload,
-        order_index: (existing?.length || 0) + 1,
-      },
-    ]),
-    async () => {
-      toast("Materi ditambahkan", "success");
-      closeModal("moduleModal");
-      await loadLearningPath();
+    sbClient.from('questions').insert(inserts),
+    () => {
+      toast(`${inserts.length} pertanyaan berhasil disimpan`, 'success');
+      closeModal('quizModal');
     },
   );
 }
 
-async function editModule(id) {
-  const data = await apiHandler.handle(
-    sbClient.from("learning_paths").select("*").eq("id", id).single(),
-  );
-  if (!data) return;
-  document.getElementById("editModuleId").value = data.id;
-  document.getElementById("moduleName").value = data.module_name;
-  document.getElementById("moduleResource").value = data.resource_url || "";
-  document.getElementById("moduleHomework").value = data.homework_text || "";
-  openModal("moduleModal");
-}
+// =============================================================
+// --- STUDENT MODULE PROGRESS ---
+// =============================================================
 
-async function toggleModule(id, completed) {
-  await apiHandler.handle(
-    sbClient
-      .from("learning_paths")
-      .update({ is_completed: completed })
-      .eq("id", id),
-    async () => loadLearningPath(),
-  );
-}
+async function loadStudentModuleProgress() {
+  const studentId = document.getElementById('studentSelect').value;
+  const container = document.getElementById('studentModuleProgress');
+  if (!container) return;
 
-async function deleteModule(id) {
-  if (await showConfirm("Hapus Materi", "Yakin hapus materi ini?", "danger")) {
-    await apiHandler.handle(
-      sbClient.from("learning_paths").delete().eq("id", id),
-      async () => {
-        toast("Materi dihapus", "success");
-        await loadLearningPath();
-      },
-    );
+  if (!studentId) {
+    container.innerHTML = `<div class="empty-state"><div class="icon">📊</div><h3>Pilih siswa</h3><p>Pilih siswa untuk melihat progress modul mereka</p></div>`;
+    return;
   }
+
+  const data = await apiHandler.handle(
+    sbClient
+      .from('module_enrollments')
+      .select('id, status, enrolled_at, modules(id, title, description), topic_progress(id, is_completed, topic_id)')
+      .eq('student_id', studentId),
+  );
+
+  // Also get all available modules for enrollment
+  const allMods = allModules.length ? allModules : await apiHandler.handle(
+    sbClient.from('modules').select('id, title'),
+  ) || [];
+
+  if (!data || data.length === 0) {
+    // Show enrollment options
+    const enrollOptions = allMods.map(m => `
+      <div class="item-row flex justify-between items-center">
+        <span class="font-bold text-primary">${esc(m.title)}</span>
+        <button onclick="enrollStudentInModule('${studentId}','${m.id}')" class="btn btn-success px-3 py-2 rounded-lg text-sm">
+          ${icon('user-plus')} Enroll
+        </button>
+      </div>`).join('');
+    container.innerHTML = `
+      <p class="text-secondary text-sm mb-3">Siswa belum terdaftar di modul manapun. Pilih modul untuk di-enroll:</p>
+      ${enrollOptions || `<div class="empty-state">${icon('book-open','icon-lg')}<h3>Belum ada modul</h3></div>`}`;
+    refreshIcons();
+    return;
+  }
+
+  // Render enrolled modules with progress
+  const enrolledModuleIds = data.map(e => e.modules?.id).filter(Boolean);
+  const unenrolledMods = allMods.filter(m => !enrolledModuleIds.includes(m.id));
+
+  const enrolledHtml = data.map(enrollment => {
+    const completed = enrollment.topic_progress?.filter(tp => tp.is_completed).length || 0;
+    const totalTopics = 12;
+    const pct = Math.round((completed / totalTopics) * 100);
+    const allDone = completed >= totalTopics;
+
+    return `
+      <div class="item-row">
+        <div class="flex justify-between items-start gap-3">
+          <div style="flex:1">
+            <h3 class="font-bold text-primary">${esc(enrollment.modules?.title || 'Modul')}</h3>
+            <div class="meta-line mt-1">
+              <span>${icon('layers')} ${completed}/${totalTopics} topik selesai</span>
+              ${allDone ? `<span class="text-success">${icon('award')} Ujian terbuka</span>` : ''}
+            </div>
+            <div class="progress-bar mt-2" style="height:6px;background:var(--glass-border);border-radius:3px;overflow:hidden">
+              <div style="width:${pct}%;height:100%;background:var(--accent);border-radius:3px;transition:width 0.5s ease"></div>
+            </div>
+            <p class="text-secondary text-xs mt-1">${pct}% selesai</p>
+          </div>
+          <span class="status-pill ${enrollment.status === 'completed' ? 'status-success' : 'status-info'}">${enrollment.status}</span>
+        </div>
+      </div>`;
+  }).join('');
+
+  const unenrolledHtml = unenrolledMods.length ? `
+    <div class="divider"></div>
+    <p class="text-secondary text-sm mb-2">Modul belum di-enroll:</p>
+    ${unenrolledMods.map(m => `
+      <div class="item-row flex justify-between items-center">
+        <span class="font-bold text-primary">${esc(m.title)}</span>
+        <button onclick="enrollStudentInModule('${studentId}','${m.id}')" class="btn btn-success px-3 py-2 rounded-lg text-sm">
+          ${icon('user-plus')} Enroll
+        </button>
+      </div>`).join('')}` : '';
+
+  container.innerHTML = enrolledHtml + unenrolledHtml;
+  refreshIcons();
+}
+
+async function enrollStudentInModule(studentId, moduleId) {
+  await apiHandler.handle(
+    sbClient.from('module_enrollments').insert([{ student_id: studentId, module_id: moduleId }]),
+    async () => {
+      toast('Siswa berhasil di-enroll ke modul', 'success');
+      await loadStudentModuleProgress();
+    },
+  );
+}
+
+// =============================================================
+// --- BACKWARD-COMPAT: loadLearningPath (no-op for admin tab) ---
+// =============================================================
+async function loadLearningPath() {
+  // In the new schema the admin "Materi" tab uses loadModuleLibrary + loadStudentModuleProgress.
+  // This shim keeps any lingering call-sites from throwing ReferenceErrors.
+  await loadModuleLibrary();
 }
 
 // --- REQUESTS ---
@@ -1546,3 +1715,4 @@ async function sendNotificationToStudent(studentId, title, message) {
       .insert([{ user_id: studentId, title, message, type: "schedule" }]),
   );
 }
+

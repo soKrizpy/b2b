@@ -250,47 +250,45 @@
       </section>
 
       <section id="tab-lessons" class="tab-panel">
-        <section class="glass p-6 fade-in">
-          <div class="flex justify-between items-center mb-4 flex-wrap gap-3">
-            <div>
-              <h2 class="text-xl font-bold text-primary">Materi & Tugas</h2>
-              <p class="text-secondary text-sm mt-1">
-                Pilih siswa untuk mengatur learning path, resource, dan
-                homework.
-              </p>
-            </div>
-            <select
-              id="studentSelect"
-              onchange="loadLearningPath()"
-              class="input-field md:w-1/2 px-4 py-3 rounded-lg"
-            >
-              <option value="">Pilih siswa</option>
-            </select>
-          </div>
+        <!-- Two-column: left = module library, right = student enrollment -->
+        <div class="dashboard-grid">
 
-          <div id="progressSection" class="hidden mb-6">
-            <div class="flex justify-between items-center mb-2">
-              <span class="text-primary font-semibold">Progress Belajar</span>
-              <span id="progressText" class="text-secondary text-sm">0%</span>
+          <!-- LEFT: Module Library -->
+          <section class="glass p-6 fade-in">
+            <div class="flex justify-between items-center mb-4 flex-wrap gap-3">
+              <div>
+                <h2 class="text-xl font-bold text-primary">Modul Pembelajaran</h2>
+                <p class="text-secondary text-sm mt-1">Buat modul dengan 12 topik. Tiap topik punya kuis. Ujian terbuka setelah 12 topik selesai.</p>
+              </div>
+              <button onclick="openModuleModal()" class="btn btn-success px-4 py-3 rounded-lg font-semibold">
+                <i data-lucide="plus" class="icon-sm"></i> <span class="hide-on-mobile">Buat Modul</span>
+              </button>
             </div>
-            <div class="w-full bg-gray-700 rounded-full h-2.5">
-              <div
-                id="progressFill"
-                class="bg-gradient-to-r from-purple-500 to-indigo-500 h-2.5 rounded-full"
-              ></div>
+            <div id="moduleLibraryList" class="space-y-3">
+              <div class="empty-state">
+                <i data-lucide="book-open" class="icon-lg"></i>
+                <h3>Memuat modul...</h3>
+              </div>
             </div>
-          </div>
+          </section>
 
-          <div id="learningPathList" class="space-y-3"></div>
-          <div id="addModuleSection" class="hidden mt-4">
-            <button
-              onclick="openModuleModal()"
-              class="btn btn-success px-4 py-3 rounded-lg font-semibold"
-            >
-              <i data-lucide="plus" class="icon-sm"></i> <span class="hide-on-mobile">Tambah Materi</span>
-            </button>
-          </div>
-        </section>
+          <!-- RIGHT: Student Enrollment & Progress -->
+          <section class="glass p-6 fade-in">
+            <div class="flex justify-between items-center mb-4 flex-wrap gap-3">
+              <h2 class="text-xl font-bold text-primary">Progress Siswa</h2>
+              <select id="studentSelect" onchange="loadStudentModuleProgress()" class="input-field px-4 py-3 rounded-lg" style="max-width:200px">
+                <option value="">Pilih siswa</option>
+              </select>
+            </div>
+            <div id="studentModuleProgress" class="space-y-3">
+              <div class="empty-state">
+                <div class="icon">📊</div>
+                <h3>Pilih siswa</h3>
+                <p>Pilih siswa untuk melihat progress modul mereka</p>
+              </div>
+            </div>
+          </section>
+        </div>
       </section>
 
       <section id="tab-requests" class="tab-panel">
@@ -473,39 +471,74 @@
       </div>
     </div>
 
+    <!-- Module Create/Edit Modal -->
     <div id="moduleModal" class="modal-overlay">
-      <div class="modal-content">
-        <h3 class="text-xl font-bold text-primary mb-4">Materi & Homework</h3>
+      <div class="modal-content" style="max-width:640px;max-height:90vh;overflow-y:auto;">
+        <h3 class="text-xl font-bold text-primary mb-1">Buat Modul Baru</h3>
+        <p class="text-secondary text-sm mb-4">Satu modul berisi 12 topik. Setiap topik memiliki kuis. Ujian terbuka setelah semua topik selesai.</p>
         <input type="hidden" id="editModuleId" />
         <div class="space-y-4">
           <input
             type="text"
             id="moduleName"
-            placeholder="Nama materi"
-            class="input-field w-full px-4 py-3 rounded-lg"
-          />
-          <input
-            type="text"
-            id="moduleResource"
-            placeholder="Link resource (opsional)"
+            placeholder="Nama modul (mis: Python Dasar)"
             class="input-field w-full px-4 py-3 rounded-lg"
           />
           <textarea
-            id="moduleHomework"
-            placeholder="Homework atau tugas (opsional)"
+            id="moduleDescription"
+            placeholder="Deskripsi modul (opsional)"
             class="input-field w-full px-4 py-3 rounded-lg"
-            rows="3"
+            rows="2"
           ></textarea>
         </div>
+
+        <div class="divider mt-4"></div>
+        <div class="flex justify-between items-center mb-3">
+          <h4 class="font-bold text-primary">Topik (maks. 12)</h4>
+          <button onclick="addTopicField()" class="btn btn-success px-3 py-2 rounded-lg text-sm">
+            <i data-lucide="plus" class="icon-sm"></i> Tambah Topik
+          </button>
+        </div>
+        <div id="topicInputs" class="space-y-2"></div>
+
         <div class="flex gap-3 mt-6">
           <button
             onclick="saveModule()"
+            id="saveModuleBtn"
             class="btn btn-primary flex-1 py-3 rounded-lg font-semibold"
           >
-            Simpan
+            <i data-lucide="save" class="icon-sm"></i> Simpan Modul
           </button>
           <button
             onclick="closeModal('moduleModal')"
+            class="btn btn-danger flex-1 py-3 rounded-lg font-semibold"
+          >
+            Batal
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quiz/Exam Question Modal -->
+    <div id="quizModal" class="modal-overlay">
+      <div class="modal-content" style="max-width:600px;max-height:90vh;overflow-y:auto;">
+        <h3 class="text-xl font-bold text-primary mb-1" id="quizModalTitle">Tambah Pertanyaan</h3>
+        <p class="text-secondary text-sm mb-4" id="quizModalSubtitle"></p>
+        <input type="hidden" id="quizParentType" />
+        <input type="hidden" id="quizParentId" />
+        <div id="quizQuestions" class="space-y-4"></div>
+        <button onclick="addQuestionField()" class="btn glass px-4 py-2 rounded-lg text-sm mt-3">
+          <i data-lucide="plus" class="icon-sm"></i> Tambah Pertanyaan
+        </button>
+        <div class="flex gap-3 mt-6">
+          <button
+            onclick="saveQuizQuestions()"
+            class="btn btn-primary flex-1 py-3 rounded-lg font-semibold"
+          >
+            <i data-lucide="save" class="icon-sm"></i> Simpan Pertanyaan
+          </button>
+          <button
+            onclick="closeModal('quizModal')"
             class="btn btn-danger flex-1 py-3 rounded-lg font-semibold"
           >
             Batal

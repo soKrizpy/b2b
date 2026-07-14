@@ -5,7 +5,6 @@ This is the main repository for the **Kelas Coding** dashboard system, allowing 
 ## 🔗 Environment Links
 - **GitHub Repository**: [https://github.com/soKrizpy/b2b](https://github.com/soKrizpy/b2b)
 - **Live Deployment (Vercel)**: [https://bits2bytes.vercel.app/](https://bits2bytes.vercel.app/)
-- **Supabase Backend**: [lxrwkbobosdmaqrmlvpd.supabase.co](https://lxrwkbobosdmaqrmlvpd.supabase.co) (Pass: `54tu54mp4112@,@`)
 
 ## 🏗️ Architecture & Technology
 The project is intentionally built using **Vanilla HTML, CSS, and JS** without heavy frontend frameworks to keep the payload extremely light and fast. 
@@ -39,6 +38,8 @@ It uses **Supabase** for Authentication and Database directly via the official S
    - Do not use `console.log()` to dump user profile objects or session tokens into the production browser console. Use `console.error()` strictly for errors.
 
 ## 📝 Recent Work & Optimization History
+- **LMS Module Flow (New)**: Enforced strict learning progression. Topics are initially locked and automatically unlocked one by one each time a student attends a class session ("Masuk Kelas"). The module final exam only unlocks after exactly 12 topics are completed.
+- **Dashboard Optimization**: Significantly improved student dashboard performance by implementing lazy loading for tabs (Materi, Riwayat, Request) and migrating the auto-refresh mechanism from a blind `setInterval` to a safe recursive `setTimeout`.
 - **Student Attendance**: Implemented a self-join marking system ("Masuk Kelas") allowing students to securely confirm their own attendance and mark class sessions as completed using new Supabase Row Level Security (RLS) policies.
 - **Timezone Management**: Added auto-detect and manual timezone selection with global UI widget. Upgraded FullCalendar and schedule views to render times accurately in 24-hour format across timezones.
 - **Schedule Management**: Implemented smart "Slot Kosong" logic to auto-generate 52 weeks of available slots. Added scoped editing (this slot only vs this and future slots) for rutinan schedules.
