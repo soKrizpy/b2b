@@ -1,559 +1,167 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="id">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Dashboard Guru - Kelas Coding</title>
-    <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
-      rel="stylesheet"
-    />
-    <link
-      rel="stylesheet"
-      href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.css"
-    />
-    <link rel="stylesheet" href="css/shared.css" />
-    <link rel="stylesheet" href="css/admin.css" />
-  </head>
 
-  <body class="dashboard-body">
-    <header
-      class="glass p-6 mb-6 fade-in flex justify-between items-center flex-wrap gap-4"
-    >
-      <div>
-        <h1 class="text-2xl md:text-3xl font-bold text-primary">
-          Dashboard Guru
-        </h1>
-        <p class="text-secondary mt-1">
-          Kelola jadwal, siswa, materi, dan permintaan kelas.
-        </p>
-      </div>
-      <div class="flex gap-3 items-center">
-        <div id="adminTzWidget"></div>
-        <button
-          onclick="toggleNotifPanel('adminNotificationPanel')"
-          class="icon-btn glass relative"
-          title="Notifikasi"
-        >
-          <i data-lucide="bell" class="icon-sm"></i>
-          <span id="adminNotifBadge" class="notification-badge hidden">0</span>
-        </button>
-        <button onclick="toggleTheme()" class="icon-btn glass" title="Tema">
-          <span id="themeIcon"></span>
-        </button>
-        <button
-          onclick="logout()"
-          class="btn btn-danger px-4 py-2 rounded-lg font-semibold"
-        >
-          <i data-lucide="log-out" class="icon-sm"></i> <span class="hide-on-mobile">Logout</span>
-        </button>
-      </div>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Siswa - Kelas Coding</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/shared.css">
+    <link rel="stylesheet" href="css/student.css">
+</head>
+
+<body class="dashboard-body">
+
+    <header class="glass p-6 mb-6 fade-in flex justify-between items-center flex-wrap gap-4">
+        <div>
+            <h1 class="text-2xl md:text-3xl font-bold text-primary">Dashboard Siswa</h1>
+            <p class="text-secondary mt-1" id="studentName">Memuat...</p>
+        </div>
+        <div class="flex gap-3 items-center">
+            <div id="studentTzWidget"></div>
+            <button onclick="toggleNotifPanel('studentNotificationPanel')" class="icon-btn glass relative" title="Notifikasi">
+                <i data-lucide="bell" class="icon-sm"></i>
+                <span id="studentNotifBadge" class="notification-badge hidden">0</span>
+            </button>
+            <button onclick="toggleTheme()" class="icon-btn glass" title="Tema">
+                <span id="themeIcon"></span>
+            </button>
+            <button onclick="logout()" class="btn btn-danger px-4 py-2 rounded-lg font-semibold">
+                <i data-lucide="log-out" class="icon-sm"></i> <span class="hide-on-mobile">Logout</span>
+            </button>
+        </div>
     </header>
 
-    <div id="adminNotificationPanel" class="notification-panel p-4">
-      <div class="flex justify-between items-center mb-4">
-        <h3 class="text-lg font-bold text-primary">Notifikasi</h3>
-        <button
-          onclick="markAllRead('admin')"
-          class="text-sm text-secondary hover:text-primary"
-        >
-          Tandai semua dibaca
-        </button>
-      </div>
-      <div id="adminNotifList" class="space-y-2 max-h-96 overflow-y-auto"></div>
+    <div id="studentNotificationPanel" class="notification-panel p-4">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-bold text-primary">Notifikasi</h3>
+            <button onclick="markAllRead('student')" class="text-sm text-secondary hover:text-primary">Tandai semua dibaca</button>
+        </div>
+        <div id="studentNotifList" class="space-y-2 max-h-96 overflow-y-auto"></div>
     </div>
 
-    <nav
-      class="tabs glass p-3 mb-6 fade-in"
-      aria-label="Navigasi dashboard guru"
-    >
-      <button
-        class="tab-btn active"
-        data-tab="overview"
-        onclick="switchAdminTab('overview')"
-      >
-        <i data-lucide="layout-dashboard" class="icon-sm"></i> <span class="hide-on-mobile">Ringkasan</span>
-      </button>
-      <button
-        class="tab-btn"
-        data-tab="calendar"
-        onclick="switchAdminTab('calendar')"
-      >
-        <i data-lucide="calendar-days" class="icon-sm"></i> <span class="hide-on-mobile">Kalender</span>
-      </button>
-      <button
-        class="tab-btn"
-        data-tab="students"
-        onclick="switchAdminTab('students')"
-      >
-        <i data-lucide="users" class="icon-sm"></i> <span class="hide-on-mobile">Siswa</span>
-      </button>
-      <button
-        class="tab-btn"
-        data-tab="lessons"
-        onclick="switchAdminTab('lessons')"
-      >
-        <i data-lucide="book-open" class="icon-sm"></i> <span class="hide-on-mobile">Materi</span>
-      </button>
-      <button
-        class="tab-btn"
-        data-tab="requests"
-        onclick="switchAdminTab('requests')"
-      >
-        <i data-lucide="repeat-2" class="icon-sm"></i> <span class="hide-on-mobile">Request</span>
-      </button>
-      <button
-        class="tab-btn"
-        data-tab="broadcast"
-        onclick="switchAdminTab('broadcast')"
-      >
-        <i data-lucide="megaphone" class="icon-sm"></i> <span class="hide-on-mobile">Pesan</span>
-      </button>
+    <nav class="tabs glass p-3 mb-6 fade-in" aria-label="Navigasi dashboard siswa">
+        <button class="tab-btn active" data-tab="home" onclick="switchStudentTab('home')">
+            <i data-lucide="home" class="icon-sm"></i> <span class="hide-on-mobile">Home</span>
+        </button>
+        <button class="tab-btn" data-tab="materials" onclick="switchStudentTab('materials')">
+            <i data-lucide="book-open" class="icon-sm"></i> <span class="hide-on-mobile">Materi</span>
+        </button>
+        <button class="tab-btn" data-tab="history" onclick="switchStudentTab('history')">
+            <i data-lucide="history" class="icon-sm"></i> <span class="hide-on-mobile">Riwayat</span>
+        </button>
+        <button class="tab-btn" data-tab="requests" onclick="switchStudentTab('requests')">
+            <i data-lucide="repeat-2" class="icon-sm"></i> <span class="hide-on-mobile">Request</span>
+        </button>
     </nav>
 
     <main>
-      <section id="tab-overview" class="tab-panel active">
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 fade-in">
-          <div class="glass p-6 stat-card">
-            <p class="text-secondary text-sm">Total Siswa</p>
-            <p class="text-3xl font-bold text-primary mt-2" id="totalStudents">
-              0
-            </p>
-          </div>
-          <div class="glass p-6 stat-card">
-            <p class="text-secondary text-sm">Jadwal Hari Ini</p>
-            <p class="text-3xl font-bold text-primary mt-2" id="todaySchedules">
-              0
-            </p>
-          </div>
-          <div class="glass p-6 stat-card">
-            <p class="text-secondary text-sm">Request Pending</p>
-            <p
-              class="text-3xl font-bold text-primary mt-2"
-              id="pendingRequests"
-            >
-              0
-            </p>
-          </div>
-        </div>
+        <section id="tab-home" class="tab-panel active">
+            <div class="student-home-layout">
+                <!-- LEFT: upcoming schedules -->
+                <div>
+                    <div class="glass p-6 fade-in">
+                        <h2 class="text-xl font-bold text-primary mb-4">Jadwal Selanjutnya</h2>
+                        <div id="nextSchedule" class="text-center py-8"></div>
+                    </div>
+                </div>
 
-        <div class="dashboard-grid mb-6">
-          <section class="glass p-6 fade-in">
-            <div class="flex justify-between items-center mb-4 flex-wrap gap-3">
-              <h2 class="text-xl font-bold text-primary">Fokus Hari Ini</h2>
-              <div class="flex gap-2 flex-wrap">
-                <button
-                  onclick="openClassScheduleModal()"
-                  class="btn btn-primary px-4 py-2 rounded-lg font-semibold"
-                >
-                  <i data-lucide="plus" class="icon-sm"></i> Sesi 1-on-1
-                </button>
-                <button
-                  onclick="openAvailableSlotModal()"
-                  class="btn btn-success px-4 py-2 rounded-lg font-semibold"
-                >
-                  <i data-lucide="calendar-plus" class="icon-sm"></i> <span class="hide-on-mobile">Slot</span>
-                </button>
-              </div>
-            </div>
-            <div id="todayFocusList" class="space-y-3"></div>
-          </section>
+                <!-- RIGHT: sidebar -->
+                <aside class="student-sidebar space-y-4">
 
-          <section class="glass p-6 fade-in">
-            <h2 class="text-xl font-bold text-primary mb-4">
-              Prioritas Tindak Lanjut
-            </h2>
-            <p class="text-secondary text-sm mb-4">
-              Siswa dengan request tertunda atau absensi yang perlu
-              diperhatikan.
-            </p>
-            <div id="studentMiniList" class="space-y-3"></div>
-          </section>
-        </div>
-      </section>
+                    <!-- Mini Calendar -->
+                    <div class="glass p-6 fade-in">
+                        <div class="flex justify-between items-center mb-4">
+                            <h2 class="text-lg font-bold text-primary flex items-center gap-2 flex-wrap">
+                                Jadwal Bulan
+                            <span id="calMonthLabel" class="cal-month-label"></span>
+                            </h2>
+                            <div class="flex gap-1">
+                                <button onclick="calNav(-1)" class="icon-btn glass cal-nav-btn" title="Bulan sebelumnya">
+                                    <i data-lucide="chevron-left" class="icon-sm"></i> <span class="hide-on-mobile"> </span></button>
+                                <button onclick="calNav(1)" class="icon-btn glass cal-nav-btn" title="Bulan berikutnya">
+                                    <i data-lucide="chevron-right" class="icon-sm"></i> <span class="hide-on-mobile"> </span></button>
+                            </div>
+                        </div>
+                        <div id="miniCal"></div>
+                    </div>
 
-      <section id="tab-calendar" class="tab-panel">
-        <section class="glass p-6 fade-in">
-          <div class="flex justify-between items-center mb-4 flex-wrap gap-3">
-            <div>
-              <h2 class="text-xl font-bold text-primary">Kalender Kelas</h2>
-              <p class="text-secondary text-sm mt-1">
-                Buat sesi 1-on-1 untuk trial/demo atau publikasikan slot kosong
-                rutinan mingguan untuk request siswa.
-              </p>
+                    <!-- Package Progress -->
+                    <div class="glass p-6 fade-in">
+                        <h2 class="text-lg font-bold text-primary mb-4">Progress Paket</h2>
+                        <div id="packageProgress">
+                            <div class="empty-state pkg-loading">
+                                <p>Memuat...</p>
+                            </div>
+                        </div>
+                    </div>
+
+                </aside>
             </div>
-            <div class="flex gap-2 flex-wrap">
-              <button
-                onclick="openClassScheduleModal()"
-                class="btn btn-primary px-4 py-2 rounded-lg font-semibold"
-              >
-                <i data-lucide="plus" class="icon-sm"></i> Sesi 1-on-1
-              </button>
-              <button
-                onclick="openAvailableSlotModal()"
-                class="btn btn-success px-4 py-2 rounded-lg font-semibold"
-              >
-                <i data-lucide="calendar-plus" class="icon-sm"></i> <span class="hide-on-mobile">Slot Kosong</span>
-              </button>
-            </div>
-          </div>
-          <div id="calendar"></div>
         </section>
-      </section>
 
-      <section id="tab-students" class="tab-panel">
-        <div class="dashboard-grid">
-          <section class="glass p-6 fade-in">
-            <h2 class="text-xl font-bold text-primary mb-4">Daftarkan Siswa</h2>
-            <div class="space-y-3">
-              <input
-                type="text"
-                id="newName"
-                placeholder="Nama lengkap"
-                class="input-field px-4 py-3 rounded-lg"
-                autocomplete="off"
-              />
-              <input
-                type="text"
-                id="newUsername"
-                placeholder="Email atau No WA"
-                class="input-field px-4 py-3 rounded-lg"
-                autocomplete="off"
-              />
-              <input
-                type="password"
-                id="newMpin"
-                placeholder="MPIN 6 digit"
-                maxlength="6"
-                class="input-field px-4 py-3 rounded-lg"
-                autocomplete="off"
-              />
+        <section id="tab-materials" class="tab-panel">
+            <div class="glass p-10 fade-in text-center" id="materialsLockedPlaceholder">
+                <div class="lock-icon">🔒</div>
+                <h2 class="text-xl font-bold text-primary mb-2">Materi Terkunci</h2>
+                <p class="text-secondary">Selesaikan minimal <strong>1 pertemuan</strong> bersama guru untuk membuka akses materi.</p>
             </div>
-            <button
-              onclick="addStudent()"
-              id="addStudentBtn"
-              class="btn btn-primary px-4 py-3 rounded-lg font-semibold mt-4"
-            >
-              <i data-lucide="user-plus" class="icon-sm"></i> <span class="hide-on-mobile">Tambah Siswa</span>
-            </button>
-
-            <div class="divider"></div>
-            <h3 class="font-bold text-primary mb-3">Daftar Siswa</h3>
-            <div id="studentList" class="space-y-2"></div>
-          </section>
-
-          <section class="glass p-6 fade-in">
-            <h2 class="text-xl font-bold text-primary mb-4">Detail Siswa</h2>
-            <div id="studentDetail"></div>
-          </section>
-        </div>
-      </section>
-
-      <section id="tab-lessons" class="tab-panel">
-        <!-- Two-column: left = module library, right = student enrollment -->
-        <div class="dashboard-grid">
-
-          <!-- LEFT: Module Library -->
-          <section class="glass p-6 fade-in">
-            <div class="flex justify-between items-center mb-4 flex-wrap gap-3">
-              <div>
-                <h2 class="text-xl font-bold text-primary">Modul Pembelajaran</h2>
-                <p class="text-secondary text-sm mt-1">Buat modul dengan 12 topik. Tiap topik punya kuis. Ujian terbuka setelah 12 topik selesai.</p>
-              </div>
-              <button onclick="openModuleModal()" class="btn btn-success px-4 py-3 rounded-lg font-semibold">
-                <i data-lucide="plus" class="icon-sm"></i> <span class="hide-on-mobile">Buat Modul</span>
-              </button>
+            <div class="glass p-6 fade-in" id="materialsContent" hidden>
+                <h2 class="text-xl font-bold text-primary mb-4">Materi & Homework</h2>
+                <div class="mb-6">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-primary font-semibold text-sm">Progress Belajar</span>
+                        <span id="progressText" class="text-secondary text-sm">0% selesai</span>
+                    </div>
+                    <div class="w-full bg-gray-700 rounded-full h-2.5">
+                        <div id="progressFill" class="bg-gradient-to-r from-purple-500 to-indigo-500 h-2.5 rounded-full"></div>
+                    </div>
+                </div>
+                <div id="learningPathList" class="space-y-3"></div>
             </div>
-            <div id="moduleLibraryList" class="space-y-3">
-              <div class="empty-state">
-                <i data-lucide="book-open" class="icon-lg"></i>
-                <h3>Memuat modul...</h3>
-              </div>
-            </div>
-          </section>
-
-          <!-- RIGHT: Student Enrollment & Progress -->
-          <section class="glass p-6 fade-in">
-            <div class="flex justify-between items-center mb-4 flex-wrap gap-3">
-              <h2 class="text-xl font-bold text-primary">Progress Siswa</h2>
-              <select id="studentSelect" onchange="loadStudentModuleProgress()" class="input-field px-4 py-3 rounded-lg" style="max-width:200px">
-                <option value="">Pilih siswa</option>
-              </select>
-            </div>
-            <div id="studentModuleProgress" class="space-y-3">
-              <div class="empty-state">
-                <div class="icon">📊</div>
-                <h3>Pilih siswa</h3>
-                <p>Pilih siswa untuk melihat progress modul mereka</p>
-              </div>
-            </div>
-          </section>
-        </div>
-      </section>
-
-      <section id="tab-requests" class="tab-panel">
-        <section class="glass p-6 fade-in">
-          <h2 class="text-xl font-bold text-primary mb-4">
-            Permintaan Reschedule
-          </h2>
-          <div id="requestList" class="space-y-3"></div>
         </section>
-      </section>
 
-      <section id="tab-broadcast" class="tab-panel">
-        <section class="glass p-6 fade-in">
-          <h2 class="text-xl font-bold text-primary mb-4">Kirim Notifikasi</h2>
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <select
-              id="notifRecipient"
-              class="input-field px-4 py-3 rounded-lg"
-            >
-              <option value="all">Semua siswa</option>
-            </select>
-            <input
-              type="text"
-              id="notifTitle"
-              placeholder="Judul notifikasi"
-              class="input-field px-4 py-3 rounded-lg"
-            />
-            <input
-              type="text"
-              id="notifMessage"
-              placeholder="Isi pesan"
-              class="input-field px-4 py-3 rounded-lg"
-            />
-          </div>
-          <div class="template-actions mt-4">
-            <button
-              onclick="
-                useNotificationTemplate(
-                  'Kelas segera dimulai',
-                  'Kelas akan dimulai sebentar lagi. Silakan bersiap.',
-                )
-              "
-              class="btn glass px-3 py-2 rounded-lg text-sm"
-            >
-              Kelas dimulai
-            </button>
-            <button
-              onclick="
-                useNotificationTemplate(
-                  'Jadwal baru',
-                  'Jadwal kelas baru sudah ditambahkan. Cek dashboard siswa ya.',
-                )
-              "
-              class="btn glass px-3 py-2 rounded-lg text-sm"
-            >
-              Jadwal baru
-            </button>
-            <button
-              onclick="
-                useNotificationTemplate(
-                  'Reminder tugas',
-                  'Jangan lupa menyelesaikan homework yang sudah diberikan.',
-                )
-              "
-              class="btn glass px-3 py-2 rounded-lg text-sm"
-            >
-              Reminder tugas
-            </button>
-          </div>
-          <button
-            onclick="sendNotification()"
-            class="btn btn-primary px-4 py-3 rounded-lg font-semibold mt-4"
-          >
-            <i data-lucide="send" class="icon-sm"></i> <span class="hide-on-mobile">Kirim</span>
-          </button>
+        <section id="tab-history" class="tab-panel">
+            <div class="glass p-6 fade-in">
+                <h2 class="text-xl font-bold text-primary mb-4">Riwayat Pertemuan</h2>
+                <div id="historyList" class="space-y-3"></div>
+            </div>
         </section>
-      </section>
+
+        <section id="tab-requests" class="tab-panel">
+            <div class="glass p-6 fade-in">
+                <h2 class="text-xl font-bold text-primary mb-4">Permintaan Reschedule</h2>
+                <div id="requestList" class="space-y-3"></div>
+            </div>
+        </section>
     </main>
 
-    <div id="scheduleModal" class="modal-overlay">
-      <div class="modal-content">
-        <h3 class="text-xl font-bold text-primary mb-4" id="scheduleModalTitle">Jadwal Kelas</h3>
-        <input type="hidden" id="editScheduleId" />
-        <div class="space-y-4">
-          <select id="scheduleType" class="hidden" onchange="toggleScheduleTypeFields()">
-            <option value="class">Sesi 1-on-1 (Trial/Demo)</option>
-            <option value="slot">Slot Kosong (Rutinan Mingguan)</option>
-          </select>
-
-          <div id="scheduleStudentGroup" class="space-y-4">
-            <select id="scheduleStudent" class="input-field px-4 py-3 rounded-lg">
-              <option value="">Pilih siswa</option>
-            </select>
-          </div>
-
-          <div id="scheduleTitleGroup" class="space-y-4">
-            <input
-              type="text"
-              id="scheduleTitle"
-              placeholder="Judul pertemuan"
-              class="input-field px-4 py-3 rounded-lg"
-            />
-          </div>
-
-          <input
-            type="datetime-local"
-            id="scheduleTime"
-            class="input-field px-4 py-3 rounded-lg"
-          />
-
-          <div id="slotRepeatGroup" class="space-y-3 hidden">
-            <p class="text-secondary text-sm">Slot akan dibuat otomatis selama setahun (52 minggu) pada hari dan jam yang sama.</p>
-          </div>
-          
-          <div id="slotEditScopeGroup" class="space-y-3 hidden">
-            <label class="block text-primary font-bold text-sm mb-2">Pilih yang ingin diubah/dihapus:</label>
-            <div class="flex gap-4">
-              <label class="flex items-center gap-2 cursor-pointer">
-                <input type="radio" name="slotEditScope" value="single" checked class="w-4 h-4 text-primary" />
-                <span class="text-sm">Hanya slot ini</span>
-              </label>
-              <label class="flex items-center gap-2 cursor-pointer">
-                <input type="radio" name="slotEditScope" value="future" class="w-4 h-4 text-primary" />
-                <span class="text-sm">Slot ini & seterusnya</span>
-              </label>
+    <div id="requestModal" class="modal-overlay">
+        <div class="modal-content">
+            <h3 class="text-xl font-bold text-primary mb-4">Request Reschedule</h3>
+            <input type="hidden" id="requestScheduleId">
+            <div class="space-y-4">
+                <div>
+                    <label for="requestTime" class="text-secondary text-sm block mb-1">Pilih Slot Waktu Kosong:</label>
+                    <select id="requestTime" class="input-field px-4 py-3 rounded-lg">
+                        <option value="">Memuat slot kosong...</option>
+                    </select>
+                </div>
+                <textarea id="requestReason" placeholder="Tulis alasan reschedule..." class="input-field px-4 py-3 rounded-lg" rows="4"></textarea>
             </div>
-          </div>
-
-          <div id="scheduleLinkGroup" class="space-y-4">
-            <input
-              type="text"
-              id="scheduleLink"
-              placeholder="Link Zoom/Meet"
-              class="input-field px-4 py-3 rounded-lg"
-            />
-          </div>
-
-          <div id="scheduleAttendanceGroup" class="space-y-4">
-            <select
-              id="scheduleAttendance"
-              class="input-field px-4 py-3 rounded-lg"
-            >
-              <option value="pending">Attendance: pending</option>
-              <option value="attended">Attendance: hadir</option>
-              <option value="missed">Attendance: tidak hadir</option>
-              <option value="rescheduled">Attendance: reschedule</option>
-            </select>
-          </div>
-
-          <div id="scheduleNoteGroup" class="space-y-4">
-            <textarea
-              id="scheduleNote"
-              placeholder="Catatan guru untuk kelas ini"
-              class="input-field px-4 py-3 rounded-lg"
-              rows="3"
-            ></textarea>
-          </div>
+            <div class="flex gap-3 mt-6">
+                <button onclick="submitRescheduleRequest()" class="btn btn-primary flex-1 py-3 rounded-lg font-semibold">Kirim</button>
+                <button onclick="closeModal('requestModal')" class="btn btn-danger flex-1 py-3 rounded-lg font-semibold">Batal</button>
+            </div>
         </div>
-        <div class="flex gap-3 mt-6">
-          <button
-            onclick="saveSchedule()"
-            class="btn btn-primary flex-1 py-3 rounded-lg font-semibold"
-          >
-            Simpan
-          </button>
-          <button
-            id="btnDeleteSchedule"
-            onclick="deleteCurrentScheduleOrSlot()"
-            class="btn btn-danger flex-1 py-3 rounded-lg font-semibold hidden"
-          >
-            Hapus
-          </button>
-          <button
-            onclick="closeModal('scheduleModal')"
-            class="btn btn-danger flex-1 py-3 rounded-lg font-semibold"
-          >
-            Batal
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Module Create/Edit Modal -->
-    <div id="moduleModal" class="modal-overlay">
-      <div class="modal-content" style="max-width:640px;max-height:90vh;overflow-y:auto;">
-        <h3 class="text-xl font-bold text-primary mb-1">Buat Modul Baru</h3>
-        <p class="text-secondary text-sm mb-4">Satu modul berisi 12 topik. Setiap topik memiliki kuis. Ujian terbuka setelah semua topik selesai.</p>
-        <input type="hidden" id="editModuleId" />
-        <div class="space-y-4">
-          <input
-            type="text"
-            id="moduleName"
-            placeholder="Nama modul (mis: Python Dasar)"
-            class="input-field w-full px-4 py-3 rounded-lg"
-          />
-          <textarea
-            id="moduleDescription"
-            placeholder="Deskripsi modul (opsional)"
-            class="input-field w-full px-4 py-3 rounded-lg"
-            rows="2"
-          ></textarea>
-        </div>
-
-        <div class="divider mt-4"></div>
-        <div class="flex justify-between items-center mb-3">
-          <h4 class="font-bold text-primary">Topik (maks. 12)</h4>
-          <button onclick="addTopicField()" class="btn btn-success px-3 py-2 rounded-lg text-sm">
-            <i data-lucide="plus" class="icon-sm"></i> Tambah Topik
-          </button>
-        </div>
-        <div id="topicInputs" class="space-y-2"></div>
-
-        <div class="flex gap-3 mt-6">
-          <button
-            onclick="saveModule()"
-            id="saveModuleBtn"
-            class="btn btn-primary flex-1 py-3 rounded-lg font-semibold"
-          >
-            <i data-lucide="save" class="icon-sm"></i> Simpan Modul
-          </button>
-          <button
-            onclick="closeModal('moduleModal')"
-            class="btn btn-danger flex-1 py-3 rounded-lg font-semibold"
-          >
-            Batal
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Quiz/Exam Question Modal -->
-    <div id="quizModal" class="modal-overlay">
-      <div class="modal-content" style="max-width:600px;max-height:90vh;overflow-y:auto;">
-        <h3 class="text-xl font-bold text-primary mb-1" id="quizModalTitle">Tambah Pertanyaan</h3>
-        <p class="text-secondary text-sm mb-4" id="quizModalSubtitle"></p>
-        <input type="hidden" id="quizParentType" />
-        <input type="hidden" id="quizParentId" />
-        <div id="quizQuestions" class="space-y-4"></div>
-        <button onclick="addQuestionField()" class="btn glass px-4 py-2 rounded-lg text-sm mt-3">
-          <i data-lucide="plus" class="icon-sm"></i> Tambah Pertanyaan
-        </button>
-        <div class="flex gap-3 mt-6">
-          <button
-            onclick="saveQuizQuestions()"
-            class="btn btn-primary flex-1 py-3 rounded-lg font-semibold"
-          >
-            <i data-lucide="save" class="icon-sm"></i> Simpan Pertanyaan
-          </button>
-          <button
-            onclick="closeModal('quizModal')"
-            class="btn btn-danger flex-1 py-3 rounded-lg font-semibold"
-          >
-            Batal
-          </button>
-        </div>
-      </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
-    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
     <script src="js/services/supabase.js"></script>
     <script src="js/utils/helpers.js"></script>
     <script src="js/components/shared-ui.js"></script>
-    <script src="js/modules/moduleManager.js"></script>
-    <script src="js/pages/admin.js"></script>
-  </body>
+    <script src="js/pages/student.js"></script>
+</body>
+
 </html>

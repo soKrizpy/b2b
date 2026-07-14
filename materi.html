@@ -1,48 +1,103 @@
-// =========================================
-// // KONFIGURASI SUPABASE
-// =========================================
-const SUPABASE_URL = "https://lxrwkbobosdmaqrmlvpd.supabase.co";
-const SUPABASE_ANON_KEY = "sb_publishable_JvZsmYEd3RsMmdMRLcnvpg_ho7aUpBL";
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Materi - Kelas Coding</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/shared.css" />
+  <link rel="stylesheet" href="css/student.css" />
+  <style>
+    body { font-family: 'Inter', sans-serif; background: linear-gradient(135deg, #1a1a2e, #16213e, #0f3460); min-height: 100vh; }
+    .glass { backdrop-filter: blur(12px); background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.12); }
+    .module-card, .topic-card { transition: transform 0.2s ease, box-shadow 0.2s ease; border-radius: 12px; }
+    .module-card:hover { transform: translateY(-4px); box-shadow: 0 12px 30px rgba(0,0,0,0.4); }
+    .topic-card { border-radius: 10px; }
+    .progress-bar { height: 0.5rem; background: rgba(255,255,255,0.15); border-radius: 0.5rem; overflow: hidden; margin: 0.5rem 0; }
+    .progress-bar div { height: 100%; background: linear-gradient(to right, #6a11cb, #2575fc); border-radius: 0.5rem; transition: width 0.6s ease; }
+    .btn-back { background: rgba(255,255,255,0.1); color: white; border: 1px solid rgba(255,255,255,0.2); }
+    .btn-back:hover { background: rgba(255,255,255,0.2); }
+    .empty-state { text-align: center; padding: 3rem 1rem; color: rgba(255,255,255,0.6); }
+    .empty-state .icon { font-size: 3rem; margin-bottom: 1rem; }
+    .empty-state h3 { color: white; font-size: 1.2rem; font-weight: 700; }
+  </style>
+</head>
+<body class="dashboard-body">
+  <header class="glass p-5 mb-6 flex justify-between items-center" style="margin: 1rem; border-radius: 12px;">
+    <div>
+      <h1 class="text-2xl font-bold text-white">📚 Materi Pembelajaran</h1>
+      <p style="color:rgba(255,255,255,0.6); font-size:0.875rem; margin-top:0.25rem">Belajar topik, kerjakan kuis, dan buka ujian modul</p>
+    </div>
+    <button onclick="logout()" class="btn btn-danger px-4 py-2 rounded-lg font-semibold">Logout</button>
+  </header>
 
-// Γ£à PERBAIKAN: Gunakan SUPABASE_ANON_KEY
-const sbClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  <main style="padding: 0 1rem 2rem;">
+    <!-- Module Selection -->
+    <section id="moduleSection" class="mb-8">
+      <h2 class="text-xl font-semibold text-white mb-4">Pilih Modul</h2>
+      <div id="moduleList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div class="empty-state">
+          <div class="icon">⏳</div>
+          <h3>Memuat modul...</h3>
+        </div>
+      </div>
+    </section>
 
-// =========================================
-// // GLOBAL STATE
-// =========================================
-let currentUser = null;
+    <!-- Topic View -->
+    <section id="topicSection" class="hidden mb-8">
+      <div class="flex items-center gap-3 mb-4">
+        <button onclick="backToModules()" class="btn btn-back px-3 py-2 rounded-lg text-sm">← Kembali</button>
+        <h2 class="text-xl font-semibold text-white" id="moduleTitle"></h2>
+      </div>
 
-// =========================================
-// // 3. API HANDLER
-// =========================================
-const apiHandler = {
-  async handle(query, onSuccess = null, onError = null) {
-    try {
-      const { data, error } = await query;
-      if (error) throw error;
-      if (onSuccess) await onSuccess(data);
-      return data;
-    } catch (err) {
-      console.error("SUPABASE ERROR:", err);
-      toast(err.message || "Terjadi kesalahan", "error");
-      if (onError) onError(err);
-      return null;
+      <!-- Progress Bar -->
+      <div class="glass p-4 rounded-xl mb-4">
+        <div class="flex justify-between items-center mb-2">
+          <span class="text-sm font-semibold text-white">Progress Modul</span>
+          <span id="progressText" class="text-sm" style="color:rgba(255,255,255,0.7)">0%</span>
+        </div>
+        <div class="progress-bar"><div id="progressFill" style="width:0%"></div></div>
+      </div>
+
+      <!-- Topic List -->
+      <div id="topicList" class="space-y-3"></div>
+    </section>
+
+    <!-- Quiz Section -->
+    <section id="quizSection" class="hidden mb-8">
+      <div class="glass p-6 rounded-xl">
+        <h2 class="text-xl font-semibold text-white mb-1">Kuis Topik</h2>
+        <p class="text-sm mb-4" style="color:rgba(255,255,255,0.6)" id="quizTopicTitle"></p>
+        <div id="quizContent"></div>
+      </div>
+    </section>
+
+    <!-- Exam Section (unlocked when all topics done) -->
+    <section id="examSection" class="hidden text-center mb-8">
+      <div class="glass p-8 rounded-xl">
+        <div style="font-size:3rem">🎓</div>
+        <h2 class="text-2xl font-bold text-white mt-3 mb-2">Semua Topik Selesai!</h2>
+        <p style="color:rgba(255,255,255,0.7)" class="mb-6">Kamu sudah menyelesaikan semua topik. Siap untuk ujian akhir modul?</p>
+        <button onclick="startExam()" class="btn btn-warning px-8 py-3 rounded-lg font-bold text-lg">
+          🏆 Mulai Ujian Modul
+        </button>
+      </div>
+    </section>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="js/services/supabase.js"></script>
+  <script src="js/utils/helpers.js"></script>
+  <script src="js/components/shared-ui.js"></script>
+  <script src="js/pages/materi.js"></script>
+  <script>
+    function backToModules() {
+      document.getElementById("moduleSection").classList.remove("hidden");
+      document.getElementById("topicSection").classList.add("hidden");
+      document.getElementById("quizSection").classList.add("hidden");
+      document.getElementById("examSection").classList.add("hidden");
     }
-  },
-};
-
-// =========================================
-// // 4. AUTH HELPERS
-// =========================================
-async function initUser() {
-  try {
-    const { data } = await sbClient.auth.getUser();
-    if (!data.user) return null;
-    currentUser = data.user;
-    return currentUser;
-  } catch (error) {
-    console.error("Auth error:", error);
-    return null;
-  }
-}
-
+  </script>
+</body>
+</html>
