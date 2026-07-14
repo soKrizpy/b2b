@@ -5,7 +5,6 @@ This is the main repository for the **Kelas Coding** dashboard system, allowing 
 ## 🔗 Environment Links
 - **GitHub Repository**: [https://github.com/soKrizpy/b2b](https://github.com/soKrizpy/b2b)
 - **Live Deployment (Vercel)**: [https://bits2bytes.vercel.app/](https://bits2bytes.vercel.app/)
-- **Supabase Backend**: [lxrwkbobosdmaqrmlvpd.supabase.co](https://lxrwkbobosdmaqrmlvpd.supabase.co) (Pass: `54tu54mp4112@,@`)
 
 ## 🏗️ Architecture & Technology
 The project is intentionally built using **Vanilla HTML, CSS, and JS** without heavy frontend frameworks to keep the payload extremely light and fast. 
