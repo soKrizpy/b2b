@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Siswa - Kelas Coding</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/shared.css">
+    <link rel="stylesheet" href="css/student.css">
+</head>
+
+<body class="dashboard-body">
+
+    <header class="glass p-6 mb-6 fade-in flex justify-between items-center flex-wrap gap-4">
+        <div>
+            <h1 class="text-2xl md:text-3xl font-bold text-primary">Dashboard Siswa</h1>
+            <p class="text-secondary mt-1" id="studentName">Memuat...</p>
+        </div>
+        <div class="flex gap-3 items-center">
+            <div id="studentTzWidget"></div>
+            <button onclick="toggleNotifPanel('studentNotificationPanel')" class="icon-btn glass relative" title="Notifikasi">
+                <i data-lucide="bell" class="icon-sm"></i>
+                <span id="studentNotifBadge" class="notification-badge hidden">0</span>
+            </button>
+            <button onclick="toggleTheme()" class="icon-btn glass" title="Tema">
+                <span id="themeIcon"></span>
+            </button>
+            <button onclick="logout()" class="btn btn-danger px-4 py-2 rounded-lg font-semibold">
+                <i data-lucide="log-out" class="icon-sm"></i> <span class="hide-on-mobile">Logout</span>
+            </button>
+        </div>
+    </header>
+
+    <div id="studentNotificationPanel" class="notification-panel p-4">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-bold text-primary">Notifikasi</h3>
+            <button onclick="markAllRead('student')" class="text-sm text-secondary hover:text-primary">Tandai semua dibaca</button>
+        </div>
+        <div id="studentNotifList" class="space-y-2 max-h-96 overflow-y-auto"></div>
+    </div>
+
+    <nav class="tabs glass p-3 mb-6 fade-in" aria-label="Navigasi dashboard siswa">
+        <button class="tab-btn active" data-tab="home" onclick="switchStudentTab('home')">
+            <i data-lucide="home" class="icon-sm"></i> <span class="hide-on-mobile">Home</span>
+        </button>
+        <button class="tab-btn" data-tab="materials" onclick="switchStudentTab('materials')">
+            <i data-lucide="book-open" class="icon-sm"></i> <span class="hide-on-mobile">Materi</span>
+        </button>
+        <button class="tab-btn" data-tab="history" onclick="switchStudentTab('history')">
+            <i data-lucide="history" class="icon-sm"></i> <span class="hide-on-mobile">Riwayat</span>
+        </button>
+        <button class="tab-btn" data-tab="requests" onclick="switchStudentTab('requests')">
+            <i data-lucide="repeat-2" class="icon-sm"></i> <span class="hide-on-mobile">Request</span>
+        </button>
+    </nav>
+
+    <main>
+        <section id="tab-home" class="tab-panel active">
+            <div class="student-home-layout">
+                <!-- LEFT: upcoming schedules -->
+                <div>
+                    <div class="glass p-6 fade-in">
+                        <h2 class="text-xl font-bold text-primary mb-4">Jadwal Selanjutnya</h2>
+                        <div id="nextSchedule" class="text-center py-8"></div>
+                    </div>
+                </div>
+
+                <!-- RIGHT: sidebar -->
+                <aside class="student-sidebar space-y-4">
+
+                    <!-- Mini Calendar -->
+                    <div class="glass p-6 fade-in">
+                        <div class="flex justify-between items-center mb-4">
+                            <h2 class="text-lg font-bold text-primary flex items-center gap-2 flex-wrap">
+                                Jadwal Bulan
+                            <span id="calMonthLabel" class="cal-month-label"></span>
+                            </h2>
+                            <div class="flex gap-1">
+                                <button onclick="calNav(-1)" class="icon-btn glass cal-nav-btn" title="Bulan sebelumnya">
+                                    <i data-lucide="chevron-left" class="icon-sm"></i> <span class="hide-on-mobile"> </span></button>
+                                <button onclick="calNav(1)" class="icon-btn glass cal-nav-btn" title="Bulan berikutnya">
+                                    <i data-lucide="chevron-right" class="icon-sm"></i> <span class="hide-on-mobile"> </span></button>
+                            </div>
+                        </div>
+                        <div id="miniCal"></div>
+                    </div>
+
+                    <!-- Package Progress -->
+                    <div class="glass p-6 fade-in">
+                        <h2 class="text-lg font-bold text-primary mb-4">Progress Paket</h2>
+                        <div id="packageProgress">
+                            <div class="empty-state pkg-loading">
+                                <p>Memuat...</p>
+                            </div>
+                        </div>
+                    </div>
+
+                </aside>
+            </div>
+        </section>
+
+        <section id="tab-materials" class="tab-panel">
+            <div class="glass p-10 fade-in text-center" id="materialsLockedPlaceholder">
+                <div class="lock-icon">🔒</div>
+                <h2 class="text-xl font-bold text-primary mb-2">Materi Terkunci</h2>
+                <p class="text-secondary">Selesaikan minimal <strong>1 pertemuan</strong> bersama guru untuk membuka akses materi.</p>
+            </div>
+            <div class="glass p-6 fade-in" id="materialsContent" hidden>
+                <h2 class="text-xl font-bold text-primary mb-4">Materi & Homework</h2>
+                <div class="mb-6">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-primary font-semibold text-sm">Progress Belajar</span>
+                        <span id="progressText" class="text-secondary text-sm">0% selesai</span>
+                    </div>
+                    <div class="w-full bg-gray-700 rounded-full h-2.5">
+                        <div id="progressFill" class="bg-gradient-to-r from-purple-500 to-indigo-500 h-2.5 rounded-full"></div>
+                    </div>
+                </div>
+                <div id="learningPathList" class="space-y-3"></div>
+            </div>
+        </section>
+
+        <section id="tab-history" class="tab-panel">
+            <div class="glass p-6 fade-in">
+                <h2 class="text-xl font-bold text-primary mb-4">Riwayat Pertemuan</h2>
+                <div id="historyList" class="space-y-3"></div>
+            </div>
+        </section>
+
+        <section id="tab-requests" class="tab-panel">
+            <div class="glass p-6 fade-in">
+                <h2 class="text-xl font-bold text-primary mb-4">Permintaan Reschedule</h2>
+                <div id="requestList" class="space-y-3"></div>
+            </div>
+        </section>
+    </main>
+
+    <div id="requestModal" class="modal-overlay">
+        <div class="modal-content">
+            <h3 class="text-xl font-bold text-primary mb-4">Request Reschedule</h3>
+            <input type="hidden" id="requestScheduleId">
+            <div class="space-y-4">
+                <div>
+                    <label for="requestTime" class="text-secondary text-sm block mb-1">Pilih Slot Waktu Kosong:</label>
+                    <select id="requestTime" class="input-field px-4 py-3 rounded-lg">
+                        <option value="">Memuat slot kosong...</option>
+                    </select>
+                </div>
+                <textarea id="requestReason" placeholder="Tulis alasan reschedule..." class="input-field px-4 py-3 rounded-lg" rows="4"></textarea>
+            </div>
+            <div class="flex gap-3 mt-6">
+                <button onclick="submitRescheduleRequest()" class="btn btn-primary flex-1 py-3 rounded-lg font-semibold">Kirim</button>
+                <button onclick="closeModal('requestModal')" class="btn btn-danger flex-1 py-3 rounded-lg font-semibold">Batal</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="js/services/supabase.js"></script>
+    <script src="js/utils/helpers.js"></script>
+    <script src="js/components/shared-ui.js"></script>
+    <script src="js/pages/student.js"></script>
+</body>
+
+</html>

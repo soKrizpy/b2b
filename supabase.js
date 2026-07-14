@@ -1,91 +1,77 @@
-let allStudents = [];
-let allSchedules = [];
-let allRequests = [];
-let allSlots = []; // Global available slots
-let calendar = null;
-let selectedStudentId = "";
 
-async function checkAuth() {
-  const user = await initUser();
-  if (!user) {
-    window.location.href = "index.html";
-    return;
+// ---------- TOPIC UNLOCK LOGIC ----------
+// Every completed class unlocks 1 topic per enrolled module
+async function countCompletedSessions(studentId) {
+  const { count, error } = await sbClient
+    .from('schedules')
+    .select('id', { count: 'exact', head: true })
+    .eq('student_id', studentId)
+    .eq('status', 'completed');
+  if (error) { console.error('count error', error); return 0; }
+  return count || 0;
+}
+
+async function syncUnlockedTopicsForStudent(studentId) {
+  try {
+    const completedCount = await countCompletedSessions(studentId);
+    // Fetch all enrollments for this student
+    const { data: enrollments, error: enErr } = await sbClient
+      .from('module_enrollments')
+      .select('id, module_id')
+      .eq('student_id', studentId);
+    if (enErr || !enrollments?.length) return;
+
+    for (const en of enrollments) {
+      const { data: topics } = await sbClient
+        .from('topics')
+        .select('id')
+        .eq('module_id', en.module_id)
+        .order('order_index', { ascending: true });
+      if (!topics?.length) continue;
+
+      // Ensure progress rows exist, then unlock first N topics where N = completedCount
+      for (let i = 0; i < topics.length; i++) {
+        const shouldUnlock = i < completedCount; // 0 sessions = 0 unlocked, 1 session = 1st topic unlocked, etc.
+        await sbClient.from('topic_progress').upsert({
+          enrollment_id: en.id,
+          topic_id: topics[i].id,
+          is_unlocked: shouldUnlock,
+          unlocked_at: shouldUnlock ? new Date().toISOString() : null
+        }, { onConflict: 'enrollment_id,topic_id' });
+      }
+    }
+    console.log(`Unlocked ${completedCount} topic(s) per module for student ${studentId}`);
+  } catch (e) {
+    console.error('syncUnlock error', e);
   }
+}
 
-  const profile = await apiHandler.handle(
-    sbClient.from("profiles").select("role").eq("id", user.id).maybeSingle(),
-  );
+// =========================================
+// GLOBAL STATE
+// =========================================
+let currentProfile = null;
+let nextScheduleData = null;
+let upcomingSchedules = [];
+let allSchedulesForSidebar = []; // all statuses — used by calendar + package widget
+let calViewDate = new Date();    // which month the mini calendar is showing
+let refreshInterval = null;
+let hasCompletedSession = false; // gate for Materi tab
 
-  if (!profile) {
+// =========================================
+// TAB SWITCHING
+// =========================================
+function switchStudentTab(tabName) {
+  // Gate: Materi tab requires at least one completed session
+  if (tabName === "materials" && !hasCompletedSession) {
     toast(
-      "Profil belum tersedia. Silakan masuk kembali setelah beberapa saat.",
+      "Selesaikan minimal 1 pertemuan dengan guru untuk membuka Materi 📚",
       "error",
     );
-    window.location.href = "index.html";
-    return;
+    tabName = "home"; // fall back to home
   }
 
-  if (profile.role !== "admin") {
-    window.location.href = "student.html";
-    return;
-  }
-
-  currentUser = user;
-  await loadDashboardData();
-}
-document.addEventListener("DOMContentLoaded", checkAuth);
-
-async function loadAvailableSlots() {
-  const data = await apiHandler.handle(
-    sbClient
-      .from("available_slots")
-      .select("*")
-      .order("start_time", { ascending: true }),
-  );
-  if (data) {
-    allSlots = data;
-  }
-}
-
-async function loadDashboardData() {
-  await Promise.all([
-    loadStudents(),
-    loadSchedules(),
-    loadRequests(),
-    loadAvailableSlots(),
-    loadNotifications("admin"),
-    loadModuleLibrary(),
-  ]);
-  renderStudentList();
-  renderOverview();
-  renderCalendar();
-
-  // Mount timezone widget
-  const tzEl = document.getElementById("adminTzWidget");
-  if (tzEl) {
-    tzEl.innerHTML = renderTimezoneWidget("adminTzBtn");
-    refreshIcons();
-  }
-
-  refreshIcons();
-}
-
-// Re-render all date-dependent views when timezone changes
-document.addEventListener("timezone-changed", () => {
-  renderOverview();
-  renderCalendar();
-  renderStudentDetail();
-  refreshIcons();
-});
-
-async function logout() {
-  if (await showConfirm("Logout", "Yakin ingin keluar?")) {
-    await sbClient.auth.signOut();
-    window.location.href = "index.html";
-  }
-}
-
-function switchAdminTab(tabName) {
+  // Yield to browser first so the click is registered visually,
+  // then do the heavier DOM updates.
   requestAnimationFrame(() => {
     document
       .querySelectorAll(".tab-btn")
@@ -97,1622 +83,992 @@ function switchAdminTab(tabName) {
       .forEach((panel) =>
         panel.classList.toggle("active", panel.id === `tab-${tabName}`),
       );
-
-    if (tabName === "calendar" && calendar) {
-      setTimeout(() => calendar.render(), 50);
-    }
   });
 }
 
-function statusLabel(status) {
-  const labels = {
-    upcoming: ["Akan Datang", "status-info"],
-    completed: ["Selesai", "status-success"],
-    cancelled: ["Dibatalkan", "status-danger"],
-    pending: ["Pending", "status-warning"],
-    attended: ["Hadir", "status-success"],
-    missed: ["Tidak Hadir", "status-danger"],
-    rescheduled: ["Reschedule", "status-info"],
-    approved: ["Disetujui", "status-success"],
-    rejected: ["Ditolak", "status-danger"],
-  };
-  return labels[status] || [status || "-", "status-info"];
+// =========================================
+// MATERIALS ACCESS GATE
+// =========================================
+async function checkMaterialsAccess() {
+  const { data, error } = await sbClient
+    .from("schedules")
+    .select("id")
+    .eq("student_id", currentProfile.id)
+    .eq("status", "completed")
+    .limit(1);
+
+  hasCompletedSession = !error && Array.isArray(data) && data.length > 0;
+  updateMaterialsTabUI();
 }
 
-function pill(status) {
-  const [text, className] = statusLabel(status);
-  return `<span class="status-pill ${className}">${esc(text)}</span>`;
-}
-
-// --- STUDENTS ---
-async function loadStudents() {
-  const data = await apiHandler.handle(
-    sbClient
-      .from("profiles")
-      .select("*")
-      .eq("role", "student")
-      .order("full_name"),
+function updateMaterialsTabUI() {
+  const materialsBtn = document.querySelector('.tab-btn[data-tab="materials"]');
+  const lockedPlaceholder = document.getElementById(
+    "materialsLockedPlaceholder",
   );
-  if (!data) return;
+  const materialsContent = document.getElementById("materialsContent");
 
-  allStudents = data;
-  document.getElementById("totalStudents").textContent = data.length;
-
-  if (
-    !selectedStudentId ||
-    !data.some((student) => student.id === selectedStudentId)
-  ) {
-    selectedStudentId = data[0]?.id || "";
-  }
-
-  const studentSelect = document.getElementById("studentSelect");
-  const scheduleStudent = document.getElementById("scheduleStudent");
-  const notifRecipient = document.getElementById("notifRecipient");
-
-  studentSelect.innerHTML = '<option value="">Pilih siswa</option>';
-  scheduleStudent.innerHTML = '<option value="">Pilih siswa</option>';
-  notifRecipient.innerHTML = '<option value="all">Semua siswa</option>';
-
-  const optionsHtml = data
-    .map((student) => `<option value="${student.id}">${esc(student.full_name)}</option>`)
-    .join("");
-  studentSelect.innerHTML += optionsHtml;
-  scheduleStudent.innerHTML += optionsHtml;
-  notifRecipient.innerHTML += optionsHtml;
-
-  renderStudentList();
-  if (!selectedStudentId && data[0]) selectedStudentId = data[0].id;
-  renderStudentDetail();
-}
-
-function getPriorityStudents() {
-  const prioritized = allStudents
-    .map((student) => {
-      const studentSchedules = allSchedules.filter(
-        (schedule) => schedule.student_id === student.id,
-      );
-      const pendingRequests = allRequests.filter(
-        (request) =>
-          request.student_id === student.id && request.status === "pending",
-      ).length;
-      const missedAttendances = studentSchedules.filter(
-        (schedule) => schedule.attendance_status === "missed",
-      ).length;
-      const upcomingSchedules = studentSchedules.filter(
-        (schedule) => schedule.status === "upcoming",
-      ).length;
-
-      return {
-        student,
-        pendingRequests,
-        missedAttendances,
-        upcomingSchedules,
-      };
-    })
-    .filter(
-      ({ pendingRequests, missedAttendances, upcomingSchedules }) =>
-        pendingRequests > 0 || missedAttendances > 0 || upcomingSchedules === 0,
-    )
-    .sort((a, b) => {
-      if (b.pendingRequests !== a.pendingRequests) {
-        return b.pendingRequests - a.pendingRequests;
-      }
-      if (b.missedAttendances !== a.missedAttendances) {
-        return b.missedAttendances - a.missedAttendances;
-      }
-      if (b.upcomingSchedules !== a.upcomingSchedules) {
-        return b.upcomingSchedules - a.upcomingSchedules;
-      }
-      return a.student.full_name.localeCompare(b.student.full_name);
-    });
-
-  return prioritized.length ? prioritized.slice(0, 4) : allStudents.slice(0, 4);
-}
-
-// Student list rendering
-function renderStudentList() {
-  const list = document.getElementById("studentList");
-  const mini = document.getElementById("studentMiniList");
-
-  const html = allStudents.length
-    ? allStudents
-        .map(
-          (s) => `
-          <div class="item-row clickable ${s.id === selectedStudentId ? "active" : ""}" onclick="selectStudent('${s.id}')">
-            <div class="flex justify-between items-center gap-3">
-              <div>
-                <h3 class="font-bold text-primary">${esc(s.full_name)}</h3>
-                <p class="text-secondary text-sm mt-1">${esc(s.id.slice(0, 8))}</p>
-              </div>
-              ${icon("chevron-right")}
-            </div>
-          </div>`,
-        )
-        .join("")
-    : `<div class="empty-state">${icon("users", "icon-lg")}<h3>Belum ada siswa</h3></div>`;
-
-  list.innerHTML = html;
-  requestAnimationFrame(() => refreshIcons());
-
-  const priorityStudents = getPriorityStudents();
-  mini.innerHTML = priorityStudents.length
-    ? priorityStudents
-        .map(
-          ({
-            student,
-            pendingRequests,
-            missedAttendances,
-            upcomingSchedules,
-          }) => {
-            const summary = pendingRequests
-              ? `${pendingRequests} request tertunda`
-              : missedAttendances
-                ? `${missedAttendances} belum hadir`
-                : `${upcomingSchedules} jadwal mendatang`;
-
-            return `
-          <div class="item-row clickable" onclick="selectStudent('${student.id}'); switchAdminTab('students')">
-            <div class="flex justify-between items-center gap-3">
-              <div>
-                <h3 class="font-bold text-primary">${esc(student.full_name)}</h3>
-                <p class="text-secondary text-sm mt-1">${esc(summary)}</p>
-              </div>
-              <div class="flex items-center gap-2">
-                ${pendingRequests ? pill("pending") : missedAttendances ? pill("missed") : ""}
-                ${icon("chevron-right")}
-              </div>
-            </div>
-          </div>`;
-          },
-        )
-        .join("")
-    : `<div class="empty-state">${icon("users", "icon-lg")}<h3>Belum ada siswa</h3></div>`;
-  requestAnimationFrame(() => refreshIcons());
-}
-
-function selectStudent(studentId) {
-  selectedStudentId = studentId;
-  document.getElementById("studentSelect").value = studentId;
-  renderStudentList();
-  renderStudentDetail();
-  loadLearningPath();
-}
-
-function renderStudentDetail() {
-  const detail = document.getElementById("studentDetail");
-  const student = allStudents.find((s) => s.id === selectedStudentId);
-
-  if (!student) {
-    detail.innerHTML = `<div class="empty-state">${icon("user-round", "icon-lg")}<h3>Pilih siswa</h3></div>`;
-    refreshIcons();
-    return;
-  }
-
-  const studentSchedules = allSchedules.filter(
-    (s) => s.student_id === student.id,
-  );
-  const next = studentSchedules
-    .filter(
-      (s) => s.status === "upcoming" && new Date(s.start_time) >= new Date(),
-    )
-    .sort((a, b) => new Date(a.start_time) - new Date(b.start_time))[0];
-  const completed = studentSchedules.filter(
-    (s) => s.status === "completed",
-  ).length;
-  const missed = studentSchedules.filter(
-    (s) => s.attendance_status === "missed",
-  ).length;
-
-  detail.innerHTML = `
-    <div class="item-row">
-      <h3 class="font-bold text-primary text-lg">${esc(student.full_name)}</h3>
-      <div class="meta-line">
-        <span>${icon("book-check")} ${completed} selesai</span>
-        <span>${icon("calendar-clock")} ${studentSchedules.length} jadwal</span>
-        <span>${icon("circle-x")} ${missed} tidak hadir</span>
-      </div>
-    </div>
-    <div class="divider"></div>
-    <h3 class="font-bold text-primary mb-3">Jadwal berikutnya</h3>
-    ${
-      next
-        ? renderScheduleCard(next, { compact: true })
-        : `<div class="empty-state">${icon("calendar-x", "icon-lg")}<h3>Belum ada jadwal</h3></div>`
+  if (hasCompletedSession) {
+    // Unlocked — show content, hide lock screen
+    if (materialsBtn) {
+      materialsBtn.classList.remove("tab-locked");
+      materialsBtn.title = "";
     }
-    <div class="divider"></div>
-    <button onclick="openScheduleModal(null, '${student.id}')" class="btn btn-primary px-4 py-3 rounded-lg font-semibold w-full">
-      ${icon("plus")} Tambah jadwal untuk siswa ini
-    </button>
-  `;
-  refreshIcons();
+    if (lockedPlaceholder) lockedPlaceholder.hidden = true;
+    if (materialsContent) materialsContent.hidden = false;
+  } else {
+    // Locked — show lock screen, hide content
+    if (materialsBtn) {
+      materialsBtn.classList.add("tab-locked");
+      materialsBtn.title =
+        "Selesaikan minimal 1 pertemuan untuk membuka Materi";
+    }
+    if (lockedPlaceholder) lockedPlaceholder.hidden = false;
+    if (materialsContent) materialsContent.hidden = true;
+    // If currently on materials tab, kick back to home
+    const activePanel = document.querySelector(".tab-panel.active");
+    if (activePanel && activePanel.id === "tab-materials") {
+      switchStudentTab("home");
+    }
+  }
 }
 
-async function addStudent() {
-  const name = document.getElementById("newName").value.trim();
-  let username = document.getElementById("newUsername").value.trim();
-  const mpin = document.getElementById("newMpin").value.trim();
-  const btn = document.getElementById("addStudentBtn");
-
-  if (!validators.required(name) || !validators.required(username)) {
-    toast("Nama dan username wajib diisi", "error");
-    return;
-  }
-  if (!validators.mpin(mpin)) {
-    toast("MPIN harus 6 digit angka", "error");
+async function checkAuth() {
+  const user = await initUser();
+  if (!user) {
+    window.location.href = "index.html";
     return;
   }
 
-  if (validators.phone(username)) username += "@kelas-coding.com";
-
-  btn.disabled = true;
-  btn.innerHTML = '<span class="spinner"></span> Mendaftarkan...';
-
-  const { data, error } = await sbClient.auth.signUp({
-    email: username,
-    password: mpin,
-    options: { data: { full_name: name } },
-  });
+  const { data: profile, error } = await sbClient
+    .from("profiles")
+    .select("*")
+    .eq("id", user.id)
+    .maybeSingle();
 
   if (error) {
-    btn.disabled = false;
-    btn.innerHTML = `${icon("user-plus")} Tambah Siswa`;
-    refreshIcons();
-    toast(error.message, "error");
+    toast("Gagal memuat profil: " + error.message, "error");
     return;
   }
 
-  if (!data.user) {
-    btn.disabled = false;
-    btn.innerHTML = `${icon("user-plus")} Tambah Siswa`;
-    refreshIcons();
-    toast("Pendaftaran berhasil! Minta siswa cek email konfirmasi.", "success");
-    document.getElementById("newName").value = "";
-    document.getElementById("newUsername").value = "";
-    document.getElementById("newMpin").value = "";
+  if (!profile) {
+    toast("Profile tidak ditemukan!", "error");
     return;
   }
 
-  // 🔥 WAJIB TAMBAH INI
-  await sbClient.from("profiles").insert([
-    {
-      id: data.user.id,
-      full_name: name,
-      role: "student",
-    },
+  currentProfile = profile;
+
+  if (profile.role !== "student") {
+    window.location.href = "admin.html";
+    return;
+  }
+
+  // Tampilkan nama siswa
+  const nameEl = document.getElementById("studentName");
+  if (nameEl) nameEl.textContent = `Halo, ${profile.full_name}!`;
+
+  // Load semua data
+  await Promise.all([
+    loadUpcomingSchedules(),
+    loadSidebarData(),
+    loadHistory(),
+    loadNotifications("student"),
+    loadRequests(),
   ]);
 
-  btn.disabled = false;
-  btn.innerHTML = `${icon("user-plus")} Tambah Siswa`;
-  refreshIcons();
-
-  toast(`${name} berhasil didaftarkan`, "success");
-  document.getElementById("newName").value = "";
-  document.getElementById("newUsername").value = "";
-  document.getElementById("newMpin").value = "";
-  selectedStudentId = data.user.id;
-  await loadStudents();
-  const freshlyCreatedStudent = document.getElementById("studentSelect");
-  if (freshlyCreatedStudent) {
-    freshlyCreatedStudent.value = selectedStudentId;
+  // Check completed sessions FIRST, sync unlocks, then load materials
+  await checkMaterialsAccess();
+  await syncUnlockedTopicsForStudent(currentProfile.id);
+  if (hasCompletedSession) {
+    await loadLearningPath();
   }
-  renderStudentList();
-  renderStudentDetail();
-  loadLearningPath();
-}
 
-// --- SCHEDULES + CALENDAR ---
-async function loadSchedules() {
-  const data = await apiHandler.handle(
-    sbClient
-      .from("schedules")
-      .select("*, profiles:student_id(full_name)")
-      .order("start_time", { ascending: true }),
-  );
-  if (!data) return;
-  allSchedules = data;
-  renderOverview();
-  renderCalendar();
-}
-
-function renderOverview() {
-  const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const tomorrow = new Date(today);
-  tomorrow.setDate(tomorrow.getDate() + 1);
-
-  const todaySchedules = allSchedules.filter((s) => {
-    const date = new Date(s.start_time);
-    return date >= today && date < tomorrow;
-  });
-
-  document.getElementById("todaySchedules").textContent = todaySchedules.length;
-  document.getElementById("pendingRequests").textContent = allRequests.filter(
-    (r) => r.status === "pending",
-  ).length;
-
-  const list = document.getElementById("todayFocusList");
-  list.innerHTML = todaySchedules.length
-    ? todaySchedules
-        .map((s) => renderScheduleCard(s, { compact: true }))
-        .join("")
-    : `<div class="empty-state">${icon("calendar-x", "icon-lg")}<h3>Tidak ada kelas hari ini</h3></div>`;
-
-  renderStudentDetail();
-  refreshIcons();
-}
-
-function renderCalendar() {
-  const el = document.getElementById("calendar");
-  if (!el || !window.FullCalendar) return;
-
-  const events = [];
-
-  // Add student schedules
-  allSchedules.forEach((schedule) => {
-    events.push({
-      id: String(schedule.id),
-      title: schedule.profiles?.full_name || "Siswa",
-      start: schedule.start_time,
-      classNames: [`status-${schedule.status}`],
-    });
-  });
-
-  // Add available slots
-  allSlots.forEach((slot) => {
-    if (slot.status === "available") {
-      events.push({
-        id: `slot-${slot.id}`,
-        title: `[Slot Kosong]`,
-        start: slot.start_time,
-        color: "#10b981", // Beautiful emerald green
-        classNames: ["status-upcoming"],
-      });
+  // Auto-refresh setiap 30 detik
+  refreshInterval = setInterval(async () => {
+    await Promise.all([
+      loadUpcomingSchedules(),
+      loadSidebarData(),
+      loadHistory(),
+      loadNotifications("student"),
+      loadRequests(),
+    ]);
+    await checkMaterialsAccess();
+    await syncUnlockedTopicsForStudent(currentProfile.id);
+    if (hasCompletedSession) {
+      await loadLearningPath();
     }
-  });
+    updateJoinButton();
+  }, 30000);
+  // Mount timezone widget
+  const tzEl = document.getElementById("studentTzWidget");
+  if (tzEl) {
+    tzEl.innerHTML = renderTimezoneWidget("studentTzBtn");
+    refreshIcons();
+  }
+}
 
-  if (!calendar) {
-    calendar = new FullCalendar.Calendar(el, {
-      initialView: "dayGridMonth",
-      height: "auto",
-      selectable: true,
-      nowIndicator: true,
-      headerToolbar: {
-        left: "prev,next today",
-        center: "title",
-        right: "dayGridMonth,timeGridWeek,timeGridDay",
-      },
-      eventTimeFormat: {
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: false,
-      },
-      slotLabelFormat: {
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: false,
-      },
-      dateClick(info) {
-        openAvailableSlotModal(null, `${info.dateStr}T09:00`);
-      },
-      eventClick(info) {
-        editSchedule(info.event.id);
-      },
-      events,
-    });
-    calendar.render();
+// Re-render date-dependent views when timezone changes
+document.addEventListener("timezone-changed", () => {
+  if (typeof renderNextSchedule === "function") renderNextSchedule();
+  if (typeof renderCalendarMini === "function") renderCalendarMini();
+  if (typeof renderUpcomingList === "function") renderUpcomingList();
+  if (typeof renderHistory === "function") renderHistory();
+  refreshIcons();
+});
+
+document.addEventListener("DOMContentLoaded", checkAuth);
+
+// =========================================
+// LOGOUT
+// =========================================
+async function logout() {
+  const confirmed = await showConfirm(
+    "Logout",
+    "Apakah Anda yakin ingin keluar?",
+    "warning",
+  );
+  if (!confirmed) return;
+
+  if (refreshInterval) clearInterval(refreshInterval);
+  await sbClient.auth.signOut();
+  toast("Berhasil logout", "success");
+  window.location.href = "index.html";
+}
+
+// =========================================
+// UPCOMING SCHEDULES WITH DYNAMIC BUTTONS
+// =========================================
+
+// How many minutes after start until "Terlambat" kicks in
+const LATE_THRESHOLD_MIN   = 20;
+// How many hours after start until the card moves to Riwayat
+const ARCHIVE_THRESHOLD_HR = 5;
+
+async function loadUpcomingSchedules() {
+  const archiveCutoff = new Date(
+    Date.now() - ARCHIVE_THRESHOLD_HR * 60 * 60 * 1000,
+  ).toISOString();
+
+  // Fetch upcoming schedules whose start_time is still within the archive window
+  // (i.e. not yet 5 hours in the past) so we can still show them until they age out.
+  const { data: schedules, error } = await sbClient
+    .from("schedules")
+    .select("*")
+    .eq("student_id", currentProfile.id)
+    .eq("status", "upcoming")
+    .gte("start_time", archiveCutoff)          // ignore anything older than 5 h
+    .order("start_time", { ascending: true })
+    .limit(3);
+
+  if (error) {
+    console.error("Error loading schedules:", error);
     return;
   }
 
-  calendar.removeAllEvents();
-  events.forEach((event) => calendar.addEvent(event));
+  const now = new Date();
+
+  // Split into cards-that-should-be-archived vs visible
+  const toArchive = (schedules || []).filter((s) => {
+    const minutesSinceStart = (now - new Date(s.start_time)) / (1000 * 60);
+    return minutesSinceStart >= ARCHIVE_THRESHOLD_HR * 60;
+  });
+
+  // Auto-mark archived schedules as "completed" in DB (silently)
+  for (const s of toArchive) {
+    sbClient
+      .from("schedules")
+      .update({ status: "completed", attendance_status: "missed" })
+      .eq("id", s.id)
+      .then(({ error: err }) => {
+        if (err) console.error("Auto-archive error:", err);
+      });
+  }
+
+  // Only show cards that have NOT been archived yet
+  upcomingSchedules = (schedules || []).filter((s) => {
+    const minutesSinceStart = (now - new Date(s.start_time)) / (1000 * 60);
+    return minutesSinceStart < ARCHIVE_THRESHOLD_HR * 60;
+  });
+
+  nextScheduleData = upcomingSchedules[0] || null;
+  renderUpcomingSchedules();
+
+  // Reload history so freshly archived items appear there immediately
+  if (toArchive.length > 0) {
+    loadHistory();
+  }
 }
 
-function renderScheduleCard(schedule, options = {}) {
+// Backward-compatible name for any old inline/debug references.
+const loadNextSchedule = loadUpcomingSchedules;
+
+function renderUpcomingSchedules() {
+  const container = document.getElementById("nextSchedule");
+  if (!container) return;
+
+  if (!upcomingSchedules.length) {
+    container.innerHTML = `
+      <div class="empty-state">
+        <div class="icon"></div>
+        <h3>Tidak ada jadwal mendatang</h3>
+        <p>Anda akan melihat jadwal di sini setelah guru menambahkannya</p>
+        <button onclick="openRescheduleRequest()" class="btn btn-primary px-4 py-3 rounded-lg font-semibold mt-4">
+          Request jadwal
+        </button>
+      </div>`;
+    return;
+  }
+
+  container.innerHTML = `
+    <div class="schedule-card-grid">
+      ${upcomingSchedules
+        .map((schedule, index) => renderScheduleOverviewCard(schedule, index))
+        .join("")}
+    </div>`;
+
+  updateJoinButton();
+}
+
+const renderNextSchedule = renderUpcomingSchedules;
+
+function renderScheduleOverviewCard(schedule, index) {
+  const dateStr = formatDate.toIndonesian(schedule.start_time);
+  const relativeTime = formatDate.relative(schedule.start_time);
+
   return `
-    <div class="item-row">
-      <div class="flex justify-between items-start flex-wrap gap-3">
-        <div>
-          <h3 class="font-bold text-primary">${esc(schedule.title)}</h3>
-          <div class="meta-line">
-            <span>${icon("user-round")} ${esc(schedule.profiles?.full_name || "-")}</span>
-            <span>${icon("clock")} ${formatDate.toIndonesian(schedule.start_time)}</span>
-          </div>
-          <div class="meta-line">
-            ${pill(schedule.status)}
-            ${pill(schedule.attendance_status || "pending")}
-          </div>
-          ${schedule.teacher_note ? `<p class="text-secondary text-sm mt-2">${esc(schedule.teacher_note)}</p>` : ""}
+    <div class="glass card-hover p-6 student-schedule-card" id="scheduleCard-${schedule.id}">
+      <div>
+        <div class="schedule-card-topline">
+          <span>${index === 0 ? "Jadwal terdekat" : `Jadwal ${index + 1}`}</span>
+          <span>${escHtml(relativeTime)}</span>
         </div>
-        <div class="flex gap-2 flex-wrap">
-          ${
-            schedule.status === "upcoming"
-              ? `
-              <button onclick="markSchedule('${schedule.id}', 'completed')" class="btn btn-success px-3 py-2 rounded-lg text-sm">${icon("check")} Selesai</button>
-              <button onclick="markSchedule('${schedule.id}', 'cancelled')" class="btn btn-warning px-3 py-2 rounded-lg text-sm">${icon("ban")} Batal</button>`
-              : ""
-          }
-          <button onclick="editSchedule('${schedule.id}')" class="btn btn-primary px-3 py-2 rounded-lg text-sm">${icon("pencil")} Edit</button>
-          ${options.compact ? "" : `<button onclick="deleteSchedule('${schedule.id}')" class="btn btn-danger px-3 py-2 rounded-lg text-sm">${icon("trash-2")} Hapus</button>`}
-        </div>
+        <h3 class="text-2xl font-bold text-primary mb-2">${escHtml(schedule.title)}</h3>
+        <p class="text-secondary mb-4">${dateStr}</p>
+      </div>
+      <div class="schedule-card-actions">
+        <div id="joinButtonContainer-${schedule.id}"></div>
+        <button onclick="openRescheduleRequest('${schedule.id}')" class="btn glass px-4 py-3 rounded-lg font-semibold w-full">
+          Request reschedule
+        </button>
       </div>
     </div>`;
 }
 
-function toggleScheduleTypeFields() {
-  const type = document.getElementById("scheduleType").value;
-  const isSlot = type === "slot";
-  const isEditing = !!document.getElementById("editScheduleId").value;
+function updateJoinButton() {
+  const now = new Date();
 
-  document.getElementById("scheduleStudentGroup").style.display = isSlot
-    ? "none"
-    : "block";
-  document.getElementById("scheduleTitleGroup").style.display = isSlot
-    ? "none"
-    : "block";
-  document.getElementById("scheduleLinkGroup").style.display = isSlot
-    ? "none"
-    : "block";
-  document.getElementById("scheduleAttendanceGroup").style.display = isSlot
-    ? "none"
-    : "block";
-  document.getElementById("scheduleNoteGroup").style.display = isSlot
-    ? "none"
-    : "block";
-  document.getElementById("slotRepeatGroup").style.display =
-    isSlot && !isEditing ? "block" : "none";
-  document.getElementById("slotRepeatGroup").classList.toggle("hidden", !(isSlot && !isEditing));
-  
-  const scopeGroup = document.getElementById("slotEditScopeGroup");
-  if (scopeGroup) {
-    const showScope = isSlot && isEditing;
-    scopeGroup.style.display = showScope ? "block" : "none";
-    scopeGroup.classList.toggle("hidden", !showScope);
-  }
+  upcomingSchedules.forEach((schedule) => {
+    const container = document.getElementById(`joinButtonContainer-${schedule.id}`);
+    if (!container) return;
 
-  document.getElementById("scheduleModalTitle").textContent = isSlot
-    ? isEditing
-      ? "Edit Slot Kosong"
-      : "Slot Kosong Rutinan"
-    : isEditing
-      ? "Edit Sesi 1-on-1"
-      : "Sesi 1-on-1 Baru";
-}
+    const scheduleTime      = new Date(schedule.start_time);
+    const minutesUntilStart = (scheduleTime - now) / (1000 * 60);
+    const minutesSinceStart = -minutesUntilStart;
 
-function toggleSlotRepeatOptions() {
-  // Always shown now
-}
+    let html = "";
 
-function openClassScheduleModal(scheduleId = null, studentId = "", startTime = "") {
-  openScheduleModal(scheduleId, studentId, startTime, "class");
-}
+    if (minutesUntilStart > 10) {
+      // --- NOT YET: show countdown ---
+      const totalMin = Math.ceil(minutesUntilStart - 10); // minutes until the button activates
+      const h = Math.floor(totalMin / 60);
+      const m = totalMin % 60;
+      const timeLeft = h > 0 ? `${h} jam ${m} menit` : `${m} menit`;
+      html = `
+        <button disabled class="btn btn-disabled px-4 py-3 rounded-lg font-bold w-full">
+          Belum waktunya<br>
+          <span class="text-sm font-normal opacity-75">Aktif dalam ${timeLeft}</span>
+        </button>`;
 
-function openAvailableSlotModal(slotId = null, startTime = "") {
-  const id = slotId ? `slot-${slotId}` : null;
-  openScheduleModal(id, "", startTime, "slot");
-}
+    } else if (minutesSinceStart < LATE_THRESHOLD_MIN) {
+      // --- ACTIVE: within join window (−10 min → +20 min) ---
+      const statusText =
+        minutesUntilStart > 0
+          ? `Mulai dalam ${Math.ceil(minutesUntilStart)} menit`
+          : "Kelas sedang berlangsung";
+      html = `
+        <button onclick="joinMeetingById('${schedule.id}')"
+          class="btn btn-success px-4 py-3 rounded-lg font-bold w-full join-btn-active">
+          Masuk Kelas<br>
+          <span class="text-sm font-normal opacity-90">${statusText}</span>
+        </button>`;
 
-function openScheduleModal(
-  scheduleId = null,
-  studentId = "",
-  startTime = "",
-  scheduleType = null,
-) {
-  document.getElementById("editScheduleId").value = scheduleId || "";
-  document.getElementById("scheduleStudent").value = studentId || "";
-  document.getElementById("scheduleTitle").value = "";
-  document.getElementById("scheduleTime").value = startTime || "";
-  document.getElementById("scheduleLink").value = "";
-  document.getElementById("scheduleAttendance").value = "pending";
-  document.getElementById("scheduleNote").value = "";
-  
-  const repeatIntervalEl = document.getElementById("slotRepeatInterval");
-  if (repeatIntervalEl) repeatIntervalEl.value = "weekly";
-  
-  const repeatCountEl = document.getElementById("slotRepeatCount");
-  if (repeatCountEl) repeatCountEl.value = "4";
+    } else if (minutesSinceStart < ARCHIVE_THRESHOLD_HR * 60) {
+      // --- LATE: after 20 min, before 5-hour archive cutoff ---
+      html = `
+        <button disabled class="btn btn-late px-4 py-3 rounded-lg font-bold w-full">
+          Terlambat<br>
+          <span class="text-sm font-normal opacity-75">Waktu bergabung telah habis</span>
+        </button>`;
 
-  // Reset edit scope radio to 'single'
-  const singleRadio = document.querySelector('input[name="slotEditScope"][value="single"]');
-  if (singleRadio) singleRadio.checked = true;
-
-  const isEditing = !!scheduleId;
-  const btnDelete = document.getElementById("btnDeleteSchedule");
-  if (btnDelete) {
-    if (isEditing) {
-      btnDelete.classList.remove("hidden");
     } else {
-      btnDelete.classList.add("hidden");
+      // --- ARCHIVED: 5 hours passed — this branch rarely renders because
+      //     loadUpcomingSchedules already filters these out, but kept as safety net ---
+      html = `
+        <button disabled class="btn btn-disabled px-4 py-3 rounded-lg font-bold w-full">
+          Kelas selesai
+        </button>`;
     }
-  }
 
-  const typeSelector = document.getElementById("scheduleType");
-  if (scheduleType) {
-    typeSelector.value = scheduleType;
-  } else if (scheduleId && scheduleId.startsWith("slot-")) {
-    typeSelector.value = "slot";
+    container.innerHTML = html;
+  });
+}
+
+function joinMeeting(link) {
+  if (!link) {
+    toast("Link meeting belum tersedia", "error");
+    return;
+  }
+  window.open(link, "_blank");
+  toast("Membuka link meeting...", "success");
+}
+
+async function joinMeetingById(scheduleId) {
+  const schedule = upcomingSchedules.find(
+    (item) => String(item.id) === String(scheduleId),
+  );
+  if (!schedule) return;
+
+  // Open the meeting link first so the student isn't kept waiting
+  joinMeeting(schedule.meeting_link || "");
+
+  // Mark the session as completed + attended in the DB
+  const { error } = await sbClient
+    .from("schedules")
+    .update({ status: "completed", attendance_status: "attended" })
+    .eq("id", scheduleId);
+
+  if (error) {
+    console.error("Failed to mark attendance:", error);
+    // Non-fatal — the student is already in the meeting
   } else {
-    typeSelector.value = "class";
-  }
+    // Remove the completed card from the local list and re-render so
+    // the next schedule slides into position
+    upcomingSchedules = upcomingSchedules.filter(
+      (s) => String(s.id) !== String(scheduleId),
+    );
+    nextScheduleData = upcomingSchedules[0] || null;
+    renderUpcomingSchedules();
 
-  toggleScheduleTypeFields();
-  openModal("scheduleModal");
+    // Refresh sidebar stats and history
+    loadSidebarData();
+    loadHistory();
+    await checkMaterialsAccess();
+    // NEW: Unlock next topic based on completed class count
+    await syncUnlockedTopicsForStudent(currentProfile.id);
+    if (hasCompletedSession) await loadLearningPath();
+  }
 }
 
-async function saveSchedule() {
-  const id = document.getElementById("editScheduleId").value;
-  const type = document.getElementById("scheduleType").value;
-  const time = document.getElementById("scheduleTime").value;
+// escHtml and esc are provided by shared.js
 
-  if (!validators.required(time)) {
-    toast("Waktu wajib diisi", "error");
+// =========================================
+// SIDEBAR — load all schedules once
+// =========================================
+async function loadSidebarData() {
+  const { data, error } = await sbClient
+    .from("schedules")
+    .select("id, title, start_time, status")
+    .eq("student_id", currentProfile.id)
+    .order("start_time", { ascending: true });
+
+  if (error) {
+    console.error("Error loading sidebar data:", error);
     return;
   }
 
-  const formattedTime = new Date(time).toISOString();
+  allSchedulesForSidebar = data || [];
+  renderMiniCalendar();
+  renderPackageProgress();
+}
 
-  // If slot kosong (available slot)
-  if (type === "slot") {
-    if (id && id.startsWith("slot-")) {
-      const slotUuid = id.substring(5); // remove 'slot-'
-      const scope = document.querySelector('input[name="slotEditScope"]:checked')?.value || "single";
-      
-      if (scope === "future") {
-        const originalSlot = allSlots.find((s) => s.id === slotUuid);
-        if (originalSlot) {
-            const origDate = new Date(originalSlot.start_time);
-            const origDay = origDate.getDay();
-            const origHour = origDate.getHours();
-            const origMin = origDate.getMinutes();
-            
-            const slotsToUpdate = allSlots.filter((s) => {
-                const d = new Date(s.start_time);
-                return s.status === 'available' && 
-                       d >= origDate &&
-                       d.getDay() === origDay &&
-                       d.getHours() === origHour &&
-                       d.getMinutes() === origMin;
-            });
-            
-            const newDate = new Date(formattedTime);
-            const diffMs = newDate.getTime() - origDate.getTime();
-            
-            const updatePromises = slotsToUpdate.map((slot) => {
-               const slotDate = new Date(slot.start_time);
-               const updatedSlotTime = new Date(slotDate.getTime() + diffMs);
-               
-               return sbClient
-                 .from("available_slots")
-                 .update({ start_time: updatedSlotTime.toISOString(), status: "available" })
-                 .eq("id", slot.id);
-            });
-            
-            await Promise.all(updatePromises);
-            toast("Semua slot rutinan berhasil diperbarui", "success");
-            closeModal("scheduleModal");
-            await Promise.all([loadSchedules(), loadAvailableSlots()]);
-            renderCalendar();
-            return;
-        }
+// =========================================
+// MINI CALENDAR
+// =========================================
+function calNav(delta) {
+  calViewDate = new Date(calViewDate.getFullYear(), calViewDate.getMonth() + delta, 1);
+  renderMiniCalendar();
+}
+
+function renderMiniCalendar() {
+  const label = document.getElementById("calMonthLabel");
+  const cal = document.getElementById("miniCal");
+  if (!cal) return;
+
+  const year = calViewDate.getFullYear();
+  const month = calViewDate.getMonth();
+
+  if (label) {
+    label.textContent = calViewDate.toLocaleDateString("id-ID", { month: "long", year: "numeric" });
+  }
+
+  // Build a set of dates that have sessions, keyed by "YYYY-MM-DD" → status
+  const sessionMap = {};
+  allSchedulesForSidebar.forEach((s) => {
+    const d = new Date(s.start_time);
+    if (d.getFullYear() === year && d.getMonth() === month) {
+      const key = `${year}-${String(month + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      // Priority: upcoming > completed > cancelled
+      if (!sessionMap[key] || s.status === "upcoming") {
+        sessionMap[key] = s.status;
       }
+    }
+  });
 
-      await apiHandler.handle(
-        sbClient
-          .from("available_slots")
-          .update({ start_time: formattedTime, status: "available" })
-          .eq("id", slotUuid),
-        async () => {
-          toast("Slot kosong berhasil diperbarui", "success");
-          closeModal("scheduleModal");
-          await Promise.all([loadSchedules(), loadAvailableSlots()]);
-          renderCalendar();
-        },
-      );
-      return;
+  const firstDay = new Date(year, month, 1).getDay(); // 0=Sun
+  // Convert to Mon-start (0=Mon … 6=Sun)
+  const startOffset = (firstDay + 6) % 7;
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const today = new Date();
+  const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+
+  const dayNames = ["Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min"];
+
+  let html = `<div class="mini-cal-grid">`;
+
+  // Day headers
+  dayNames.forEach((d) => {
+    html += `<div class="mini-cal-hdr">${d}</div>`;
+  });
+
+  // Empty cells before first day
+  for (let i = 0; i < startOffset; i++) {
+    html += `<div class="mini-cal-day empty"></div>`;
+  }
+
+  // Days
+  for (let d = 1; d <= daysInMonth; d++) {
+    const key = `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+    const status = sessionMap[key];
+    const isToday = key === todayKey;
+
+    let dotHtml = "";
+    if (status === "upcoming") {
+      dotHtml = `<span class="cal-dot cal-dot-upcoming"></span>`;
+    } else if (status === "completed") {
+      dotHtml = `<span class="cal-dot cal-dot-completed"></span>`;
+    } else if (status === "cancelled") {
+      dotHtml = `<span class="cal-dot cal-dot-cancelled"></span>`;
     }
 
-    const repeatInterval = "weekly";
-    const repeatCount = 52;
-
-    const intervalDays = 7;
-    const slotRows = Array.from({ length: repeatCount }, (_, index) => {
-      const slotTime = new Date(time);
-      slotTime.setDate(slotTime.getDate() + index * intervalDays);
-      return {
-        start_time: slotTime.toISOString(),
-        status: "available",
-      };
-    });
-
-    await apiHandler.handle(
-      sbClient.from("available_slots").insert(slotRows),
-      async () => {
-        toast(
-          repeatCount === 1
-            ? "Slot kosong berhasil dibuat"
-            : `${repeatCount} slot kosong berhasil dibuat`,
-          "success",
-        );
-        closeModal("scheduleModal");
-        await Promise.all([loadSchedules(), loadAvailableSlots()]);
-        renderCalendar();
-      },
-    );
-    return;
-  }
-
-  // Otherwise, standard student class schedule
-  const studentId = document.getElementById("scheduleStudent").value;
-  const title = document.getElementById("scheduleTitle").value.trim();
-  const link = document.getElementById("scheduleLink").value.trim();
-  const attendance = document.getElementById("scheduleAttendance").value;
-  const note = document.getElementById("scheduleNote").value.trim();
-
-  if (
-    !validators.required(studentId) ||
-    !validators.required(title) ||
-    !validators.required(link)
-  ) {
-    toast(
-      "Siswa, judul, dan link Zoom/Meet wajib diisi untuk jadwal kelas",
-      "error",
-    );
-    return;
-  }
-
-  const scheduleData = {
-    student_id: studentId,
-    title,
-    start_time: formattedTime,
-    meeting_link: link,
-    attendance_status: attendance,
-    teacher_note: note || null,
-  };
-
-  if (id && !id.startsWith("slot-")) {
-    await apiHandler.handle(
-      sbClient.from("schedules").update(scheduleData).eq("id", id),
-      async () => {
-        toast("Jadwal diupdate", "success");
-        closeModal("scheduleModal");
-        await loadSchedules();
-      },
-    );
-    return;
-  }
-
-  const inserted = await apiHandler.handle(
-    sbClient.from("schedules").insert([scheduleData]).select(),
-    async () => {
-      // Delete any available slot at this time since it is now booked as a class
-      await sbClient
-        .from("available_slots")
-        .delete()
-        .eq("start_time", formattedTime);
-
-      toast("Jadwal dibuat", "success");
-      closeModal("scheduleModal");
-      await Promise.all([loadSchedules(), loadAvailableSlots()]);
-      renderCalendar();
-    },
-  );
-
-  if (inserted?.[0]) {
-    await sendNotificationToStudent(
-      studentId,
-      "Jadwal kelas baru",
-      `Kelas "${title}" dijadwalkan pada ${formatDate.toIndonesian(time)}`,
-    );
-  }
-}
-
-async function editSchedule(id) {
-  if (id && id.startsWith("slot-")) {
-    const slotUuid = id.substring(5);
-    const slot = allSlots.find((s) => s.id === slotUuid);
-    if (!slot) return;
-    openScheduleModal(id, "", formatDate.toDateTimeLocal(slot.start_time), "slot");
-    return;
-  }
-
-  const data = await apiHandler.handle(
-    sbClient.from("schedules").select("*").eq("id", id).single(),
-  );
-  if (!data) return;
-
-  openScheduleModal(
-    data.id,
-    data.student_id,
-    formatDate.toDateTimeLocal(data.start_time),
-  );
-
-  document.getElementById("editScheduleId").value = data.id;
-  document.getElementById("scheduleStudent").value = data.student_id;
-  document.getElementById("scheduleTitle").value = data.title;
-  document.getElementById("scheduleTime").value = formatDate.toDateTimeLocal(
-    data.start_time,
-  );
-  document.getElementById("scheduleLink").value = data.meeting_link;
-  document.getElementById("scheduleAttendance").value =
-    data.attendance_status || "pending";
-  document.getElementById("scheduleNote").value = data.teacher_note || "";
-}
-
-async function deleteSchedule(id) {
-  if (id && id.startsWith("slot-")) {
-    const slotUuid = id.substring(5);
-    const scope = document.querySelector('input[name="slotEditScope"]:checked')?.value || "single";
-    
-    if (scope === "future") {
-      if (await showConfirm("Hapus Rutinan", "Yakin hapus slot ini dan SEMUA rutinan setelahnya?", "danger")) {
-        const originalSlot = allSlots.find(s => s.id === slotUuid);
-        if (originalSlot) {
-            const origDate = new Date(originalSlot.start_time);
-            const origDay = origDate.getDay();
-            const origHour = origDate.getHours();
-            const origMin = origDate.getMinutes();
-            
-            const slotsToDelete = allSlots.filter(s => {
-                const d = new Date(s.start_time);
-                return s.status === 'available' && 
-                       d >= origDate &&
-                       d.getDay() === origDay &&
-                       d.getHours() === origHour &&
-                       d.getMinutes() === origMin;
-            });
-            
-            const idsToDelete = slotsToDelete.map(s => s.id);
-            
-            await apiHandler.handle(
-                sbClient.from("available_slots").delete().in('id', idsToDelete),
-                async () => {
-                    toast(`${idsToDelete.length} slot dihapus`, "success");
-                    await Promise.all([loadSchedules(), loadAvailableSlots()]);
-                    renderCalendar();
-                    closeModal("scheduleModal");
-                }
-            );
-        }
-      }
-      return;
-    }
-
-    if (
-      await showConfirm(
-        "Hapus Slot Kosong",
-        "Yakin hapus slot kosong ini?",
-        "danger",
-      )
-    ) {
-      await apiHandler.handle(
-        sbClient.from("available_slots").delete().eq("id", slotUuid),
-        async () => {
-          toast("Slot kosong dihapus", "success");
-          await Promise.all([loadSchedules(), loadAvailableSlots()]);
-          renderCalendar();
-          closeModal("scheduleModal");
-        },
-      );
-    }
-    return;
-  }
-
-  if (await showConfirm("Hapus Jadwal", "Yakin hapus jadwal ini?", "danger")) {
-    await apiHandler.handle(
-      sbClient.from("schedules").delete().eq("id", id),
-      async () => {
-        toast("Jadwal dihapus", "success");
-        await loadSchedules();
-      },
-    );
-  }
-}
-
-async function deleteCurrentScheduleOrSlot() {
-  const id = document.getElementById("editScheduleId").value;
-  if (!id) return;
-  await deleteSchedule(id);
-  closeModal("scheduleModal");
-}
-
-async function markSchedule(id, status) {
-  const attendance = status === "completed" ? "attended" : "pending";
-  await apiHandler.handle(
-    sbClient
-      .from("schedules")
-      .update({ status, attendance_status: attendance })
-      .eq("id", id),
-    async () => {
-      toast("Status jadwal diperbarui", "success");
-      await loadSchedules();
-    },
-  );
-}
-
-// Backward-compatible names for existing inline references.
-const markAsCompleted = (id) => markSchedule(id, "completed");
-const markAsCancelled = (id) => markSchedule(id, "cancelled");
-
-
-// =============================================================
-// --- MODULE MANAGEMENT (Admin) ---
-// =============================================================
-
-let allModules = []; // cached module library
-
-async function loadModuleLibrary() {
-  const data = await apiHandler.handle(
-    sbClient.from('modules').select('*, topics(id, title, order_index)').order('created_at', { ascending: true }),
-  );
-  if (data === null) return;
-  allModules = data;
-
-  const list = document.getElementById('moduleLibraryList');
-  if (!list) return;
-
-  if (!allModules.length) {
-    list.innerHTML = `<div class="empty-state">${icon('book-open', 'icon-lg')}<h3>Belum ada modul</h3><p>Klik "Buat Modul" untuk memulai</p></div>`;
-    refreshIcons();
-    return;
-  }
-
-  list.innerHTML = allModules.map(m => {
-    const topicCount = m.topics?.length || 0;
-    const topicList = (m.topics || [])
-      .sort((a, b) => a.order_index - b.order_index)
-      .map(t => `
-        <div class="flex justify-between items-center py-1 px-2 rounded" style="background:var(--glass-bg)">
-          <span class="text-sm text-secondary">${esc(t.title)}</span>
-          <button onclick="openQuizModal('topic_quiz','${t.id}','${esc(t.title)}')" class="btn glass px-2 py-1 rounded text-xs">
-            ${icon('help-circle')} Kuis
-          </button>
-        </div>`).join('');
-
-    return `
-      <div class="item-row">
-        <div class="flex justify-between items-start gap-3 flex-wrap">
-          <div style="flex:1;min-width:0">
-            <h3 class="font-bold text-primary">${esc(m.title)}</h3>
-            ${m.description ? `<p class="text-secondary text-sm mt-1">${esc(m.description)}</p>` : ''}
-            <div class="meta-line mt-2">
-              <span>${icon('layers')} ${topicCount}/12 topik</span>
-              ${topicCount >= 12 ? `<span class="text-success">${icon('check-circle')} Lengkap</span>` : `<span class="text-warning">${icon('alert-circle')} Belum lengkap</span>`}
-            </div>
-          </div>
-          <div class="flex gap-2 flex-wrap">
-            <button onclick="openQuizModal('module_exam','${m.id}','${esc(m.title)} — Ujian')" class="btn btn-warning px-3 py-2 rounded-lg text-sm">
-              ${icon('file-check')} Ujian
-            </button>
-            <button onclick="deleteModuleById('${m.id}')" class="btn btn-danger px-3 py-2 rounded-lg text-sm">
-              ${icon('trash-2')} Hapus
-            </button>
-          </div>
-        </div>
-        ${topicList ? `<div class="mt-3 space-y-1">${topicList}</div>` : ''}
+    html += `
+      <div class="mini-cal-day${isToday ? " cal-today" : ""}${status ? " has-session" : ""}">
+        <span class="cal-num">${d}</span>
+        ${dotHtml}
       </div>`;
-  }).join('');
-  refreshIcons();
-}
-
-function openModuleModal() {
-  document.getElementById('editModuleId').value = '';
-  document.getElementById('moduleName').value = '';
-  document.getElementById('moduleDescription').value = '';
-  const topicContainer = document.getElementById('topicInputs');
-  if (topicContainer) topicContainer.innerHTML = '';
-  // Pre-populate 12 blank topic rows
-  for (let i = 0; i < 12; i++) addTopicField();
-  openModal('moduleModal');
-  refreshIcons();
-}
-
-function addTopicField() {
-  const container = document.getElementById('topicInputs');
-  if (!container) return;
-  const current = container.querySelectorAll('.topic-group').length;
-  if (current >= 12) { toast('Maksimal 12 topik per modul', 'error'); return; }
-  const idx = current + 1;
-  const div = document.createElement('div');
-  div.className = 'topic-group flex gap-2 items-center';
-  div.innerHTML = `
-    <span class="text-secondary text-sm font-bold" style="min-width:22px">${idx}.</span>
-    <input class="topic-title input-field flex-1 px-3 py-2 rounded-lg text-sm" placeholder="Judul Topik ${idx}" />
-    <input class="topic-url input-field flex-1 px-3 py-2 rounded-lg text-sm" placeholder="URL Materi (opsional)" />
-    <button type="button" onclick="this.closest('.topic-group').remove()" class="btn btn-danger px-2 py-2 rounded-lg text-xs">${icon('x')}</button>
-  `;
-  container.appendChild(div);
-  refreshIcons();
-}
-
-async function saveModule() {
-  const title = document.getElementById('moduleName').value.trim();
-  const description = document.getElementById('moduleDescription').value.trim();
-  if (!title) { toast('Nama modul wajib diisi', 'error'); return; }
-
-  const topicGroups = document.querySelectorAll('#topicInputs .topic-group');
-  const topics = [];
-  topicGroups.forEach((group, idx) => {
-    const tTitle = group.querySelector('.topic-title')?.value.trim();
-    const tUrl = group.querySelector('.topic-url')?.value.trim();
-    if (tTitle) topics.push({ title: tTitle, content_url: tUrl || null, order_index: idx + 1 });
-  });
-
-  if (topics.length === 0) { toast('Tambahkan minimal 1 topik', 'error'); return; }
-  if (topics.length > 12) { toast('Maksimal 12 topik per modul', 'error'); return; }
-
-  const btn = document.getElementById('saveModuleBtn');
-  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Menyimpan...'; }
-
-  try {
-    const { data: modData, error: modError } = await sbClient
-      .from('modules')
-      .insert([{ title, description: description || null }])
-      .select();
-    if (modError) throw modError;
-    const newModule = modData[0];
-
-    const topicInserts = topics.map(t => ({ module_id: newModule.id, ...t }));
-    const { error: topicError } = await sbClient.from('topics').insert(topicInserts);
-    if (topicError) throw topicError;
-
-    toast('Modul berhasil dibuat! Tambahkan kuis untuk setiap topik.', 'success');
-    closeModal('moduleModal');
-    await loadModuleLibrary();
-  } catch (e) {
-    console.error(e);
-    toast(e.message || 'Gagal menyimpan modul', 'error');
-  } finally {
-    if (btn) { btn.disabled = false; btn.innerHTML = `${icon('save')} Simpan Modul`; refreshIcons(); }
-  }
-}
-
-async function deleteModuleById(moduleId) {
-  if (await showConfirm('Hapus Modul', 'Yakin hapus modul ini beserta semua topik dan kuisnya?', 'danger')) {
-    await apiHandler.handle(
-      sbClient.from('modules').delete().eq('id', moduleId),
-      async () => { toast('Modul dihapus', 'success'); await loadModuleLibrary(); },
-    );
-  }
-}
-
-// =============================================================
-// --- QUIZ & EXAM MANAGEMENT ---
-// =============================================================
-
-function openQuizModal(parentType, parentId, label) {
-  document.getElementById('quizParentType').value = parentType;
-  document.getElementById('quizParentId').value = parentId;
-  document.getElementById('quizModalTitle').textContent =
-    parentType === 'module_exam' ? `Soal Ujian: ${label}` : `Kuis Topik: ${label}`;
-  document.getElementById('quizModalSubtitle').textContent =
-    parentType === 'module_exam'
-      ? 'Pertanyaan ujian modul. Ujian terbuka setelah siswa menyelesaikan 12 topik.'
-      : 'Pertanyaan kuis untuk topik ini. Siswa harus mengerjakan kuis untuk menyelesaikan topik.';
-  document.getElementById('quizQuestions').innerHTML = '';
-  addQuestionField(); // start with one blank question
-  openModal('quizModal');
-  refreshIcons();
-}
-
-function addQuestionField() {
-  const container = document.getElementById('quizQuestions');
-  if (!container) return;
-  const qNum = container.querySelectorAll('.question-block').length + 1;
-  const div = document.createElement('div');
-  div.className = 'question-block item-row';
-  div.innerHTML = `
-    <div class="flex justify-between items-center mb-2">
-      <span class="font-bold text-primary text-sm">Soal ${qNum}</span>
-      <button type="button" onclick="this.closest('.question-block').remove()" class="btn btn-danger px-2 py-1 rounded text-xs">${icon('trash-2')} Hapus</button>
-    </div>
-    <input class="q-text input-field w-full px-3 py-2 rounded-lg text-sm mb-2" placeholder="Teks pertanyaan..." />
-    <div class="space-y-1 q-options">
-      ${['A','B','C','D'].map((letter, i) => `
-        <div class="flex items-center gap-2">
-          <input type="radio" name="correct_q${qNum}" value="${i}" class="q-correct" />
-          <span class="text-secondary text-sm font-bold">${letter}.</span>
-          <input class="opt-input input-field flex-1 px-3 py-2 rounded-lg text-sm" placeholder="Jawaban ${letter}" />
-        </div>`).join('')}
-    </div>
-    <p class="text-secondary text-xs mt-2">${icon('info')} Pilih radio button di kiri untuk menandai jawaban benar</p>
-  `;
-  container.appendChild(div);
-  refreshIcons();
-}
-
-async function saveQuizQuestions() {
-  const parentType = document.getElementById('quizParentType').value;
-  const parentId = document.getElementById('quizParentId').value;
-  const blocks = document.querySelectorAll('#quizQuestions .question-block');
-
-  if (!blocks.length) { toast('Tambahkan minimal 1 pertanyaan', 'error'); return; }
-
-  const inserts = [];
-  let valid = true;
-  blocks.forEach((block, idx) => {
-    const qText = block.querySelector('.q-text')?.value.trim();
-    const optInputs = block.querySelectorAll('.opt-input');
-    const options = Array.from(optInputs).map(el => el.value.trim());
-    const correctRadio = block.querySelector('.q-correct:checked');
-
-    if (!qText || options.some(o => !o) || !correctRadio) {
-      toast(`Soal ${idx + 1}: Isi pertanyaan, semua opsi, dan pilih jawaban benar`, 'error');
-      valid = false;
-      return;
-    }
-    inserts.push({
-      parent_type: parentType,
-      parent_id: parentId,
-      question_text: qText,
-      options: JSON.stringify(options),
-      correct_index: parseInt(correctRadio.value, 10),
-    });
-  });
-
-  if (!valid) return;
-
-  await apiHandler.handle(
-    sbClient.from('questions').insert(inserts),
-    () => {
-      toast(`${inserts.length} pertanyaan berhasil disimpan`, 'success');
-      closeModal('quizModal');
-    },
-  );
-}
-
-// =============================================================
-// --- STUDENT MODULE PROGRESS ---
-// =============================================================
-
-async function loadStudentModuleProgress() {
-  const studentId = document.getElementById('studentSelect').value;
-  const container = document.getElementById('studentModuleProgress');
-  if (!container) return;
-
-  if (!studentId) {
-    container.innerHTML = `<div class="empty-state"><div class="icon">📊</div><h3>Pilih siswa</h3><p>Pilih siswa untuk melihat progress modul mereka</p></div>`;
-    return;
   }
 
-  const data = await apiHandler.handle(
-    sbClient
-      .from('module_enrollments')
-      .select('id, status, enrolled_at, modules(id, title, description), topic_progress(id, is_completed, topic_id)')
-      .eq('student_id', studentId),
-  );
+  html += `</div>`;
 
-  // Also get all available modules for enrollment
-  const allMods = allModules.length ? allModules : await apiHandler.handle(
-    sbClient.from('modules').select('id, title'),
-  ) || [];
-
-  if (!data || data.length === 0) {
-    // Show enrollment options
-    const enrollOptions = allMods.map(m => `
-      <div class="item-row flex justify-between items-center">
-        <span class="font-bold text-primary">${esc(m.title)}</span>
-        <button onclick="enrollStudentInModule('${studentId}','${m.id}')" class="btn btn-success px-3 py-2 rounded-lg text-sm">
-          ${icon('user-plus')} Enroll
-        </button>
-      </div>`).join('');
-    container.innerHTML = `
-      <p class="text-secondary text-sm mb-3">Siswa belum terdaftar di modul manapun. Pilih modul untuk di-enroll:</p>
-      ${enrollOptions || `<div class="empty-state">${icon('book-open','icon-lg')}<h3>Belum ada modul</h3></div>`}`;
-    refreshIcons();
-    return;
-  }
-
-  // Render enrolled modules with progress
-  const enrolledModuleIds = data.map(e => e.modules?.id).filter(Boolean);
-  const unenrolledMods = allMods.filter(m => !enrolledModuleIds.includes(m.id));
-
-  const enrolledHtml = data.map(enrollment => {
-    const completed = enrollment.topic_progress?.filter(tp => tp.is_completed).length || 0;
-    const totalTopics = 12;
-    const pct = Math.round((completed / totalTopics) * 100);
-    const allDone = completed >= totalTopics;
-
-    return `
-      <div class="item-row">
-        <div class="flex justify-between items-start gap-3">
-          <div style="flex:1">
-            <h3 class="font-bold text-primary">${esc(enrollment.modules?.title || 'Modul')}</h3>
-            <div class="meta-line mt-1">
-              <span>${icon('layers')} ${completed}/${totalTopics} topik selesai</span>
-              ${allDone ? `<span class="text-success">${icon('award')} Ujian terbuka</span>` : ''}
-            </div>
-            <div class="progress-bar mt-2" style="height:6px;background:var(--glass-border);border-radius:3px;overflow:hidden">
-              <div style="width:${pct}%;height:100%;background:var(--accent);border-radius:3px;transition:width 0.5s ease"></div>
-            </div>
-            <p class="text-secondary text-xs mt-1">${pct}% selesai</p>
-          </div>
-          <span class="status-pill ${enrollment.status === 'completed' ? 'status-success' : 'status-info'}">${enrollment.status}</span>
-        </div>
-      </div>`;
-  }).join('');
-
-  const unenrolledHtml = unenrolledMods.length ? `
-    <div class="divider"></div>
-    <p class="text-secondary text-sm mb-2">Modul belum di-enroll:</p>
-    ${unenrolledMods.map(m => `
-      <div class="item-row flex justify-between items-center">
-        <span class="font-bold text-primary">${esc(m.title)}</span>
-        <button onclick="enrollStudentInModule('${studentId}','${m.id}')" class="btn btn-success px-3 py-2 rounded-lg text-sm">
-          ${icon('user-plus')} Enroll
-        </button>
-      </div>`).join('')}` : '';
-
-  container.innerHTML = enrolledHtml + unenrolledHtml;
-  refreshIcons();
-}
-
-async function enrollStudentInModule(studentId, moduleId) {
-  await apiHandler.handle(
-    sbClient.from('module_enrollments').insert([{ student_id: studentId, module_id: moduleId }]),
-    async () => {
-      toast('Siswa berhasil di-enroll ke modul', 'success');
-      await loadStudentModuleProgress();
-    },
-  );
-}
-
-// =============================================================
-// --- BACKWARD-COMPAT: loadLearningPath (no-op for admin tab) ---
-// =============================================================
-async function loadLearningPath() {
-  // In the new schema the admin "Materi" tab uses loadModuleLibrary + loadStudentModuleProgress.
-  // This shim keeps any lingering call-sites from throwing ReferenceErrors.
-  await loadModuleLibrary();
-}
-
-// --- REQUESTS ---
-async function loadRequests() {
-  const data = await apiHandler.handle(
-    sbClient
-      .from("reschedule_requests")
-      .select(
-        "*, profiles:student_id(full_name), schedules:schedule_id(title,start_time)",
-      )
-      .order("created_at", { ascending: false }),
-  );
-  if (!data) return;
-  allRequests = data;
-  renderRequests();
-  renderOverview();
-}
-
-// Filter state for requests tab
-let requestFilter = "pending";
-
-function setRequestFilter(filter) {
-  requestFilter = filter;
-  document.querySelectorAll(".req-filter-btn").forEach((btn) => {
-    btn.classList.toggle("active", btn.dataset.filter === filter);
-  });
-  renderRequests();
-}
-
-function renderRequests() {
-  const list = document.getElementById("requestList");
-
-  // Filter buttons HTML
-  const filterBar = `
-    <div class="flex gap-2 flex-wrap mb-4">
-      <button class="req-filter-btn btn glass px-3 py-2 rounded-lg text-sm ${requestFilter === "pending" ? "active" : ""}" data-filter="pending" onclick="setRequestFilter('pending')">
-        ${icon("clock")} Pending
-      </button>
-      <button class="req-filter-btn btn glass px-3 py-2 rounded-lg text-sm ${requestFilter === "all" ? "active" : ""}" data-filter="all" onclick="setRequestFilter('all')">
-        ${icon("list")} Semua
-      </button>
-      <button class="req-filter-btn btn glass px-3 py-2 rounded-lg text-sm ${requestFilter === "approved" ? "active" : ""}" data-filter="approved" onclick="setRequestFilter('approved')">
-        ${icon("check-circle")} Disetujui
-      </button>
-      <button class="req-filter-btn btn glass px-3 py-2 rounded-lg text-sm ${requestFilter === "rejected" ? "active" : ""}" data-filter="rejected" onclick="setRequestFilter('rejected')">
-        ${icon("x-circle")} Ditolak
-      </button>
+  // Legend
+  html += `
+    <div class="cal-legend">
+      <span><span class="cal-dot cal-dot-upcoming"></span> Akan datang</span>
+      <span><span class="cal-dot cal-dot-completed"></span> Selesai</span>
     </div>`;
 
-  const filtered =
-    requestFilter === "all"
-      ? allRequests
-      : allRequests.filter((r) => r.status === requestFilter);
-
-  if (!filtered.length) {
-    list.innerHTML =
-      filterBar +
-      `<div class="empty-state">${icon("repeat-2", "icon-lg")}<h3>${requestFilter === "pending" ? "Tidak ada request pending" : "Belum ada request"}</h3></div>`;
-    refreshIcons();
-    return;
-  }
-
-  list.innerHTML =
-    filterBar +
-    filtered
-      .map((request) => {
-        const originalTime = request.schedules?.start_time
-          ? `<span class="text-secondary text-sm">${icon("calendar-clock")} Jadwal asal: ${formatDate.toIndonesian(request.schedules.start_time)}</span>`
-          : "";
-
-        const requestedTimeLabel = request.requested_time
-          ? `<span class="text-accent text-sm font-semibold">${icon("calendar-check")} Waktu diminta: ${formatDate.toIndonesian(request.requested_time)}</span>`
-          : `<span class="text-secondary text-sm">${icon("help-circle")} Waktu: Fleksibel (tidak spesifik)</span>`;
-
-        const scheduleContext = request.schedule_id
-          ? `<span>${icon("book-open")} ${esc(request.schedules?.title || "Jadwal")}</span>`
-          : `<span class="text-warning">${icon("plus-circle")} Permintaan jadwal baru</span>`;
-
-        const autoApplyHint =
-          request.status === "pending" &&
-          request.schedule_id &&
-          request.requested_time
-            ? `<p class="text-success text-xs mt-2">${icon("zap")} Menyetujui akan otomatis memindahkan jadwal ke waktu yang diminta.</p>`
-            : request.status === "pending" &&
-                request.schedule_id &&
-                !request.requested_time
-              ? `<p class="text-warning text-xs mt-2">${icon("alert-triangle")} Waktu tidak spesifik — jadwal tidak akan berubah otomatis jika disetujui.</p>`
-              : request.status === "pending" && !request.schedule_id
-                ? `<p class="text-info text-xs mt-2">${icon("info")} Menyetujui akan membuka form untuk membuat jadwal baru untuk siswa ini.</p>`
-                : "";
-
-        const adminNoteDisplay = request.admin_note
-          ? `<p class="text-secondary text-xs mt-2 italic">${icon("message-square")} Catatan guru: ${esc(request.admin_note)}</p>`
-          : "";
-
-        return `
-        <div class="item-row request-card" id="request-${request.id}">
-          <div class="flex justify-between items-start gap-3 flex-wrap">
-            <div style="flex:1;min-width:0">
-              <div class="flex items-center gap-2 flex-wrap mb-1">
-                <h3 class="font-bold text-primary">${esc(request.profiles?.full_name || "Siswa")}</h3>
-                ${pill(request.status)}
-              </div>
-              <div class="meta-line flex-col" style="gap:4px;align-items:flex-start;">
-                ${scheduleContext}
-                ${originalTime}
-                ${requestedTimeLabel}
-              </div>
-              <p class="text-secondary text-sm mt-2">${icon("message-circle")} ${esc(request.reason)}</p>
-              ${autoApplyHint}
-              ${adminNoteDisplay}
-              <p class="text-secondary text-xs mt-2">${icon("clock")} Dikirim: ${formatDate.toIndonesian(request.created_at)}</p>
-            </div>
-            ${
-              request.status === "pending"
-                ? `<div class="flex flex-col gap-2" style="min-width:200px">
-                    <input type="text" id="admin-note-${request.id}" placeholder="Catatan (opsional)" class="input-field px-3 py-2 rounded-lg text-sm" />
-                    <button onclick="resolveRequest('${request.id}', 'approved')" class="btn btn-success px-3 py-2 rounded-lg text-sm">${icon("check")} Setuju &amp; Terapkan</button>
-                    <button onclick="resolveRequest('${request.id}', 'rejected')" class="btn btn-danger px-3 py-2 rounded-lg text-sm">${icon("x")} Tolak</button>
-                  </div>`
-                : `<div class="text-secondary text-sm">${icon("check-circle")} Sudah diproses</div>`
-            }
-          </div>
-        </div>`;
-      })
-      .join("");
+  cal.innerHTML = html;
   refreshIcons();
 }
 
-async function resolveRequest(id, status) {
-  // Fetch full request data with joined schedule info
-  const request = await apiHandler.handle(
-    sbClient
-      .from("reschedule_requests")
-      .select(
-        "*, profiles:student_id(full_name), schedules:schedule_id(title, start_time, meeting_link)",
-      )
-      .eq("id", id)
-      .single(),
-  );
-  if (!request) return;
+// =========================================
+// PACKAGE PROGRESS WIDGET
+// =========================================
+function renderPackageProgress() {
+  const el = document.getElementById("packageProgress");
+  if (!el) return;
 
-  // Read optional admin note from the inline input
-  const adminNoteInput = document.getElementById(`admin-note-${id}`);
-  const adminNote = adminNoteInput?.value.trim() || null;
+  const total   = allSchedulesForSidebar.length;
+  const completed = allSchedulesForSidebar.filter(s => s.status === "completed").length;
+  const upcoming  = allSchedulesForSidebar.filter(s => s.status === "upcoming").length;
+  const cancelled = allSchedulesForSidebar.filter(s => s.status === "cancelled").length;
+  const remaining = Math.max(0, total - completed - cancelled);
 
-  const studentName = request.profiles?.full_name || "siswa";
-  const scheduleTitle = request.schedules?.title || "kelas";
-
-  // ── CASE 1: Approve with schedule_id + requested_time ──────────────────────
-  // This is the primary auto-apply path: update the existing schedule's time.
-  if (status === "approved" && request.schedule_id && request.requested_time) {
-    const originalTime = request.schedules?.start_time
-      ? formatDate.toIndonesian(request.schedules.start_time)
-      : "waktu asal";
-    const newTime = formatDate.toIndonesian(request.requested_time);
-
-    const confirmed = await showConfirm(
-      "Setujui & Terapkan Reschedule",
-      `Jadwal "${scheduleTitle}" untuk ${studentName} akan dipindahkan:\n\n` +
-        `Dari: ${originalTime}\nKe:   ${newTime}\n\nLanjutkan?`,
-      "warning",
-    );
-    if (!confirmed) return;
-
-    // Auto-update the schedule row
-    const updatedSchedule = await apiHandler.handle(
-      sbClient
-        .from("schedules")
-        .update({
-          start_time: request.requested_time,
-          status: "upcoming",
-          attendance_status: "rescheduled",
-          teacher_note: adminNote || request.reason,
-        })
-        .eq("id", request.schedule_id)
-        .select()
-        .single(),
-    );
-    if (!updatedSchedule) return; // Error already shown by apiHandler
-
-    // Delete the booked slot
-    if (request.slot_id) {
-      await sbClient.from("available_slots").delete().eq("id", request.slot_id);
-    } else if (request.requested_time) {
-      await sbClient
-        .from("available_slots")
-        .delete()
-        .eq("start_time", request.requested_time);
-    }
-
-    // Persist request status + admin note
-    await apiHandler.handle(
-      sbClient
-        .from("reschedule_requests")
-        .update({
-          status: "approved",
-          admin_note: adminNote,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", id),
-    );
-
-    await sendNotificationToStudent(
-      request.student_id,
-      "Jadwal berhasil dipindahkan ✅",
-      `Permintaan reschedule kelas "${scheduleTitle}" disetujui. Jadwal baru: ${newTime}.`,
-    );
-    toast("Jadwal otomatis diperbarui & notifikasi terkirim", "success");
-    await Promise.all([loadRequests(), loadSchedules(), loadAvailableSlots()]);
+  if (total === 0) {
+    el.innerHTML = `
+      <div class="empty-state pkg-loading">
+        <p>Belum ada paket aktif</p>
+      </div>`;
     return;
   }
 
-  // ── CASE 2: Approve with schedule_id but NO requested_time ─────────────────
-  // Student wants to reschedule but didn't specify a time.
-  // Approve the request but warn admin that schedule is NOT auto-changed.
-  if (status === "approved" && request.schedule_id && !request.requested_time) {
-    const confirmed = await showConfirm(
-      "Setujui Request (Tanpa Waktu Baru)",
-      `Siswa ${studentName} tidak mencantumkan waktu baru.\n\n` +
-        `Request akan disetujui tetapi jadwal "${scheduleTitle}" TIDAK berubah otomatis. ` +
-        `Ubah jadwal secara manual setelah ini jika diperlukan.`,
-      "warning",
-    );
-    if (!confirmed) return;
+  // Donut chart via SVG
+  const size = 110;
+  const r = 42;
+  const cx = size / 2;
+  const cy = size / 2;
+  const circumference = 2 * Math.PI * r;
 
-    await apiHandler.handle(
-      sbClient
-        .from("reschedule_requests")
-        .update({
-          status: "approved",
-          admin_note: adminNote,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", id),
-      async () => {
-        await sendNotificationToStudent(
-          request.student_id,
-          "Request reschedule disetujui",
-          `Permintaan untuk kelas "${scheduleTitle}" disetujui. Guru akan menghubungi kamu untuk jadwal baru.`,
-        );
-        toast("Request disetujui — ingat ubah jadwal secara manual", "success");
-        await Promise.all([loadRequests(), loadSchedules()]);
-      },
-    );
-    return;
+  function arc(value, total, color, offset) {
+    if (total === 0 || value === 0) return "";
+    const pct = value / total;
+    const dash = pct * circumference;
+    const gap  = circumference - dash;
+    return `<circle
+      cx="${cx}" cy="${cy}" r="${r}"
+      fill="none" stroke="${color}" stroke-width="11"
+      stroke-dasharray="${dash.toFixed(2)} ${gap.toFixed(2)}"
+      stroke-dashoffset="${(-offset).toFixed(2)}"
+      stroke-linecap="round"
+      style="transition:stroke-dasharray 0.8s ease"/>`;
   }
 
-  // ── CASE 3: Approve with NO schedule_id ────────────────────────────────────
-  // Student is requesting a brand-new class (no existing schedule linked).
-  // Mark request approved, then open the schedule creation modal pre-filled.
-  if (status === "approved" && !request.schedule_id) {
-    const confirmed = await showConfirm(
-      "Setujui Permintaan Jadwal Baru",
-      `${studentName} meminta jadwal baru.${
-        request.requested_time
-          ? `\nWaktu yang diminta: ${formatDate.toIndonesian(request.requested_time)}.`
-          : ""
-      }\n\nForm tambah jadwal akan terbuka — lengkapi dan simpan untuk membuat jadwal.`,
-      "warning",
-    );
-    if (!confirmed) return;
+  // Offsets: start from top (−90°)
+  const startOffset = circumference * 0.25;
+  const completedArc = (completed / total) * circumference;
+  const upcomingArc  = (upcoming  / total) * circumference;
 
-    await apiHandler.handle(
-      sbClient
-        .from("reschedule_requests")
-        .update({
-          status: "approved",
-          admin_note: adminNote,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", id),
-      async () => {
-        await sendNotificationToStudent(
-          request.student_id,
-          "Permintaan jadwal disetujui",
-          `Guru sedang membuatkan jadwal untukmu.${
-            request.requested_time
-              ? ` Waktu yang diminta (${formatDate.toIndonesian(request.requested_time)}) sedang diproses.`
-              : ""
-          }`,
-        );
-        toast(
-          "Request disetujui — buka form jadwal untuk melengkapi",
-          "success",
-        );
-        await loadRequests();
-      },
-    );
+  const donut = `
+    <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" class="pkg-donut">
+      <!-- track -->
+      <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="var(--glass-border)" stroke-width="11"/>
+      ${arc(completed, total, "var(--success)",  startOffset)}
+      ${arc(upcoming,  total, "var(--accent-light)", startOffset + completedArc)}
+      ${arc(cancelled, total, "var(--error)",    startOffset + completedArc + upcomingArc)}
+      <text x="${cx}" y="${cy - 6}" text-anchor="middle" fill="var(--text-primary)"
+            font-size="20" font-weight="800" font-family="Inter,sans-serif">${total}</text>
+      <text x="${cx}" y="${cy + 12}" text-anchor="middle" fill="var(--text-secondary)"
+            font-size="9" font-family="Inter,sans-serif">TOTAL</text>
+    </svg>`;
 
-    // Open schedule modal pre-filled with student + requested time
-    openScheduleModal(
-      null,
-      request.student_id,
-      request.requested_time
-        ? formatDate.toDateTimeLocal(request.requested_time)
-        : "",
-    );
-    return;
-  }
-
-  // ── CASE 4: Reject (any scenario) ──────────────────────────────────────────
-  if (status === "rejected") {
-    const confirmed = await showConfirm(
-      "Tolak Request",
-      `Tolak permintaan reschedule dari ${studentName} untuk "${scheduleTitle}"?`,
-      "danger",
-    );
-    if (!confirmed) return;
-
-    await apiHandler.handle(
-      sbClient
-        .from("reschedule_requests")
-        .update({
-          status: "rejected",
-          admin_note: adminNote,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", id),
-      async () => {
-        await sendNotificationToStudent(
-          request.student_id,
-          "Request reschedule ditolak",
-          `Permintaan untuk kelas "${scheduleTitle}" ditolak.${
-            adminNote
-              ? ` Catatan guru: ${adminNote}`
-              : " Silakan hubungi guru jika perlu jadwal lain."
-          }`,
-        );
-        toast("Request ditolak", "success");
-        await Promise.all([loadRequests(), loadSchedules()]);
-      },
-    );
-    return;
-  }
+  el.innerHTML = `
+    <div class="pkg-widget">
+      <div class="pkg-stats">
+        <div class="pkg-stat">
+          <span class="pkg-dot" style="background:var(--success)"></span>
+          <div>
+            <div class="pkg-stat-num">${completed}</div>
+            <div class="pkg-stat-lbl">Selesai</div>
+          </div>
+        </div>
+        <div class="pkg-stat">
+          <span class="pkg-dot" style="background:var(--accent-light)"></span>
+          <div>
+            <div class="pkg-stat-num">${upcoming}</div>
+            <div class="pkg-stat-lbl">Akan datang</div>
+          </div>
+        </div>
+        <div class="pkg-stat">
+          <span class="pkg-dot" style="background:var(--glass-border-hover)"></span>
+          <div>
+            <div class="pkg-stat-num">${remaining}</div>
+            <div class="pkg-stat-lbl">Sisa</div>
+          </div>
+        </div>
+        <div class="pkg-stat">
+          <span class="pkg-dot" style="background:var(--error)"></span>
+          <div>
+            <div class="pkg-stat-num">${cancelled}</div>
+            <div class="pkg-stat-lbl">Dibatalkan</div>
+          </div>
+        </div>
+      </div>
+      <div class="pkg-donut-wrap">${donut}</div>
+    </div>`;
 }
 
-// --- NOTIFICATIONS ---
+// =========================================
+// HISTORY
+// =========================================
+async function loadHistory() {
+  const list = document.getElementById("historyList");
+  if (!list) return;
+
+  const { data: schedules, error } = await sbClient
+    .from("schedules")
+    .select("*")
+    .eq("student_id", currentProfile.id)
+    .eq("status", "completed")
+    .order("start_time", { ascending: false });
+
+  if (error) {
+    console.error("Error loading history:", error);
+    return;
+  }
+
+  if (!schedules || schedules.length === 0) {
+    list.innerHTML = `
+      <div class="empty-state">
+        <div class="icon">📚</div>
+        <h3>Belum ada riwayat</h3>
+        <p>Riwayat pertemuan akan muncul di sini</p>
+      </div>`;
+    return;
+  }
+
+  list.innerHTML = schedules
+    .map(
+      (s) => `
+      <div class="glass p-4">
+        <h3 class="font-bold text-primary">${escHtml(s.title)}</h3>
+        <p class="text-secondary text-sm mt-1"> ${formatDate.toIndonesian(s.start_time)}</p>
+      </div>`,
+    )
+    .join("");
+}
+
+// =========================================
+// LEARNING PATH (New: module_enrollments)
+// =========================================
+async function loadLearningPath() {
+  const list = document.getElementById("learningPathList");
+  if (!list) return;
+
+  const { data: enrollments, error } = await sbClient
+    .from("module_enrollments")
+    .select(`
+      id, status, enrolled_at,
+      modules(id, title, description),
+      topic_progress(id, is_completed, topic_id)
+    `)
+    .eq("student_id", currentProfile.id);
+
+  if (error) {
+    console.error("Error loading learning path:", error);
+    return;
+  }
+
+  const progressFill = document.getElementById("progressFill");
+  const progressText = document.getElementById("progressText");
+
+  if (!enrollments || enrollments.length === 0) {
+    list.innerHTML = `
+      <div class="empty-state">
+        <div class="icon">📖</div>
+        <h3>Belum ada materi</h3>
+        <p>Guru akan menambahkan materi untuk Anda</p>
+      </div>`;
+    if (progressFill) progressFill.style.width = "0%";
+    if (progressText) progressText.textContent = "0% selesai";
+    return;
+  }
+
+  // Overall progress = average across all enrolled modules
+  const totalTopics = enrollments.length * 12;
+  const completedTopics = enrollments.reduce(
+    (sum, e) => sum + (e.topic_progress?.filter(tp => tp.is_completed).length || 0), 0
+  );
+  const pct = totalTopics > 0 ? Math.round((completedTopics / totalTopics) * 100) : 0;
+
+  if (progressFill) progressFill.style.width = `${pct}%`;
+  if (progressText) progressText.textContent = `${pct}% selesai (${completedTopics}/${totalTopics} topik)`;
+
+  list.innerHTML = enrollments.map(enrollment => {
+    const doneCount = enrollment.topic_progress?.filter(tp => tp.is_completed).length || 0;
+    const modPct = Math.round((doneCount / 12) * 100);
+    const allDone = doneCount >= 12;
+
+    return `
+      <div class="glass p-4">
+        <div class="flex justify-between items-start gap-3 flex-wrap">
+          <div style="flex:1">
+            <h3 class="font-bold text-primary">${escHtml(enrollment.modules?.title || 'Modul')}</h3>
+            ${enrollment.modules?.description ? `<p class="text-secondary text-sm mt-1">${escHtml(enrollment.modules.description)}</p>` : ''}
+            <div class="flex items-center gap-2 mt-2">
+              <div style="flex:1;height:6px;background:var(--glass-border,#333);border-radius:3px;overflow:hidden">
+                <div style="width:${modPct}%;height:100%;background:var(--accent,#6366f1);border-radius:3px;transition:width 0.5s ease"></div>
+              </div>
+              <span class="text-secondary text-xs">${doneCount}/12 topik</span>
+            </div>
+          </div>
+          <div>
+            ${allDone
+              ? `<a href="materi.html" class="btn btn-warning px-3 py-2 rounded-lg text-sm font-bold">🎓 Mulai Ujian</a>`
+              : `<a href="materi.html" class="btn btn-primary px-3 py-2 rounded-lg text-sm">📚 Lanjut Belajar</a>`
+            }
+          </div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+// =========================================
+// NOTIFICATIONS
+// =========================================
 function toggleNotifPanel(panelId) {
   const panel = document.getElementById(panelId);
+  if (!panel) return;
+
   const isActive = panel.classList.contains("active");
   document
     .querySelectorAll(".notification-panel")
     .forEach((p) => p.classList.remove("active"));
+
   if (!isActive) {
     panel.classList.add("active");
-    loadNotifications("admin");
+    loadNotifications("student");
   }
 }
 
 async function loadNotifications(type) {
-  if (!currentUser) return;
-  const data = await apiHandler.handle(
-    sbClient
-      .from("notifications")
-      .select("*")
-      .eq("user_id", currentUser.id)
-      .order("created_at", { ascending: false })
-      .limit(20),
-  );
   const list = document.getElementById(`${type}NotifList`);
   const badge = document.getElementById(`${type}NotifBadge`);
 
-  if (!data || data.length === 0) {
-    list.innerHTML = `<div class="empty-state">${icon("bell", "icon-lg")}<p>Tidak ada notifikasi</p></div>`;
-    badge.classList.add("hidden");
-    refreshIcons();
+  if (!currentProfile) return;
+
+  const { data: notifications, error } = await sbClient
+    .from("notifications")
+    .select("*")
+    .eq("user_id", currentProfile.id)
+    .order("created_at", { ascending: false })
+    .limit(20);
+
+  if (error) {
+    console.error("Error loading notifications:", error);
     return;
   }
 
-  const unread = data.filter((n) => !n.is_read).length;
-  badge.textContent = unread > 9 ? "9+" : unread;
-  unread > 0 ? badge.classList.remove("hidden") : badge.classList.add("hidden");
+  if (!notifications || notifications.length === 0) {
+    if (list)
+      list.innerHTML = `
+      <div class="empty-state">
+        <div class="icon">🔔</div>
+        <p>Tidak ada notifikasi</p>
+      </div>`;
+    if (badge) badge.classList.add("hidden");
+    return;
+  }
 
-  list.innerHTML = data
-    .map(
-      (n) => `
+  const unread = notifications.filter((n) => !n.is_read).length;
+  if (badge) {
+    badge.textContent = unread > 9 ? "9+" : unread;
+    unread > 0
+      ? badge.classList.remove("hidden")
+      : badge.classList.add("hidden");
+  }
+
+  if (list) {
+    list.innerHTML = notifications
+      .map(
+        (n) => `
       <div class="notification-item ${!n.is_read ? "unread" : ""} p-3 rounded-lg">
         <div class="flex justify-between items-start">
           <div class="flex-1">
-            <h4 class="font-semibold text-primary text-sm">${esc(n.title)}</h4>
-            <p class="text-secondary text-xs mt-1">${esc(n.message)}</p>
+            <h4 class="font-semibold text-primary text-sm">${escHtml(n.title)}</h4>
+            <p class="text-secondary text-xs mt-1">${escHtml(n.message)}</p>
             <p class="text-secondary text-xs mt-2">${formatDate.toIndonesian(n.created_at)}</p>
           </div>
-          ${!n.is_read ? `<button onclick="markNotifRead('${n.id}', '${type}')" class="text-xs text-primary hover:underline ml-2">${icon("check")}</button>` : ""}
+          ${
+            !n.is_read
+              ? `<button onclick="markNotifRead('${n.id}', '${type}')" class="text-xs text-primary hover:underline ml-2">✓</button>`
+              : ""
+          }
         </div>
       </div>`,
-    )
-    .join("");
-  refreshIcons();
+      )
+      .join("");
+  }
 }
 
 async function markNotifRead(id, type) {
-  await apiHandler.handle(
-    sbClient.from("notifications").update({ is_read: true }).eq("id", id),
-    () => loadNotifications(type),
-  );
+  const { error } = await sbClient
+    .from("notifications")
+    .update({ is_read: true })
+    .eq("id", id);
+
+  if (error) {
+    toast("Gagal menandai notifikasi", "error");
+    return;
+  }
+  loadNotifications(type);
 }
 
 async function markAllRead(type) {
-  await apiHandler.handle(
-    sbClient
-      .from("notifications")
-      .update({ is_read: true })
-      .eq("user_id", currentUser.id),
-    () => loadNotifications(type),
-  );
+  if (!currentProfile) return;
+
+  const { error } = await sbClient
+    .from("notifications")
+    .update({ is_read: true })
+    .eq("user_id", currentProfile.id);
+
+  if (error) {
+    toast("Gagal menandai semua notifikasi", "error");
+    return;
+  }
+  loadNotifications(type);
 }
 
-function useNotificationTemplate(title, message) {
-  document.getElementById("notifTitle").value = title;
-  document.getElementById("notifMessage").value = message;
-}
+// Cleanup saat halaman ditutup
+window.addEventListener("beforeunload", () => {
+  if (refreshInterval) clearInterval(refreshInterval);
+});
 
-async function sendNotification() {
-  const recipient = document.getElementById("notifRecipient").value;
-  const title = document.getElementById("notifTitle").value.trim();
-  const message = document.getElementById("notifMessage").value.trim();
+// =========================================
+// RESCHEDULE REQUESTS
+// =========================================
+async function loadRequests() {
+  const list = document.getElementById("requestList");
+  if (!list || !currentProfile) return;
 
-  if (!validators.required(title) || !validators.required(message)) {
-    toast("Judul dan pesan wajib diisi", "error");
+  const { data, error } = await sbClient
+    .from("reschedule_requests")
+    .select("*, schedules:schedule_id(title, start_time)")
+    .eq("student_id", currentProfile.id)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("Error loading requests:", error);
     return;
   }
 
-  const userIds =
-    recipient === "all"
-      ? allStudents.map((student) => student.id)
-      : [recipient];
+  if (!data || data.length === 0) {
+    list.innerHTML = `
+      <div class="empty-state">
+        <div class="icon">📅</div>
+        <h3>Belum ada request reschedule</h3>
+        <p>Gunakan tombol "Request reschedule" pada kartu jadwal untuk meminta perubahan waktu.</p>
+      </div>`;
+    return;
+  }
 
-  await apiHandler.handle(
-    sbClient.from("notifications").insert(
-      userIds.map((uid) => ({
-        user_id: uid,
-        title,
-        message,
-        type: "system",
-      })),
-    ),
-    () => {
-      toast(`Terkirim ke ${userIds.length} siswa`, "success");
-      document.getElementById("notifTitle").value = "";
-      document.getElementById("notifMessage").value = "";
+  const statusConfig = {
+    pending:  { label: "Menunggu konfirmasi guru", badge: "status-warning",  icon: "⏳" },
+    approved: { label: "Disetujui",                badge: "status-success",  icon: "✅" },
+    rejected: { label: "Ditolak",                  badge: "status-danger",   icon: "❌" },
+  };
+
+  list.innerHTML = data
+    .map((r) => {
+      const cfg = statusConfig[r.status] || { label: r.status, badge: "status-info", icon: "📋" };
+
+      // For approved requests: show the new time that was applied
+      const updatedTimeNote =
+        r.status === "approved" && r.requested_time
+          ? `<p class="text-sm mt-2" style="color:var(--success,#22c55e)">
+               ✅ Jadwal dipindahkan ke: <strong>${formatDate.toIndonesian(r.requested_time)}</strong>
+             </p>`
+          : "";
+
+      // Admin note (shown when admin left a message)
+      const adminNoteHtml = r.admin_note
+        ? `<div class="glass p-3 mt-3" style="border-left:3px solid var(--accent)">
+             <p class="text-xs text-secondary mb-1">💬 Pesan dari guru:</p>
+             <p class="text-sm text-primary">${escHtml(r.admin_note)}</p>
+           </div>`
+        : "";
+
+      // Context: what schedule was this about
+      const scheduleInfo = r.schedules?.title
+        ? `<p class="text-secondary text-sm mt-1">📚 Jadwal: <strong>${escHtml(r.schedules.title)}</strong>
+             ${r.schedules.start_time ? `— ${formatDate.toIndonesian(r.schedules.start_time)}` : ""}</p>`
+        : `<p class="text-secondary text-sm mt-1">📚 Permintaan jadwal baru</p>`;
+
+      const borderColor = r.status === "approved"
+        ? "var(--success,#22c55e)"
+        : r.status === "rejected"
+        ? "var(--error,#ef4444)"
+        : "var(--accent)";
+
+      return `
+      <div class="glass p-4" style="border-left: 3px solid ${borderColor}">
+        <div class="flex justify-between items-start gap-2 flex-wrap">
+          <div style="flex:1">
+            <div class="flex items-center gap-2 flex-wrap">
+              <span class="font-bold text-primary">${cfg.icon} ${escHtml(r.schedules?.title || "Permintaan Jadwal Baru")}</span>
+              <span class="status-pill ${cfg.badge}" style="font-size:0.7rem;padding:2px 8px">${cfg.label}</span>
+            </div>
+            ${scheduleInfo}
+            ${r.requested_time
+              ? `<p class="text-secondary text-sm mt-1">🕐 Waktu yang diminta: ${formatDate.toIndonesian(r.requested_time)}</p>`
+              : ""}
+            <p class="text-secondary text-sm mt-2">💬 Alasan: ${escHtml(r.reason)}</p>
+            ${updatedTimeNote}
+            ${adminNoteHtml}
+            <p class="text-secondary text-xs mt-3">Dikirim: ${formatDate.toIndonesian(r.created_at)}</p>
+          </div>
+        </div>
+      </div>`;
+    })
+    .join("");
+}
+
+async function openRescheduleRequest(scheduleId = "") {
+  const schedule = upcomingSchedules.find((item) => String(item.id) === String(scheduleId));
+  const scheduleField = document.getElementById("requestScheduleId");
+  const timeField = document.getElementById("requestTime");
+  const reasonField = document.getElementById("requestReason");
+
+  if (scheduleField) scheduleField.value = schedule?.id || "";
+  if (reasonField) reasonField.value = "";
+
+  // Populate available slots dropdown
+  if (timeField) {
+    timeField.innerHTML = '<option value="">Memuat slot kosong...</option>';
+
+    // Fetch available slots
+    const { data: slots, error } = await sbClient
+      .from("available_slots")
+      .select("*")
+      .eq("status", "available")
+      .gte("start_time", new Date().toISOString())
+      .order("start_time", { ascending: true });
+
+    if (error) {
+      console.error("Error loading available slots:", error);
+      timeField.innerHTML = '<option value="">Gagal memuat slot</option>';
+    } else if (!slots || slots.length === 0) {
+      timeField.innerHTML = '<option value="">Tidak ada slot kosong tersedia</option>';
+    } else {
+      timeField.innerHTML = '<option value="">-- Pilih slot kosong --</option>';
+      slots.forEach((slot) => {
+        const option = document.createElement("option");
+        option.value = slot.start_time; // Store the start_time as option value
+        option.dataset.slotId = slot.id; // Store the slot UUID
+        option.textContent = formatDate.toIndonesian(slot.start_time);
+        timeField.appendChild(option);
+      });
+    }
+  }
+
+  openModal("requestModal");
+}
+
+async function submitRescheduleRequest() {
+  if (!currentProfile) return;
+
+  const scheduleId = document.getElementById("requestScheduleId")?.value;
+  const timeField = document.getElementById("requestTime");
+  const reason = document.getElementById("requestReason")?.value.trim();
+
+  if (!reason) {
+    toast("Alasan wajib diisi", "error");
+    return;
+  }
+
+  const selectedOption = timeField?.options[timeField.selectedIndex];
+  const requestedTime = selectedOption?.value || null;
+  const slotId = selectedOption?.dataset.slotId || null;
+
+  if (!requestedTime) {
+    toast("Silakan pilih slot kosong yang tersedia", "error");
+    return;
+  }
+
+  const { error } = await sbClient.from("reschedule_requests").insert([
+    {
+      student_id: currentProfile.id,
+      schedule_id: scheduleId || null,
+      requested_time: new Date(requestedTime).toISOString(),
+      slot_id: slotId,
+      reason,
+      status: "pending",
     },
-  );
-}
+  ]);
 
-async function sendNotificationToStudent(studentId, title, message) {
-  await apiHandler.handle(
-    sbClient
-      .from("notifications")
-      .insert([{ user_id: studentId, title, message, type: "schedule" }]),
-  );
-}
+  if (error) {
+    toast("Gagal mengirim request: " + error.message, "error");
+    return;
+  }
 
+  toast("Request berhasil dikirim", "success");
+  if (document.getElementById("requestScheduleId")) {
+    document.getElementById("requestScheduleId").value = "";
+  }
+  if (document.getElementById("requestTime")) {
+    document.getElementById("requestTime").value = "";
+  }
+  if (document.getElementById("requestReason")) {
+    document.getElementById("requestReason").value = "";
+  }
+  closeModal("requestModal");
+  await Promise.all([loadRequests(), loadNotifications("student")]);
+}
