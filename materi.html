@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Materi - Kelas Coding</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/shared.css">
+    <link rel="stylesheet" href="css/student.css">
+</head>
+
+<body class="dashboard-body">
+
+    <header class="glass p-6 mb-6 fade-in flex justify-between items-center flex-wrap gap-4">
+        <div>
+            <h1 class="text-2xl md:text-3xl font-bold text-primary">Kelas Coding</h1>
+            <p class="text-secondary mt-1" id="studentNameMateri">Memuat...</p>
+        </div>
+        <div class="flex gap-3 items-center">
+            <a href="student.html" class="btn glass px-4 py-2 rounded-lg font-semibold">
+                <i data-lucide="arrow-left" class="icon-sm"></i>
+                <span class="hide-on-mobile">Kembali</span>
+            </a>
+            <button onclick="toggleTheme()" class="icon-btn glass" title="Tema">
+                <span id="themeIcon"></span>
+            </button>
+        </div>
+    </header>
+
+    <main>
+        <!-- Module List View -->
+        <div id="learningPathSection">
+            <div class="glass p-6 fade-in">
+                <h2 class="text-xl font-bold text-primary mb-4">Materi &amp; Modul</h2>
+                <div class="mb-6">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-primary font-semibold text-sm">Progress Belajar</span>
+                        <span id="progressText" class="text-secondary text-sm">0% selesai</span>
+                    </div>
+                    <div class="w-full bg-gray-700 rounded-full h-2.5">
+                        <div id="progressFill" class="bg-gradient-to-r from-purple-500 to-indigo-500 h-2.5 rounded-full" style="width:0%"></div>
+                    </div>
+                </div>
+                <div id="learningPathList" class="space-y-3"></div>
+            </div>
+        </div>
+
+        <!-- Topic View -->
+        <div id="topicSection" class="hidden mb-8">
+            <div class="glass p-6 fade-in">
+                <div class="flex items-center gap-3 mb-4">
+                    <button onclick="backToModules()" class="btn glass px-3 py-2 rounded-lg text-sm">
+                        <i data-lucide="arrow-left" class="icon-sm"></i> Kembali
+                    </button>
+                    <h2 class="text-xl font-semibold text-primary" id="moduleTitle"></h2>
+                </div>
+
+                <!-- Module Progress Bar -->
+                <div class="glass p-4 rounded-xl mb-4">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-sm font-semibold text-primary">Progress Modul</span>
+                        <span id="moduleProgressText" class="text-sm text-secondary">0%</span>
+                    </div>
+                    <div class="w-full bg-gray-700 rounded-full h-2.5">
+                        <div id="moduleProgressFill" class="bg-gradient-to-r from-purple-500 to-indigo-500 h-2.5 rounded-full" style="width:0%"></div>
+                    </div>
+                </div>
+
+                <!-- Topic List -->
+                <div id="topicList" class="space-y-3"></div>
+            </div>
+        </div>
+
+        <!-- Quiz Section -->
+        <div id="quizSection" class="hidden mb-8">
+            <div class="glass p-6 fade-in rounded-xl">
+                <h2 class="text-xl font-semibold text-primary mb-1">Kuis Topik</h2>
+                <p class="text-sm mb-4 text-secondary" id="quizTopicTitle"></p>
+                <div id="quizContent"></div>
+            </div>
+        </div>
+
+        <!-- Exam Section -->
+        <div id="examSection" class="hidden mb-8">
+            <div class="glass p-8 fade-in rounded-xl text-center">
+                <div style="font-size:3rem">🎓</div>
+                <h2 class="text-2xl font-bold text-primary mt-3 mb-2">Semua Topik Selesai!</h2>
+                <p class="text-secondary mb-6">Kamu sudah menyelesaikan semua topik. Siap untuk ujian akhir modul?</p>
+                <button onclick="startExam()" class="btn btn-warning px-8 py-3 rounded-lg font-bold text-lg">
+                    🏆 Mulai Ujian Modul
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="js/services/supabase.js"></script>
+    <script src="js/utils/helpers.js"></script>
+    <script src="js/components/shared-ui.js"></script>
+    <script src="js/modules/quiz.js"></script>
+    <script>
+        // loadLearningPath is needed by quiz.js (allEnrollments global) and
+        // the init flow. Defined here since student.js is not loaded on this page.
+        let allEnrollments = [];
+
+        async function loadLearningPath() {
+            const list = document.getElementById('learningPathList');
+            if (!list) return;
+
+            const { data: enrollments, error } = await sbClient
+                .from('module_enrollments')
+                .select(`
+                    id, status, enrolled_at,
+                    modules(id, title, description),
+                    topic_progress(id, is_completed, topic_id)
+                `)
+                .eq('student_id', currentProfile.id);
+
+            if (error) {
+                console.error('Error loading learning path:', error);
+                return;
+            }
+
+            allEnrollments = enrollments || [];
+
+            const progressFill = document.getElementById('progressFill');
+            const progressText = document.getElementById('progressText');
+
+            if (!enrollments || enrollments.length === 0) {
+                list.innerHTML = `
+                    <div class="empty-state">
+                        <div class="icon">📖</div>
+                        <h3>Belum ada materi</h3>
+                        <p>Guru akan menambahkan materi untuk Anda</p>
+                    </div>`;
+                if (progressFill) progressFill.style.width = '0%';
+                if (progressText) progressText.textContent = '0% selesai';
+                return;
+            }
+
+            // Overall progress = average across all enrolled modules
+            const totalTopics = enrollments.length * 12;
+            const completedTopics = enrollments.reduce(
+                (sum, e) => sum + (e.topic_progress?.filter(tp => tp.is_completed).length || 0), 0
+            );
+            const pct = totalTopics > 0 ? Math.round((completedTopics / totalTopics) * 100) : 0;
+
+            if (progressFill) progressFill.style.width = `${pct}%`;
+            if (progressText) progressText.textContent = `${pct}% selesai (${completedTopics}/${totalTopics} topik)`;
+
+            list.innerHTML = enrollments.map(enrollment => {
+                const doneCount = enrollment.topic_progress?.filter(tp => tp.is_completed).length || 0;
+                const modPct = Math.round((doneCount / 12) * 100);
+                const allDone = doneCount >= 12;
+
+                return `
+                    <div class="glass p-4">
+                        <div class="flex justify-between items-start gap-3 flex-wrap">
+                            <div style="flex:1">
+                                <h3 class="font-bold text-primary">${escHtml(enrollment.modules?.title || 'Modul')}</h3>
+                                ${enrollment.modules?.description ? `<p class="text-secondary text-sm mt-1">${escHtml(enrollment.modules.description)}</p>` : ''}
+                                <div class="flex items-center gap-2 mt-2">
+                                    <div style="flex:1;height:6px;background:var(--glass-border,#333);border-radius:3px;overflow:hidden">
+                                        <div style="width:${modPct}%;height:100%;background:var(--accent,#6366f1);border-radius:3px;transition:width 0.5s ease"></div>
+                                    </div>
+                                    <span class="text-secondary text-xs">${doneCount}/12 topik</span>
+                                </div>
+                            </div>
+                            <div>
+                                ${allDone
+                                    ? `<button onclick="startExam('${enrollment.modules.id}')" class="btn btn-warning px-3 py-2 rounded-lg text-sm font-bold">🎓 Mulai Ujian</button>`
+                                    : `<button onclick="openModule('${enrollment.modules.id}')" class="btn btn-primary px-3 py-2 rounded-lg text-sm">📚 Lanjut Belajar</button>`
+                                }
+                            </div>
+                        </div>
+                    </div>`;
+            }).join('');
+        }
+
+        async function initMateri() {
+            const user = await initUser();
+            if (!user) { window.location.href = 'index.html'; return; }
+
+            const { data: profile, error } = await sbClient
+                .from('profiles')
+                .select('*')
+                .eq('id', user.id)
+                .maybeSingle();
+
+            if (error || !profile) { window.location.href = 'index.html'; return; }
+            if (profile.role !== 'student') { window.location.href = 'admin.html'; return; }
+
+            currentProfile = profile;
+
+            // Show student name
+            const nameEl = document.getElementById('studentNameMateri');
+            if (nameEl) nameEl.textContent = profile.full_name;
+
+            // Mount theme icon
+            setThemeIcons();
+
+            await loadLearningPath();
+        }
+
+        document.addEventListener('DOMContentLoaded', initMateri);
+    </script>
+</body>
+
+</html>
