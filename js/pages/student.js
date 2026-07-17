@@ -139,6 +139,14 @@ async function checkAuth() {
 
   // Check completed sessions FIRST
   await checkMaterialsAccess();
+
+  // Gamification: load XP/streak/badges + init realtime notifications
+  if (typeof loadGamificationState === 'function') {
+    await loadGamificationState();
+  }
+  if (typeof initRealtimeNotifications === 'function') {
+    initRealtimeNotifications();
+  }
   
   const activeTab = document.querySelector(".tab-btn.active")?.dataset.tab || "home";
   if (activeTab === "materials" && hasCompletedSession) {
@@ -201,6 +209,7 @@ async function logout() {
   if (!confirmed) return;
 
   if (refreshInterval) clearTimeout(refreshInterval);
+  if (typeof destroyRealtimeNotifications === 'function') destroyRealtimeNotifications();
   await sbClient.auth.signOut();
   toast("Berhasil logout", "success");
   window.location.href = "index.html";
@@ -424,6 +433,11 @@ async function joinMeetingById(scheduleId) {
     );
     nextScheduleData = upcomingSchedules[0] || null;
     renderUpcomingSchedules();
+
+    // Award XP for attending class
+    if (typeof onClassAttended === 'function') {
+      onClassAttended(scheduleId);
+    }
 
     // NEW LOGIC: Unlock the next topic
     await unlockNextTopic();

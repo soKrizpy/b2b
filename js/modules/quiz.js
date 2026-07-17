@@ -143,6 +143,11 @@ async function markTopicCompleted(topicId) {
     }],
     { onConflict: "enrollment_id,topic_id" }
   );
+
+  // Award XP for completing a topic
+  if (typeof onTopicCompleted === 'function') {
+    onTopicCompleted(topicId);
+  }
 }
 
 // =========================================
@@ -228,6 +233,11 @@ window.submitQuiz = async function (e, topicId) {
   if (attemptErr) console.error("quiz attempt error:", attemptErr);
 
   toast(`Skor kuis: ${score}% (${correctCount}/${questions.length} benar) 🎉`, score >= 60 ? "success" : "error");
+
+  // Award XP for passing quiz
+  if (typeof onQuizPassed === 'function') {
+    onQuizPassed(topicId, score);
+  }
 
   await markTopicCompleted(topicId);
   document.getElementById("quizSection").classList.add("hidden");
@@ -325,6 +335,11 @@ window.submitExam = async function (e) {
     .from("exam_attempts")
     .insert([{ student_id: currentProfile.id, module_id: selectedModule.id, score }]);
   if (examErr) console.error("exam attempt error:", examErr);
+
+  // Award XP for completing the module (exam submitted)
+  if (typeof onModuleCompleted === 'function') {
+    onModuleCompleted(selectedModule.id);
+  }
 
   section.innerHTML = `
     <div class="glass p-8 rounded-xl text-center">
