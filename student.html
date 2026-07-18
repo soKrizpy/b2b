@@ -12,28 +12,32 @@
 
 <body class="dashboard-body">
 
-    <header class="glass p-6 mb-6 fade-in flex justify-between items-center flex-wrap gap-4">
-        <div>
-            <h1 class="text-2xl md:text-3xl font-bold text-primary">Dashboard Siswa</h1>
-            <p class="text-secondary mt-1" id="studentName">Memuat...</p>
+    <header class="glass px-6 pt-5 pb-4 mb-6 fade-in student-header">
+        <!-- Row 1: title + action buttons -->
+        <div class="student-header-top">
+            <div>
+                <h1 class="text-2xl md:text-3xl font-bold text-primary">Dashboard Siswa</h1>
+                <p class="text-secondary mt-1" id="studentName">Memuat...</p>
+            </div>
+            <div class="header-actions">
+                <div id="studentTzWidget"></div>
+                <button onclick="toggleNotifPanel('studentNotificationPanel')" class="header-btn glass relative" title="Notifikasi">
+                    <i data-lucide="bell" class="icon-sm"></i>
+                    <span id="studentNotifBadge" class="notification-badge hidden">0</span>
+                </button>
+                <button onclick="toggleTheme()" class="header-btn glass" title="Tema">
+                    <span id="themeIcon"></span>
+                </button>
+                <button onclick="logout()" class="header-btn btn-danger" title="Logout">
+                    <i data-lucide="log-out" class="icon-sm"></i>
+                    <span class="hide-on-mobile">Logout</span>
+                </button>
+            </div>
         </div>
-        <!-- Gamification widgets -->
-        <div class="flex gap-3 items-center flex-wrap">
+        <!-- Row 2: streak + XP bar (full width, below title/actions) -->
+        <div class="student-header-gamify">
             <div id="streakWidget"></div>
-            <div id="xpBarWidget"></div>
-        </div>
-        <div class="flex gap-3 items-center">
-            <div id="studentTzWidget"></div>
-            <button onclick="toggleNotifPanel('studentNotificationPanel')" class="icon-btn glass relative" title="Notifikasi">
-                <i data-lucide="bell" class="icon-sm"></i>
-                <span id="studentNotifBadge" class="notification-badge hidden">0</span>
-            </button>
-            <button onclick="toggleTheme()" class="icon-btn glass" title="Tema">
-                <span id="themeIcon"></span>
-            </button>
-            <button onclick="logout()" class="btn btn-danger px-4 py-2 rounded-lg font-semibold">
-                <i data-lucide="log-out" class="icon-sm"></i> <span class="hide-on-mobile">Logout</span>
-            </button>
+            <div id="xpBarWidget" style="flex:1;max-width:320px"></div>
         </div>
     </header>
 
@@ -109,18 +113,26 @@
         </section>
 
         <section id="tab-materials" class="tab-panel">
+            <!-- State 1: locked (no completed session) -->
             <div class="glass p-10 fade-in text-center" id="materialsLockedPlaceholder">
                 <div class="lock-icon">🔒</div>
                 <h2 class="text-xl font-bold text-primary mb-2">Materi Terkunci</h2>
                 <p class="text-secondary">Selesaikan minimal <strong>1 pertemuan</strong> bersama guru untuk membuka akses materi.</p>
             </div>
-            <div class="glass p-10 fade-in text-center" id="materialsContent" hidden>
-                <div style="font-size:3rem">📚</div>
-                <h2 class="text-xl font-bold text-primary mt-4 mb-2">Materi &amp; Modul</h2>
-                <p class="text-secondary mb-6">Buka halaman materi untuk belajar, mengerjakan kuis, dan ujian modul.</p>
-                <a href="materi.html" class="btn btn-primary px-8 py-3 rounded-lg font-bold text-lg">
-                    Buka Materi
-                </a>
+            <!-- State 2: unlocked — dynamically filled by JS -->
+            <div id="materialsContent" hidden>
+                <!-- JS renders one of:
+                     - "no enrollment" message  (#materialsNoEnrollment)
+                     - module list cards        (#materialsModuleList)  -->
+                <div id="materialsNoEnrollment" class="glass p-10 fade-in text-center" hidden>
+                    <div style="font-size:3rem">📭</div>
+                    <h2 class="text-xl font-bold text-primary mt-4 mb-2">Belum Ada Materi</h2>
+                    <p class="text-secondary">Belum ada materi yang di-assign padamu.<br>Hubungi admin segera.</p>
+                </div>
+                <div id="materialsModuleList" class="glass p-6 fade-in" hidden>
+                    <h2 class="text-xl font-bold text-primary mb-4">Materi & Modul</h2>
+                    <div id="materialsEnrollmentCards" class="space-y-3"></div>
+                </div>
             </div>
         </section>
 
