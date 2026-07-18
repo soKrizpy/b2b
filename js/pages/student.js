@@ -79,6 +79,8 @@ function updateMaterialsTabUI() {
     }
     if (lockedPlaceholder) lockedPlaceholder.hidden = true;
     if (materialsContent) materialsContent.hidden = false;
+    // Load enrollment state immediately when unlocked
+    loadLearningPath();
   } else {
     // Locked — show lock screen, hide content
     if (materialsBtn) {
@@ -733,13 +735,61 @@ async function loadHistory() {
 }
 
 // =========================================
-// LEARNING PATH — stub (materi.html handles the full flow)
-// student.html now shows a redirect card for materi.html
+// LEARNING PATH — smart enrollment check
+// Shows module cards if enrolled, "no materi" if not
 // =========================================
 async function loadLearningPath() {
-  // No-op on student.html: the Materi tab just shows a redirect button.
-  // Full module/quiz/exam logic lives on materi.html (quiz.js + inline init).
-  return;
+  const content = document.getElementById('materialsContent');
+  const noEnroll = document.getElementById('materialsNoEnrollment');
+  const moduleList = document.getElementById('materialsModuleList');
+  const cards = document.getElementById('materialsEnrollmentCards');
+
+  if (!content) return;
+
+  // Fetch enrollments
+  const { data: enrollments, error } = await sbClient
+    .from('module_enrollments')
+    .select('id, status, modules(id, title, description), topic_progress(id, is_completed)')
+    .eq('student_id', currentProfile.id);
+
+  if (error) { console.error('loadLearningPath error:', error); return; }
+
+  if (!enrollments || enrollments.length === 0) {
+    // No modules assigned — show "hubungi admin" message
+    if (noEnroll) noEnroll.hidden = false;
+    if (moduleList) moduleList.hidden = true;
+    return;
+  }
+
+  // Has enrollments — show module cards with open button
+  if (noEnroll) noEnroll.hidden = true;
+  if (moduleList) moduleList.hidden = false;
+
+  if (cards) {
+    cards.innerHTML = enrollments.map(e => {
+      const done = e.topic_progress?.filter(tp => tp.is_completed).length || 0;
+      const pct  = Math.round((done / 12) * 100);
+      const allDone = done >= 12;
+      return `
+        <div class="glass p-4 rounded-xl">
+          <div class="flex justify-between items-start gap-3 flex-wrap">
+            <div style="flex:1">
+              <h3 class="font-bold text-primary">${escHtml(e.modules?.title || 'Modul')}</h3>
+              ${e.modules?.description ? `<p class="text-secondary text-sm mt-1">${escHtml(e.modules.description)}</p>` : ''}
+              <div class="flex items-center gap-2 mt-2">
+                <div style="flex:1;height:6px;background:var(--glass-border,#333);border-radius:3px;overflow:hidden">
+                  <div style="width:${pct}%;height:100%;background:var(--accent,#6366f1);border-radius:3px;transition:width 0.5s ease"></div>
+                </div>
+                <span class="text-secondary text-xs">${done}/12 topik</span>
+              </div>
+            </div>
+            <a href="materi.html" class="btn ${allDone ? 'btn-warning' : 'btn-primary'} px-4 py-2 rounded-lg text-sm font-bold" style="white-space:nowrap">
+              ${allDone ? '🎓 Ujian' : '📚 Lanjut'}
+            </a>
+          </div>
+        </div>`;
+    }).join('');
+  }
 }
 
 let allEnrollments = []; // kept for backward-compat; not used on student.html
