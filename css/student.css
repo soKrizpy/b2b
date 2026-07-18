@@ -22,28 +22,36 @@ header {
     gap: 12px;
 }
 
-/* Right column: actions on top, gamify row below */
+/* Right column: actions on top, gamify row below — full width of right side */
 .header-right {
     display: flex;
     flex-direction: column;
-    align-items: flex-end;
-    gap: 8px;
+    align-items: stretch;   /* stretch so gamify row fills same width */
+    gap: 10px;
+    min-width: 0;
 }
 
 .header-actions {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
     flex-wrap: wrap;
 }
 
-/* Streak + XP sit directly under the action buttons, right-aligned */
+/* Streak + XP — LEFT-aligned, starting from same x as first action button */
 .student-header-gamify {
     display: flex;
     align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-    justify-content: flex-end;
+    gap: 10px;
+    flex-wrap: nowrap;
+    justify-content: flex-start;   /* left-aligned = lines up with GMT button */
+    width: 100%;
+}
+
+/* XP bar widget stretches to fill remaining space */
+#xpBarWidget {
+    flex: 1;
+    min-width: 200px;
 }
 
 /* -------------------------------------------------------
@@ -76,14 +84,14 @@ header {
 #studentTzWidget .btn {
     height: 40px !important;
     border-radius: 10px !important;
-    padding: 0 12px !important;
+    padding: 0 14px !important;
     font-size: 0.8125rem !important;
 }
 
 /* Logout button — wider with text */
 .header-actions .icon-btn.btn-logout {
     width: auto !important;
-    padding: 0 14px !important;
+    padding: 0 16px !important;
     background: linear-gradient(135deg, #f43f5e 0%, #be123c 100%) !important;
     border-color: transparent !important;
     color: #fff !important;
@@ -97,8 +105,8 @@ header {
 }
 
 @media (max-width: 640px) {
-    .student-header-gamify {
-        justify-content: flex-start;
+    .header-right {
+        width: 100%;
     }
     .header-actions .icon-btn.btn-logout .hide-on-mobile {
         display: none;
@@ -106,6 +114,9 @@ header {
     .header-actions .icon-btn.btn-logout {
         width: 40px !important;
         padding: 0 !important;
+    }
+    #xpBarWidget {
+        min-width: 140px;
     }
 }
 
@@ -524,11 +535,9 @@ header {
     background: var(--glass-bg);
     border: 1px solid var(--glass-border);
     border-radius: 999px;
-    padding: 5px 14px 5px 8px;
+    padding: 5px 16px 5px 8px;
     backdrop-filter: blur(12px);
-    min-width: 160px;
-    flex: 1;
-    max-width: 320px;
+    width: 100%;       /* fill the flex:1 from #xpBarWidget */
 }
 
 .xp-level-badge {
