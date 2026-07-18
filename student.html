@@ -13,31 +13,35 @@
 <body class="dashboard-body">
 
     <header class="glass px-6 pt-5 pb-4 mb-6 fade-in student-header">
-        <!-- Row 1: title + action buttons -->
         <div class="student-header-top">
+            <!-- Left: title + name -->
             <div>
                 <h1 class="text-2xl md:text-3xl font-bold text-primary">Dashboard Siswa</h1>
                 <p class="text-secondary mt-1" id="studentName">Memuat...</p>
             </div>
-            <div class="header-actions">
-                <div id="studentTzWidget"></div>
-                <button onclick="toggleNotifPanel('studentNotificationPanel')" class="header-btn glass relative" title="Notifikasi">
-                    <i data-lucide="bell" class="icon-sm"></i>
-                    <span id="studentNotifBadge" class="notification-badge hidden">0</span>
-                </button>
-                <button onclick="toggleTheme()" class="header-btn glass" title="Tema">
-                    <span id="themeIcon"></span>
-                </button>
-                <button onclick="logout()" class="header-btn btn-danger" title="Logout">
-                    <i data-lucide="log-out" class="icon-sm"></i>
-                    <span class="hide-on-mobile">Logout</span>
-                </button>
+            <!-- Right: action buttons on top, streak+XP below them -->
+            <div class="header-right">
+                <!-- Action buttons — all same 40px height -->
+                <div class="header-actions">
+                    <div id="studentTzWidget"></div>
+                    <button onclick="toggleNotifPanel('studentNotificationPanel')" class="icon-btn glass relative" title="Notifikasi">
+                        <i data-lucide="bell" class="icon-sm"></i>
+                        <span id="studentNotifBadge" class="notification-badge hidden">0</span>
+                    </button>
+                    <button onclick="toggleTheme()" class="icon-btn glass" title="Tema">
+                        <span id="themeIcon"></span>
+                    </button>
+                    <button onclick="logout()" class="icon-btn btn-logout" title="Logout">
+                        <i data-lucide="log-out" class="icon-sm"></i>
+                        <span class="hide-on-mobile">Logout</span>
+                    </button>
+                </div>
+                <!-- Streak + XP bar — below the action buttons -->
+                <div class="student-header-gamify">
+                    <div id="streakWidget"></div>
+                    <div id="xpBarWidget"></div>
+                </div>
             </div>
-        </div>
-        <!-- Row 2: streak + XP bar (full width, below title/actions) -->
-        <div class="student-header-gamify">
-            <div id="streakWidget"></div>
-            <div id="xpBarWidget" style="flex:1;max-width:320px"></div>
         </div>
     </header>
 

@@ -11,27 +11,25 @@ header {
 .student-header {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 0;
 }
 
-/* Row 1: title on left, action buttons on right */
 .student-header-top {
     display: flex;
     justify-content: space-between;
-    align-items: center;
+    align-items: flex-start;
     flex-wrap: wrap;
     gap: 12px;
 }
 
-/* Row 2: streak + XP bar — left-aligned, below title row */
-.student-header-gamify {
+/* Right column: actions on top, gamify row below */
+.header-right {
     display: flex;
-    align-items: center;
-    gap: 10px;
-    flex-wrap: wrap;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 8px;
 }
 
-/* All header action buttons — same height, consistent sizing */
 .header-actions {
     display: flex;
     align-items: center;
@@ -39,71 +37,75 @@ header {
     flex-wrap: wrap;
 }
 
-/* Icon-only buttons (notif, theme) */
-.header-btn {
-    display: inline-flex;
+/* Streak + XP sit directly under the action buttons, right-aligned */
+.student-header-gamify {
+    display: flex;
     align-items: center;
-    justify-content: center;
-    gap: 6px;
-    height: 38px;
-    min-width: 38px;
-    padding: 0 10px;
-    border-radius: 10px;
-    border: none;
-    cursor: pointer;
-    font-family: "Inter", sans-serif;
-    font-size: 0.875rem;
-    font-weight: 600;
-    color: var(--text-primary);
-    background: var(--glass-bg);
-    border: 1.5px solid var(--glass-border);
-    backdrop-filter: blur(12px);
-    transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
-    position: relative;
-    white-space: nowrap;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
 }
 
-.header-btn:hover {
-    transform: translateY(-2px);
-    background: var(--glass-bg-hover);
-    border-color: var(--glass-border-hover);
-    box-shadow: 0 4px 12px var(--accent-glow);
+/* -------------------------------------------------------
+   Override shared.css icon-btn inside .header-actions
+   so ALL buttons are exactly 40px tall, consistent
+   ------------------------------------------------------- */
+.header-actions .icon-btn,
+.header-actions #studentTzWidget .btn {
+    height: 40px !important;
+    min-width: 40px !important;
+    border-radius: 10px !important;
+    font-size: 0.875rem !important;
+    font-weight: 600 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 6px !important;
+    cursor: pointer !important;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease, border-color 0.2s ease !important;
 }
 
-.header-btn:active {
-    transform: scale(0.96);
+/* icon-only square buttons (notif + theme) */
+.header-actions .icon-btn:not(.btn-logout) {
+    width: 40px !important;
+    padding: 0 !important;
 }
 
-/* Danger variant for logout */
-.header-btn.btn-danger {
-    background: linear-gradient(135deg, #f43f5e 0%, #be123c 100%);
-    border-color: transparent;
-    color: #fff;
-    box-shadow: 0 3px 10px rgba(244, 63, 94, 0.35);
-}
-
-.header-btn.btn-danger:hover {
-    box-shadow: 0 5px 16px rgba(244, 63, 94, 0.5);
-    border-color: transparent;
-}
-
-/* Timezone widget inherits header-btn sizing from its inner button */
+/* Timezone widget button matches */
+.header-actions #studentTzWidget .btn,
 #studentTzWidget .btn {
-    height: 38px;
-    border-radius: 10px;
-    font-size: 0.8125rem;
+    height: 40px !important;
+    border-radius: 10px !important;
+    padding: 0 12px !important;
+    font-size: 0.8125rem !important;
 }
 
-@media (max-width: 600px) {
+/* Logout button — wider with text */
+.header-actions .icon-btn.btn-logout {
+    width: auto !important;
+    padding: 0 14px !important;
+    background: linear-gradient(135deg, #f43f5e 0%, #be123c 100%) !important;
+    border-color: transparent !important;
+    color: #fff !important;
+    box-shadow: 0 3px 10px rgba(244, 63, 94, 0.35) !important;
+}
+
+.header-actions .icon-btn.btn-logout:hover {
+    background: linear-gradient(135deg, #fb7185 0%, #e11d48 100%) !important;
+    box-shadow: 0 5px 16px rgba(244, 63, 94, 0.5) !important;
+    transform: translateY(-2px) !important;
+}
+
+@media (max-width: 640px) {
     .student-header-gamify {
-        /* On small screens keep it compact */
+        justify-content: flex-start;
     }
-    .header-btn span.hide-on-mobile {
+    .header-actions .icon-btn.btn-logout .hide-on-mobile {
         display: none;
     }
-    .header-btn {
-        min-width: 38px;
-        padding: 0 8px;
+    .header-actions .icon-btn.btn-logout {
+        width: 40px !important;
+        padding: 0 !important;
     }
 }
 
