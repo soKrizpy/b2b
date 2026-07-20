@@ -42,9 +42,7 @@ async function loadAvailableSlots() {
       .select("*")
       .order("start_time", { ascending: true }),
   );
-  if (data) {
-    allSlots = data;
-  }
+  if (data) allSlots = data;
 }
 
 async function loadDashboardData() {
@@ -457,7 +455,7 @@ function renderCalendar() {
     });
   });
 
-  // Add available slots — green=available, amber=reserved by a student
+  // Add available slots — green = free slot
   allSlots.forEach((slot) => {
     if (slot.status === "available") {
       events.push({
@@ -468,9 +466,11 @@ function renderCalendar() {
         classNames: ["status-upcoming"],
       });
     } else if (slot.status === "reserved") {
+      // Show reserved slots in amber — student name shown if available
+      const name = slot.profiles?.full_name || slot.reserved_by ? "Siswa (pending)" : "Reserved";
       events.push({
         id: `slot-${slot.id}`,
-        title: `[Reserved — pending approval]`,
+        title: `[${name}]`,
         start: slot.start_time,
         color: "#f59e0b",
         classNames: ["status-warning"],

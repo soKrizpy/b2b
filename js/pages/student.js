@@ -1007,12 +1007,11 @@ async function openRescheduleRequest(scheduleId = "") {
   if (timeField) {
     timeField.innerHTML = '<option value="">Memuat slot kosong...</option>';
 
-    // Fetch available slots — only truly free (not reserved)
+    // Fetch available slots — only status='available' (reserved ones excluded by status)
     const { data: slots, error } = await sbClient
       .from("available_slots")
-      .select("*")
+      .select("id, start_time, status")
       .eq("status", "available")
-      .is("reserved_by", null)
       .gte("start_time", new Date().toISOString())
       .order("start_time", { ascending: true });
 
@@ -1181,9 +1180,8 @@ async function _populateSlots(select) {
 
   const { data: slots, error } = await sbClient
     .from('available_slots')
-    .select('*')
-    .eq('status', 'available')   // only truly free slots
-    .is('reserved_by', null)     // double-guard: not reserved by anyone
+    .select('id, start_time, status')
+    .eq('status', 'available')   // reserved slots have status='reserved' — excluded
     .gte('start_time', new Date().toISOString())
     .order('start_time', { ascending: true });
 
@@ -1223,22 +1221,8 @@ async function submitSchedulingRequest() {
     if (_schedMode === 'reschedule' && !scheduleId) { toast('Pilih kelas yang ingin di-reschedule', 'error'); return; }
     if (!requestedTime) { toast('Pilih slot waktu yang diinginkan', 'error'); return; }
 
-    // Reserve the slot atomically — only succeeds if still available
-    if (slotId) {
-      const { error: reserveErr, count } = await sbClient
-        .from('available_slots')
-        .update({ status: 'reserved', reserved_by: currentProfile.id, reserved_at: new Date().toISOString() })
-        .eq('id', slotId)
-        .eq('status', 'available')
-        .is('reserved_by', null);
-
-      if (reserveErr || count === 0) {
-        toast('Slot ini sudah diambil siswa lain. Pilih slot lain.', 'error');
-        await _populateSlots(slotSelect);
-        return;
-      }
-    }
-
+    // Insert the request directly — no reservation needed
+    // The slot stays visible until admin approves (admin resolves conflicts)
     const { error } = await sbClient.from('reschedule_requests').insert([{
       student_id: currentProfile.id,
       schedule_id: _schedMode === 'reschedule' ? scheduleId : null,
@@ -1249,15 +1233,10 @@ async function submitSchedulingRequest() {
     }]);
 
     if (error) {
-      if (slotId) {
-        await sbClient.from('available_slots')
-          .update({ status: 'available', reserved_by: null, reserved_at: null })
-          .eq('id', slotId);
-      }
       toast('Gagal mengirim permintaan: ' + error.message, 'error');
       return;
     }
-    toast(_schedMode === 'weekly' ? 'Permintaan jadwal mingguan berhasil dikirim' : 'Permintaan reschedule berhasil dikirim', 'success');
+    toast(_schedMode === 'weekly' ? 'Permintaan jadwal mingguan berhasil dikirim ✅' : 'Permintaan reschedule berhasil dikirim ✅', 'success');
   }
 
   closeModal('schedulingModal');
