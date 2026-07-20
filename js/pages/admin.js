@@ -457,15 +457,23 @@ function renderCalendar() {
     });
   });
 
-  // Add available slots
+  // Add available slots — green=available, amber=reserved by a student
   allSlots.forEach((slot) => {
     if (slot.status === "available") {
       events.push({
         id: `slot-${slot.id}`,
         title: `[Slot Kosong]`,
         start: slot.start_time,
-        color: "#10b981", // Beautiful emerald green
+        color: "#10b981",
         classNames: ["status-upcoming"],
+      });
+    } else if (slot.status === "reserved") {
+      events.push({
+        id: `slot-${slot.id}`,
+        title: `[Reserved — pending approval]`,
+        start: slot.start_time,
+        color: "#f59e0b",
+        classNames: ["status-warning"],
       });
     }
   });
@@ -1250,6 +1258,13 @@ async function resolveRequest(id, status) {
         })
         .eq("id", id),
       async () => {
+        // Revert reserved slot back to available so other students can pick it
+        if (request.slot_id) {
+          await sbClient
+            .from("available_slots")
+            .update({ status: "available", reserved_by: null, reserved_at: null })
+            .eq("id", request.slot_id);
+        }
         await sendNotificationToStudent(
           request.student_id,
           "Request reschedule ditolak",
@@ -1260,7 +1275,7 @@ async function resolveRequest(id, status) {
           }`,
         );
         toast("Request ditolak", "success");
-        await Promise.all([loadRequests(), loadSchedules()]);
+        await Promise.all([loadRequests(), loadSchedules(), loadAvailableSlots()]);
       },
     );
     return;

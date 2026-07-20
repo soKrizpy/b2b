@@ -1007,11 +1007,12 @@ async function openRescheduleRequest(scheduleId = "") {
   if (timeField) {
     timeField.innerHTML = '<option value="">Memuat slot kosong...</option>';
 
-    // Fetch available slots
+    // Fetch available slots — only truly free (not reserved)
     const { data: slots, error } = await sbClient
       .from("available_slots")
       .select("*")
       .eq("status", "available")
+      .is("reserved_by", null)
       .gte("start_time", new Date().toISOString())
       .order("start_time", { ascending: true });
 
@@ -1084,4 +1085,181 @@ async function submitRescheduleRequest() {
   }
   closeModal("requestModal");
   await Promise.all([loadRequests(), loadNotifications("student")]);
+}
+
+
+// =========================================
+// MORE SCHEDULING OPTIONS
+// =========================================
+
+let _schedMode = ''; // 'weekly' | 'reschedule' | 'cancel'
+
+function toggleSchedOptions() {
+  const panel = document.getElementById('schedOptionsPanel');
+  const chevron = document.getElementById('schedChevron');
+  const btn = document.getElementById('schedOptionsBtn');
+  if (!panel) return;
+
+  const isOpen = panel.classList.contains('open');
+  panel.classList.toggle('open', !isOpen);
+  if (chevron) chevron.style.transform = isOpen ? '' : 'rotate(180deg)';
+  if (btn) btn.classList.toggle('active', !isOpen);
+  if (!isOpen) refreshIcons();
+}
+
+async function openSchedulingModal(mode) {
+  _schedMode = mode;
+
+  const modal = document.getElementById('schedulingModal');
+  const title = document.getElementById('schedulingModalTitle');
+  const desc  = document.getElementById('schedulingModalDesc');
+  const classGroup = document.getElementById('schedPickClassGroup');
+  const slotGroup  = document.getElementById('schedPickSlotGroup');
+  const slotLabel  = document.getElementById('schedSlotLabel');
+  const reasonLabel = document.getElementById('schedReasonLabel');
+  const submitBtn  = document.getElementById('schedSubmitBtn');
+  const classSelect = document.getElementById('schedClassSelect');
+  const slotSelect  = document.getElementById('schedSlotSelect');
+  const reason = document.getElementById('schedReason');
+
+  if (reason) reason.value = '';
+
+  if (mode === 'weekly') {
+    title.textContent = '📅 Update Weekly Schedule';
+    desc.textContent = 'Pilih slot kosong yang tersedia dari guru untuk jadwal rutinan mingguanmu.';
+    classGroup.hidden = true;
+    slotGroup.hidden = false;
+    slotLabel.textContent = 'Pilih slot kosong yang diinginkan:';
+    reasonLabel.textContent = 'Catatan untuk guru (opsional):';
+    submitBtn.textContent = 'Kirim Permintaan';
+    await _populateSlots(slotSelect);
+
+  } else if (mode === 'reschedule') {
+    title.textContent = '🔄 Reschedule Class';
+    desc.textContent = 'Pilih kelas yang ingin dipindahkan, lalu pilih slot waktu baru.';
+    classGroup.hidden = false;
+    slotGroup.hidden = false;
+    slotLabel.textContent = 'Pilih slot waktu baru:';
+    reasonLabel.textContent = 'Alasan reschedule:';
+    submitBtn.textContent = 'Kirim Reschedule';
+    _populateClassSelect(classSelect);
+    await _populateSlots(slotSelect);
+
+  } else if (mode === 'cancel') {
+    title.textContent = '❌ Cancel Class';
+    desc.textContent = 'Pilih kelas yang ingin dibatalkan. Guru akan dikonfirmasi.';
+    classGroup.hidden = false;
+    slotGroup.hidden = true;
+    reasonLabel.textContent = 'Alasan pembatalan:';
+    submitBtn.textContent = 'Kirim Pembatalan';
+    _populateClassSelect(classSelect);
+  }
+
+  openModal('schedulingModal');
+  refreshIcons();
+}
+
+function _populateClassSelect(select) {
+  if (!select) return;
+
+  const upcoming = upcomingSchedules.filter(s => s.status !== 'cancelled');
+
+  if (!upcoming.length) {
+    select.innerHTML = '<option value="">Tidak ada kelas mendatang</option>';
+    return;
+  }
+
+  select.innerHTML = '<option value="">-- Pilih kelas --</option>' +
+    upcoming.map(s =>
+      `<option value="${s.id}">${escHtml(s.title)} — ${formatDate.toIndonesian(s.start_time)}</option>`
+    ).join('');
+}
+
+async function _populateSlots(select) {
+  if (!select) return;
+  select.innerHTML = '<option value="">Memuat slot...</option>';
+
+  const { data: slots, error } = await sbClient
+    .from('available_slots')
+    .select('*')
+    .eq('status', 'available')   // only truly free slots
+    .is('reserved_by', null)     // double-guard: not reserved by anyone
+    .gte('start_time', new Date().toISOString())
+    .order('start_time', { ascending: true });
+
+  if (error || !slots?.length) {
+    select.innerHTML = '<option value="">Tidak ada slot kosong tersedia</option>';
+    return;
+  }
+
+  select.innerHTML = '<option value="">-- Pilih slot --</option>' +
+    slots.map(s =>
+      `<option value="${s.start_time}" data-slot-id="${s.id}">${formatDate.toIndonesian(s.start_time)}</option>`
+    ).join('');
+}
+
+async function submitSchedulingRequest() {
+  const reason = document.getElementById('schedReason')?.value.trim();
+  const classSelect = document.getElementById('schedClassSelect');
+  const slotSelect  = document.getElementById('schedSlotSelect');
+
+  const selectedSlotOption = slotSelect?.options[slotSelect.selectedIndex];
+  const requestedTime = selectedSlotOption?.value || null;
+  const slotId = selectedSlotOption?.dataset?.slotId || null;
+  const scheduleId = classSelect?.value || null;
+
+  if (_schedMode === 'cancel') {
+    if (!scheduleId) { toast('Pilih kelas yang ingin dibatalkan', 'error'); return; }
+    const confirmed = await showConfirm('Batalkan Kelas', 'Apakah Anda yakin ingin membatalkan kelas ini? Guru akan dikonfirmasi.', 'danger');
+    if (!confirmed) return;
+    const { error } = await sbClient.from('reschedule_requests').insert([{
+      student_id: currentProfile.id, schedule_id: scheduleId, requested_time: null,
+      slot_id: null, reason: reason || 'Pembatalan kelas', status: 'pending',
+    }]);
+    if (error) { toast('Gagal mengirim pembatalan: ' + error.message, 'error'); return; }
+    toast('Permintaan pembatalan berhasil dikirim', 'success');
+
+  } else if (_schedMode === 'reschedule' || _schedMode === 'weekly') {
+    if (_schedMode === 'reschedule' && !scheduleId) { toast('Pilih kelas yang ingin di-reschedule', 'error'); return; }
+    if (!requestedTime) { toast('Pilih slot waktu yang diinginkan', 'error'); return; }
+
+    // Reserve the slot atomically — only succeeds if still available
+    if (slotId) {
+      const { error: reserveErr, count } = await sbClient
+        .from('available_slots')
+        .update({ status: 'reserved', reserved_by: currentProfile.id, reserved_at: new Date().toISOString() })
+        .eq('id', slotId)
+        .eq('status', 'available')
+        .is('reserved_by', null);
+
+      if (reserveErr || count === 0) {
+        toast('Slot ini sudah diambil siswa lain. Pilih slot lain.', 'error');
+        await _populateSlots(slotSelect);
+        return;
+      }
+    }
+
+    const { error } = await sbClient.from('reschedule_requests').insert([{
+      student_id: currentProfile.id,
+      schedule_id: _schedMode === 'reschedule' ? scheduleId : null,
+      requested_time: new Date(requestedTime).toISOString(),
+      slot_id: slotId,
+      reason: reason || (_schedMode === 'reschedule' ? 'Reschedule kelas' : 'Update jadwal mingguan'),
+      status: 'pending',
+    }]);
+
+    if (error) {
+      if (slotId) {
+        await sbClient.from('available_slots')
+          .update({ status: 'available', reserved_by: null, reserved_at: null })
+          .eq('id', slotId);
+      }
+      toast('Gagal mengirim permintaan: ' + error.message, 'error');
+      return;
+    }
+    toast(_schedMode === 'weekly' ? 'Permintaan jadwal mingguan berhasil dikirim' : 'Permintaan reschedule berhasil dikirim', 'success');
+  }
+
+  closeModal('schedulingModal');
+  await Promise.all([loadRequests(), loadNotifications('student')]);
 }

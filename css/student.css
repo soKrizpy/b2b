@@ -796,3 +796,138 @@ body.light-mode .badge-item.earned {
 body.light-mode .badge-item.earned::after {
     background: linear-gradient(90deg, transparent, var(--accent), transparent);
 }
+
+/* =========================================
+   MORE SCHEDULING OPTIONS
+   Below mini calendar — collapsible panel
+   ========================================= */
+
+.sched-options-wrap {
+    border-top: 1px solid var(--glass-border);
+    padding-top: 12px;
+}
+
+/* Toggle button — dashed border style like the reference */
+.sched-options-toggle {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 14px;
+    border: 1.5px dashed var(--glass-border);
+    border-radius: 10px;
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    font-weight: 600;
+    font-family: "Inter", sans-serif;
+    cursor: pointer;
+    transition: color 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+}
+
+.sched-options-toggle:hover,
+.sched-options-toggle.active {
+    color: var(--accent-light);
+    border-color: var(--accent);
+    background: rgba(139, 92, 246, 0.06);
+}
+
+.sched-chevron {
+    margin-left: auto;
+    transition: transform 0.25s ease;
+    flex-shrink: 0;
+}
+
+/* Collapsible panel */
+.sched-options-panel {
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows 0.28s ease;
+    overflow: hidden;
+}
+
+.sched-options-panel.open {
+    grid-template-rows: 1fr;
+}
+
+.sched-options-panel > * {
+    min-height: 0;
+}
+
+/* Wrapper needed for grid animation trick */
+.sched-options-panel {
+    margin-top: 0;
+}
+
+.sched-options-panel.open {
+    margin-top: 8px;
+}
+
+/* Each option row */
+.sched-option-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    width: 100%;
+    padding: 12px 14px;
+    border: none;
+    border-radius: 10px;
+    background: transparent;
+    cursor: pointer;
+    font-family: "Inter", sans-serif;
+    text-align: left;
+    transition: background 0.18s ease, transform 0.15s ease;
+    margin-bottom: 2px;
+}
+
+.sched-option-item:hover {
+    background: var(--glass-bg-hover);
+    transform: translateX(3px);
+}
+
+.sched-option-item:last-child {
+    margin-bottom: 0;
+}
+
+.sched-option-icon {
+    font-size: 1.25rem;
+    line-height: 1;
+    flex-shrink: 0;
+    margin-top: 1px;
+}
+
+.sched-option-title {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    line-height: 1.3;
+}
+
+.sched-option-desc {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    margin-top: 2px;
+    line-height: 1.4;
+}
+
+.sched-option-danger .sched-option-title {
+    color: var(--error);
+}
+
+.sched-option-danger:hover {
+    background: rgba(244, 63, 94, 0.06);
+}
+
+/* Light mode */
+body.light-mode .sched-options-toggle {
+    border-color: var(--glass-border);
+    color: var(--text-secondary);
+}
+
+body.light-mode .sched-options-toggle:hover,
+body.light-mode .sched-options-toggle.active {
+    border-color: var(--accent);
+    background: rgba(59, 130, 246, 0.05);
+    color: var(--accent);
+}

@@ -94,12 +94,46 @@
                             </h2>
                             <div class="flex gap-1">
                                 <button onclick="calNav(-1)" class="icon-btn glass cal-nav-btn" title="Bulan sebelumnya">
-                                    <i data-lucide="chevron-left" class="icon-sm"></i> <span class="hide-on-mobile"> </span></button>
+                                    <i data-lucide="chevron-left" class="icon-sm"></i></button>
                                 <button onclick="calNav(1)" class="icon-btn glass cal-nav-btn" title="Bulan berikutnya">
-                                    <i data-lucide="chevron-right" class="icon-sm"></i> <span class="hide-on-mobile"> </span></button>
+                                    <i data-lucide="chevron-right" class="icon-sm"></i></button>
                             </div>
                         </div>
                         <div id="miniCal"></div>
+
+                        <!-- More Scheduling Options -->
+                        <div class="sched-options-wrap mt-4">
+                            <button class="sched-options-toggle" onclick="toggleSchedOptions()" id="schedOptionsBtn">
+                                <i data-lucide="calendar-cog" class="icon-sm"></i>
+                                <span>More Scheduling Options</span>
+                                <i data-lucide="chevron-down" class="icon-sm sched-chevron" id="schedChevron"></i>
+                            </button>
+                            <div class="sched-options-panel" id="schedOptionsPanel">
+                                <div>
+                                <button class="sched-option-item" onclick="openSchedulingModal('weekly')">
+                                    <span class="sched-option-icon">📅</span>
+                                    <div>
+                                        <div class="sched-option-title">Update Weekly Schedule</div>
+                                        <div class="sched-option-desc">Pilih slot rutinan mingguan baru dari slot kosong guru</div>
+                                    </div>
+                                </button>
+                                <button class="sched-option-item" onclick="openSchedulingModal('reschedule')">
+                                    <span class="sched-option-icon">🔄</span>
+                                    <div>
+                                        <div class="sched-option-title">Reschedule Class</div>
+                                        <div class="sched-option-desc">Pindahkan kelas yang sudah dijadwalkan ke slot lain</div>
+                                    </div>
+                                </button>
+                                <button class="sched-option-item sched-option-danger" onclick="openSchedulingModal('cancel')">
+                                    <span class="sched-option-icon">❌</span>
+                                    <div>
+                                        <div class="sched-option-title">Cancel Class</div>
+                                        <div class="sched-option-desc">Batalkan kelas yang sudah dijadwalkan</div>
+                                    </div>
+                                </button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Package Progress -->
@@ -185,6 +219,41 @@
             <div class="flex gap-3 mt-6">
                 <button onclick="submitRescheduleRequest()" class="btn btn-primary flex-1 py-3 rounded-lg font-semibold">Kirim</button>
                 <button onclick="closeModal('requestModal')" class="btn btn-danger flex-1 py-3 rounded-lg font-semibold">Batal</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scheduling Options Modal -->
+    <div id="schedulingModal" class="modal-overlay">
+        <div class="modal-content" style="max-width:480px">
+            <h3 class="text-xl font-bold text-primary mb-1" id="schedulingModalTitle">Scheduling</h3>
+            <p class="text-secondary text-sm mb-4" id="schedulingModalDesc"></p>
+
+            <!-- Step 1: Pick a class (for reschedule + cancel) -->
+            <div id="schedPickClassGroup" class="space-y-3 mb-4" hidden>
+                <label class="text-secondary text-sm block">Pilih kelas yang ingin diubah:</label>
+                <select id="schedClassSelect" class="input-field px-4 py-3 rounded-lg">
+                    <option value="">Memuat jadwal...</option>
+                </select>
+            </div>
+
+            <!-- Step 2: Pick an available slot (for weekly + reschedule) -->
+            <div id="schedPickSlotGroup" class="space-y-3 mb-4" hidden>
+                <label class="text-secondary text-sm block" id="schedSlotLabel">Pilih slot waktu tersedia:</label>
+                <select id="schedSlotSelect" class="input-field px-4 py-3 rounded-lg">
+                    <option value="">Memuat slot...</option>
+                </select>
+            </div>
+
+            <!-- Reason field (all types) -->
+            <div class="space-y-2 mb-4">
+                <label class="text-secondary text-sm block" id="schedReasonLabel">Alasan / catatan (opsional):</label>
+                <textarea id="schedReason" placeholder="Tulis alasan..." class="input-field px-4 py-3 rounded-lg" rows="3"></textarea>
+            </div>
+
+            <div class="flex gap-3 mt-6">
+                <button onclick="submitSchedulingRequest()" id="schedSubmitBtn" class="btn btn-primary flex-1 py-3 rounded-lg font-semibold">Kirim</button>
+                <button onclick="closeModal('schedulingModal')" class="btn btn-danger flex-1 py-3 rounded-lg font-semibold">Batal</button>
             </div>
         </div>
     </div>
