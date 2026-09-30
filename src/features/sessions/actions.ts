@@ -1,0 +1,305 @@
+﻿// src/features/sessions/actions.ts
+// Server Actions for meeting CRUD operations.
+// All mutations are admin-only. Role is verified via requireAdmin() before
+// any DB write. revalidatePath() is called after each mutation so all three
+// role dashboards reflect the change immediately.
+
+'use server';
+
+import { revalidatePath } from 'next/cache';
+import { z } from 'zod';
+import { requireAdmin } from '@/lib/auth';
+import { createSupabaseAdminClient } from '@/lib/supabase/admin';
+import {
+  validate,
+  createSessionSchema,
+  updateSessionSchema,
+} from './validation';
+
+export type ActionResult =
+  | { success: true;  message: string }
+  | { success: false; error: string; fields?: Record<string, string> };
+
+type CreateInput = z.infer<typeof createSessionSchema>;
+type UpdateInput = z.infer<typeof updateSessionSchema>;
+
+const REVALIDATE_PATHS = [
+  '/admin/dashboard',
+  '/admin/sessions',
+  '/teacher/dashboard',
+  '/student/dashboard',
+] as const;
+
+function revalidateAll() {
+  for (const path of REVALIDATE_PATHS) {
+    revalidatePath(path, 'layout');
+  }
+}
+
+// ── createSession ─────────────────────────────────────────────────────────────
+
+export async function createSession(
+  _prevState: ActionResult | null,
+  formData: FormData
+): Promise<ActionResult> {
+  const auth = await requireAdmin();
+  if (!auth.ok) return { success: false, error: auth.message };
+
+  const raw = {
+    title:          formData.get('title'),
+    meeting_date:   formData.get('meeting_date'),
+    link_url:       formData.get('link_url'),
+    notes:          formData.get('notes') || undefined,
+    session_count:  formData.get('session_count')  ?? 1,
+    session_number: formData.get('session_number') ?? 1,
+    student_ids:    formData.getAll('student_ids'),
+  };
+
+  const v = validate(createSessionSchema, raw);
+  if (!v.success) return { success: false, error: v.error, fields: v.fields };
+
+  const { title, meeting_date, link_url, notes, session_count, student_ids } =
+    v.data as CreateInput;
+
+  const db = createSupabaseAdminClient();
+  const seriesId = session_count > 1 ? crypto.randomUUID() : null;
+  const baseDate  = new Date(meeting_date);
+  let insertedCount = 0;
+
+  for (let i = 0; i < session_count; i++) {
+    const sessionDate = new Date(baseDate);
+    sessionDate.setDate(sessionDate.getDate() + i * 7);
+
+    // Cast through unknown — hand-authored Database generic doesn't resolve
+    // MeetingInsert through the Supabase client generic perfectly at compile time.
+    const insertResult = await (db
+      .from('meetings')
+      .insert({
+        title,
+        meeting_date:   sessionDate.toISOString(),
+        link_url:       link_url ?? null,
+        notes:          notes    ?? null,
+        session_count,
+        session_number: i + 1,
+        series_id:      seriesId,
+      } as never)
+      .select('id')
+      .single() as unknown as Promise<{ data: { id: number } | null; error: { message: string } | null }>);
+
+    const { data: meeting, error: meetingError } = await insertResult;
+
+    if (meetingError || !meeting) {
+      console.error('[createSession] insert error:', meetingError?.message);
+      continue;
+    }
+
+    if (student_ids.length > 0) {
+      const rows = student_ids.map((sid: string) => ({
+        meeting_id: meeting.id,
+        student_id: sid,
+      }));
+      const { error: assignError } = await (db
+        .from('meeting_students')
+        .insert(rows as never) as unknown as Promise<{ error: { message: string } | null }>);
+      if (assignError) {
+        console.error('[createSession] student assign error:', assignError.message);
+      }
+    }
+
+    insertedCount++;
+  }
+
+  if (insertedCount === 0) {
+    return { success: false, error: 'Gagal menyimpan jadwal. Silakan coba lagi.' };
+  }
+
+  revalidateAll();
+  const label = session_count > 1 ? `${insertedCount} sesi` : '1 jadwal';
+  return { success: true, message: `Berhasil membuat ${label} kelas.` };
+}
+
+// ── updateSession ─────────────────────────────────────────────────────────────
+
+export async function updateSession(
+  _prevState: ActionResult | null,
+  formData: FormData
+): Promise<ActionResult> {
+  const auth = await requireAdmin();
+  if (!auth.ok) return { success: false, error: auth.message };
+
+  const idRaw = formData.get('id');
+  const id    = idRaw ? Number(idRaw) : NaN;
+  if (isNaN(id) || id <= 0) {
+    return { success: false, error: 'ID jadwal tidak valid.', fields: { id: 'Wajib diisi.' } };
+  }
+
+  const editMode   = (formData.get('edit_mode') as string) || 'single';
+  const seriesId   = (formData.get('series_id')  as string) || null;
+  const sessionNum = Number(formData.get('session_number') ?? 1);
+  const studentIds = formData.getAll('student_ids') as string[];
+
+  const raw = Object.fromEntries(
+    [
+      ['title',          formData.get('title')],
+      ['meeting_date',   formData.get('meeting_date')],
+      ['link_url',       formData.get('link_url')],
+      ['notes',          formData.get('notes')],
+      ['session_count',  formData.get('session_count')],
+      ['session_number', formData.get('session_number')],
+    ].filter(([, v]) => v !== null && v !== '')
+  );
+
+  const v = validate(updateSessionSchema, raw);
+  if (!v.success) return { success: false, error: v.error, fields: v.fields };
+
+  const patch = v.data as UpdateInput;
+  const db    = createSupabaseAdminClient();
+
+  if (editMode === 'series' && seriesId) {
+    const { data: futures, error: fetchErr } = await (db
+      .from('meetings')
+      .select('id, session_number')
+      .eq('series_id', seriesId)
+      .gte('session_number', sessionNum)
+      .order('session_number', { ascending: true }) as unknown as Promise<{
+        data: Array<{ id: number; session_number: number }>;
+        error: { message: string } | null;
+      }>);
+
+    if (fetchErr) return { success: false, error: 'Gagal memuat data seri jadwal.' };
+
+    const baseDate = patch.meeting_date ? new Date(patch.meeting_date) : null;
+
+    for (let i = 0; i < futures.length; i++) {
+      const m          = futures[i];
+      const sessionPatch: Record<string, unknown> = { ...patch };
+
+      if (baseDate) {
+        const d = new Date(baseDate);
+        d.setDate(d.getDate() + i * 7);
+        sessionPatch.meeting_date = d.toISOString();
+      }
+
+      await (db.from('meetings').update(sessionPatch as never).eq('id', m.id) as unknown as Promise<unknown>);
+
+      if (studentIds.length > 0) {
+        await (db.from('meeting_students').delete().eq('meeting_id', m.id) as unknown as Promise<unknown>);
+        const rows = studentIds.map((sid) => ({ meeting_id: m.id, student_id: sid }));
+        await (db.from('meeting_students').insert(rows as never) as unknown as Promise<unknown>);
+      }
+    }
+  } else {
+    const { error: updateErr } = await (db
+      .from('meetings')
+      .update(patch as never)
+      .eq('id', id) as unknown as Promise<{ error: { message: string } | null }>);
+
+    if (updateErr) {
+      return { success: false, error: `Gagal memperbarui jadwal: ${updateErr.message}` };
+    }
+
+    if (studentIds.length > 0) {
+      await (db.from('meeting_students').delete().eq('meeting_id', id) as unknown as Promise<unknown>);
+      const rows = studentIds.map((sid) => ({ meeting_id: id, student_id: sid }));
+      const { error: assignErr } = await (db
+        .from('meeting_students')
+        .insert(rows as never) as unknown as Promise<{ error: { message: string } | null }>);
+      if (assignErr) console.error('[updateSession] student assign:', assignErr.message);
+    }
+  }
+
+  revalidateAll();
+  return { success: true, message: 'Jadwal berhasil diperbarui.' };
+}
+
+// ── deleteSession ─────────────────────────────────────────────────────────────
+
+export async function deleteSession(
+  _prevState: ActionResult | null,
+  formData: FormData
+): Promise<ActionResult> {
+  const auth = await requireAdmin();
+  if (!auth.ok) return { success: false, error: auth.message };
+
+  const idRaw = formData.get('id');
+  const id    = idRaw ? Number(idRaw) : NaN;
+  if (isNaN(id) || id <= 0) {
+    return { success: false, error: 'ID jadwal tidak valid.' };
+  }
+
+  const editMode   = (formData.get('edit_mode') as string) || 'single';
+  const seriesId   = (formData.get('series_id')  as string) || null;
+  const sessionNum = Number(formData.get('session_number') ?? 1);
+
+  const db = createSupabaseAdminClient();
+
+  if (editMode === 'series' && seriesId) {
+    const { data: targets } = await (db
+      .from('meetings')
+      .select('id')
+      .eq('series_id', seriesId)
+      .gte('session_number', sessionNum) as unknown as Promise<{
+        data: Array<{ id: number }>;
+        error: unknown;
+      }>);
+
+    const targetIds = (targets ?? []).map((m) => m.id);
+
+    if (targetIds.length > 0) {
+      await (db.from('meeting_students').delete().in('meeting_id', targetIds) as unknown as Promise<unknown>);
+      const { error: delErr } = await (db
+        .from('meetings')
+        .delete()
+        .eq('series_id', seriesId)
+        .gte('session_number', sessionNum) as unknown as Promise<{ error: { message: string } | null }>);
+
+      if (delErr) return { success: false, error: `Gagal menghapus seri jadwal: ${delErr.message}` };
+    }
+  } else {
+    await (db.from('meeting_students').delete().eq('meeting_id', id) as unknown as Promise<unknown>);
+
+    const { error: delErr } = await (db
+      .from('meetings')
+      .delete()
+      .eq('id', id) as unknown as Promise<{ error: { message: string } | null }>);
+
+    if (delErr) return { success: false, error: `Gagal menghapus jadwal: ${delErr.message}` };
+  }
+
+  revalidateAll();
+  return { success: true, message: 'Jadwal berhasil dihapus.' };
+}
+
+// ── markSessionComplete ───────────────────────────────────────────────────────
+
+export async function markSessionComplete(
+  _prevState: ActionResult | null,
+  formData: FormData
+): Promise<ActionResult> {
+  const auth = await requireAdmin();
+  if (!auth.ok) return { success: false, error: auth.message };
+
+  const idRaw = formData.get('id');
+  const id    = idRaw ? Number(idRaw) : NaN;
+  if (isNaN(id) || id <= 0) {
+    return { success: false, error: 'ID jadwal tidak valid.' };
+  }
+
+  const progressReport   = (formData.get('progress_report')   as string) || '';
+  const completionStatus = (formData.get('completion_status') as string) || 'selesai';
+
+  const db = createSupabaseAdminClient();
+  const { error } = await (db
+    .from('meetings')
+    .update({
+      is_completed:      true,
+      progress_report:   progressReport,
+      completion_status: completionStatus,
+    } as never)
+    .eq('id', id) as unknown as Promise<{ error: { message: string } | null }>);
+
+  if (error) return { success: false, error: `Gagal memperbarui status: ${error.message}` };
+
+  revalidateAll();
+  return { success: true, message: 'Kelas berhasil ditandai selesai.' };
+}

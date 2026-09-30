@@ -1,0 +1,227 @@
+﻿// src/features/challenges/actions.ts
+// Server Actions: challenge CRUD (admin), student submit, teacher review.
+'use server';
+
+import { revalidatePath } from 'next/cache';
+import { z } from 'zod';
+import { requireAdmin, requireRole, getAuthUser } from '@/lib/auth';
+import { createSupabaseAdminClient } from '@/lib/supabase/admin';
+
+export type ChallengeActionResult =
+  | { success: true; id?: number; message: string }
+  | { success: false; error: string; fields?: Record<string, string> };
+
+// â”€â”€ Schemas â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+const challengeSchema = z.object({
+  topic_id:           z.coerce.number().int().positive('topic_id wajib diisi'),
+  title:              z.string().min(1, 'Judul challenge wajib diisi').max(200),
+  instructions:       z.string().max(5000).optional(),
+  order_index:        z.coerce.number().int().min(0).default(0),
+  allows_file_upload: z.coerce.boolean().default(false),
+});
+
+const submitSchema = z.object({
+  challenge_id:    z.coerce.number().int().positive(),
+  submission_url:  z.string().url('Link submission tidak valid').optional().or(z.literal('')),
+  submission_note: z.string().max(1000).optional(),
+});
+
+const reviewSchema = z.object({
+  submission_id: z.coerce.number().int().positive(),
+  status:        z.enum(['approved', 'needs_revision']),
+  review_note:   z.string().max(1000).optional(),
+});
+
+// â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+function fromFD(fd: FormData, keys: string[]): Record<string, unknown> {
+  const obj: Record<string, unknown> = {};
+  for (const k of keys) { const v = fd.get(k); if (v !== null) obj[k] = v; }
+  return obj;
+}
+
+function flatErr(err: z.ZodError): Record<string, string> {
+  const fields: Record<string, string> = {};
+  for (const [k, msgs] of Object.entries(err.flatten().fieldErrors)) {
+    if (Array.isArray(msgs) && msgs.length > 0) fields[k] = msgs[0] as string;
+  }
+  return fields;
+}
+
+function revalidateAll(topicId?: number, moduleId?: number) {
+  revalidatePath('/admin/curriculum', 'layout');
+  revalidatePath('/teacher/submissions', 'layout');
+  if (topicId) revalidatePath(`/student/lessons/topic/${topicId}`, 'layout');
+  if (moduleId) revalidatePath(`/admin/curriculum/${moduleId}`, 'layout');
+}
+
+// â”€â”€ Admin: challenge CRUD â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+export async function createChallenge(
+  _prev: ChallengeActionResult | null,
+  formData: FormData
+): Promise<ChallengeActionResult> {
+  const auth = await requireAdmin();
+  if (!auth.ok) return { success: false, error: auth.message };
+
+  const raw = fromFD(formData, ['topic_id', 'title', 'instructions', 'order_index', 'allows_file_upload']);
+  const parsed = challengeSchema.safeParse(raw);
+  if (!parsed.success) return { success: false, error: 'Validasi gagal.', fields: flatErr(parsed.error) };
+
+  const db = createSupabaseAdminClient();
+  const { data, error } = await (db
+    .from('challenges')
+    .insert({ ...parsed.data, instructions: parsed.data.instructions ?? null } as never)
+    .select('id')
+    .single() as unknown as Promise<{ data: { id: number } | null; error: { message: string } | null }>);
+
+  if (error) return { success: false, error: error.message };
+  revalidateAll(parsed.data.topic_id);
+  return { success: true, id: data!.id, message: 'Challenge berhasil dibuat.' };
+}
+
+export async function updateChallenge(
+  _prev: ChallengeActionResult | null,
+  formData: FormData
+): Promise<ChallengeActionResult> {
+  const auth = await requireAdmin();
+  if (!auth.ok) return { success: false, error: auth.message };
+
+  const id = Number(formData.get('id'));
+  if (!id) return { success: false, error: 'ID challenge tidak valid.' };
+
+  const raw = fromFD(formData, ['topic_id', 'title', 'instructions', 'order_index', 'allows_file_upload']);
+  const parsed = challengeSchema.safeParse(raw);
+  if (!parsed.success) return { success: false, error: 'Validasi gagal.', fields: flatErr(parsed.error) };
+
+  const db = createSupabaseAdminClient();
+  const { error } = await (db
+    .from('challenges')
+    .update({ ...parsed.data, instructions: parsed.data.instructions ?? null } as never)
+    .eq('id', id) as unknown as Promise<{ error: { message: string } | null }>);
+
+  if (error) return { success: false, error: error.message };
+  revalidateAll(parsed.data.topic_id);
+  return { success: true, message: 'Challenge berhasil diperbarui.' };
+}
+
+export async function deleteChallenge(
+  _prev: ChallengeActionResult | null,
+  formData: FormData
+): Promise<ChallengeActionResult> {
+  const auth = await requireAdmin();
+  if (!auth.ok) return { success: false, error: auth.message };
+
+  const id = Number(formData.get('id'));
+  if (!id) return { success: false, error: 'ID challenge tidak valid.' };
+
+  const db = createSupabaseAdminClient();
+  // Remove submissions first (no CASCADE in DB between auth.users ref)
+  await (db.from('challenge_submissions').delete().eq('challenge_id', id) as unknown as Promise<unknown>);
+  const { error } = await (db
+    .from('challenges').delete().eq('id', id) as unknown as Promise<{ error: { message: string } | null }>);
+
+  if (error) return { success: false, error: error.message };
+  revalidatePath('/admin/curriculum', 'layout');
+  return { success: true, message: 'Challenge berhasil dihapus.' };
+}
+
+// â”€â”€ Student: submit challenge â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+export async function submitChallenge(
+  _prev: ChallengeActionResult | null,
+  formData: FormData
+): Promise<ChallengeActionResult> {
+  const auth = await getAuthUser();
+  if (!auth.ok) return { success: false, error: auth.message };
+
+  const raw = fromFD(formData, ['challenge_id', 'submission_url', 'submission_note']);
+  const parsed = submitSchema.safeParse(raw);
+  if (!parsed.success) return { success: false, error: 'Validasi gagal.', fields: flatErr(parsed.error) };
+
+  const { challenge_id, submission_url, submission_note } = parsed.data;
+  const studentId = auth.user.id;
+
+  // Only students may submit
+  if (auth.role !== 'student') return { success: false, error: 'Hanya siswa yang dapat submit challenge.' };
+
+  const db = createSupabaseAdminClient();
+
+  // Check whether an active (non-approved) submission already exists
+  const { data: existing } = await (db
+    .from('challenge_submissions')
+    .select('id, status')
+    .eq('challenge_id', challenge_id)
+    .eq('student_id', studentId)
+    .order('submitted_at', { ascending: false })
+    .limit(1) as unknown as Promise<{ data: Array<{ id: number; status: string }> | null }>);
+
+  const latest = existing?.[0];
+
+  if (latest && latest.status === 'pending') {
+    return { success: false, error: 'Kamu sudah punya submission yang sedang ditinjau. Tunggu hasilnya dulu.' };
+  }
+
+  if (latest && latest.status === 'approved') {
+    return { success: false, error: 'Challenge ini sudah disetujui.' };
+  }
+
+  const { data, error } = await (db
+    .from('challenge_submissions')
+    .insert({
+      challenge_id,
+      student_id:      studentId,
+      submission_url:  submission_url || null,
+      submission_note: submission_note || null,
+      submitted_at:    new Date().toISOString(),
+    } as never)
+    .select('id')
+    .single() as unknown as Promise<{ data: { id: number } | null; error: { message: string } | null }>);
+
+  if (error) return { success: false, error: `Gagal menyimpan submission: ${error.message}` };
+
+  revalidatePath('/student/lessons', 'layout');
+  revalidatePath('/teacher/submissions', 'layout');
+  return { success: true, id: data!.id, message: 'Submission berhasil dikirim! Tunggu review dari guru.' };
+}
+
+// â”€â”€ Teacher: review submission â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+export async function reviewSubmission(
+  _prev: ChallengeActionResult | null,
+  formData: FormData
+): Promise<ChallengeActionResult> {
+  const auth = await requireRole('teacher');
+  if (!auth.ok) return { success: false, error: auth.message };
+
+  const raw = fromFD(formData, ['submission_id', 'status', 'review_note']);
+  const parsed = reviewSchema.safeParse(raw);
+  if (!parsed.success) return { success: false, error: 'Validasi gagal.', fields: flatErr(parsed.error) };
+
+  const { submission_id, status, review_note } = parsed.data;
+
+  const db = createSupabaseAdminClient();
+  const { error } = await (db
+    .from('challenge_submissions')
+    .update({
+      status,
+      review_note:  review_note ?? null,
+      reviewed_by:  auth.user.id,
+      reviewed_at:  new Date().toISOString(),
+    } as never)
+    .eq('id', submission_id) as unknown as Promise<{ error: { message: string } | null }>);
+
+  if (error) return { success: false, error: error.message };
+
+  revalidatePath('/teacher/submissions', 'layout');
+  revalidatePath('/student/lessons', 'layout');
+
+  return {
+    success: true,
+    message: status === 'approved'
+      ? 'Submission disetujui! Siswa akan mendapat notifikasi.'
+      : 'Feedback telah dikirim ke siswa.',
+  };
+}
+
