@@ -41,24 +41,40 @@ export function CurriculumShell({ children }: Props) {
         <button
           type="button"
           onClick={() => setShowImport(true)}
-          className="px-4 py-2 text-sm font-medium bg-indigo-600 text-white rounded-lg
-            hover:bg-indigo-700 active:scale-95 transition-transform"
+          className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold
+            bg-gradient-to-r from-indigo-600 to-violet-600 text-white rounded-xl shadow-sm
+            hover:from-indigo-700 hover:to-violet-700 hover:shadow-md hover:-translate-y-0.5
+            active:scale-95 transition-all duration-150"
         >
-          ↑ Import JSON
+          <svg className="h-4 w-4" viewBox="0 0 16 16" fill="currentColor">
+            <path d="M7.47 1.47a.75.75 0 011.06 0l3.75 3.75a.75.75 0 01-1.06 1.06L8.75 3.81V10.5a.75.75 0 01-1.5 0V3.81L4.78 6.28a.75.75 0 01-1.06-1.06l3.75-3.75zM3.5 13.5a.75.75 0 000 1.5h9a.75.75 0 000-1.5h-9z"/>
+          </svg>
+          Import JSON
         </button>
 
         <button
           type="button"
           onClick={handleExport}
           disabled={exporting}
-          className="px-4 py-2 text-sm font-medium border border-slate-300 rounded-lg
-            hover:bg-slate-50 disabled:opacity-40"
+          className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold
+            bg-white text-slate-700 rounded-xl ring-1 ring-slate-200 shadow-sm
+            hover:bg-slate-50 hover:ring-slate-300 hover:-translate-y-0.5 hover:shadow-md
+            active:scale-95 transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed"
         >
-          {exporting ? 'Mengekspor…' : '↓ Export JSON'}
+          <svg className="h-4 w-4 text-slate-500" viewBox="0 0 16 16" fill="currentColor">
+            <path d="M7.47 12.78a.75.75 0 001.06 0l3.75-3.75a.75.75 0 00-1.06-1.06L8.75 10.44V3.75a.75.75 0 00-1.5 0v6.69L4.78 7.97a.75.75 0 00-1.06 1.06l3.75 3.75zM3.5 14.25a.75.75 0 000 1.5h9a.75.75 0 000-1.5h-9z"/>
+          </svg>
+          {exporting ? 'Mengekspor…' : 'Export JSON'}
         </button>
 
         {exportError && (
-          <span className="text-xs text-red-600" role="alert">{exportError}</span>
+          <span className="text-xs font-medium text-red-600 bg-red-50 px-3 py-2
+            rounded-xl ring-1 ring-red-200 flex items-center gap-1.5" role="alert">
+            <svg className="h-3.5 w-3.5 flex-shrink-0" viewBox="0 0 16 16" fill="currentColor">
+              <path d="M8 1a7 7 0 100 14A7 7 0 008 1zm-.75 3.75a.75.75 0 011.5 0v4a.75.75 0 01-1.5 0v-4zm.75 7a.75.75 0 110-1.5.75.75 0 010 1.5z"/>
+            </svg>
+            {exportError}
+          </span>
         )}
       </div>
 

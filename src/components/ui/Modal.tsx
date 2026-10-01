@@ -1,4 +1,4 @@
-﻿// src/components/ui/Modal.tsx
+// src/components/ui/Modal.tsx
 // Accessible modal dialog with Escape key and backdrop-click dismissal.
 "use client";
 
@@ -32,7 +32,8 @@ export function Modal({ isOpen, onClose, title, children, size = "md" }: ModalPr
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4
+        bg-slate-900/60 backdrop-blur-sm animate-fade-in"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
       role="dialog"
       aria-modal="true"
@@ -40,15 +41,20 @@ export function Modal({ isOpen, onClose, title, children, size = "md" }: ModalPr
     >
       <div
         ref={dialogRef}
-        className={`w-full ${SIZE[size]} bg-white rounded-2xl shadow-2xl flex flex-col max-h-[90vh]`}
+        className={`w-full ${SIZE[size]} bg-white rounded-2xl shadow-2xl shadow-slate-900/20
+          flex flex-col max-h-[92vh] animate-fade-in-up ring-1 ring-slate-200/80`}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
-          <h2 id="modal-title" className="text-base font-semibold text-slate-900">{title}</h2>
+        <div className="flex items-center justify-between px-6 py-4
+          border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white rounded-t-2xl">
+          <h2 id="modal-title" className="text-base font-bold text-slate-900 tracking-tight">
+            {title}
+          </h2>
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+            className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100
+              transition-all duration-150 active:scale-95"
             aria-label="Tutup"
           >
             <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
@@ -57,7 +63,7 @@ export function Modal({ isOpen, onClose, title, children, size = "md" }: ModalPr
           </button>
         </div>
         {/* Body */}
-        <div className="overflow-y-auto flex-1 px-6 py-4">{children}</div>
+        <div className="overflow-y-auto flex-1 px-6 py-5">{children}</div>
       </div>
     </div>
   );

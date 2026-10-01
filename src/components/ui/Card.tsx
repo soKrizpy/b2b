@@ -1,9 +1,10 @@
-﻿// src/components/ui/Card.tsx
+// src/components/ui/Card.tsx
 // Simple card container with optional header and footer slots.
 
 export function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   return (
-    <div className={`bg-white rounded-xl shadow-sm ring-1 ring-slate-200 ${className}`}>
+    <div className={`bg-white rounded-2xl shadow-sm ring-1 ring-slate-200/80
+      hover:shadow-md hover:ring-slate-300/70 transition-all duration-200 ${className}`}>
       {children}
     </div>
   );

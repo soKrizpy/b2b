@@ -1,4 +1,4 @@
-﻿// src/app/login/page.tsx
+// src/app/login/page.tsx
 // Public sign-in page. Unauthenticated users are redirected here by middleware.
 // Next.js 15: searchParams is a Promise.
 import type { Metadata } from "next";
@@ -11,27 +11,110 @@ type Props = { searchParams: Promise<{ redirectTo?: string }> };
 export default async function LoginPage({ searchParams }: Props) {
   const { redirectTo } = await searchParams;
   return (
-    <main className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 via-white to-sky-50 p-4">
-      <div className="w-full max-w-sm">
-        {/* Logo / branding */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-indigo-600 shadow-lg mb-4">
-            <span className="text-2xl">🎮</span>
+    <main className="min-h-screen flex items-center justify-center relative overflow-hidden
+      bg-gradient-to-br from-slate-900 via-indigo-950 to-violet-950">
+
+      {/* ── Decorative background orbs ──────────────────────── */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        {/* Large soft glow orb top-left */}
+        <div className="absolute -top-32 -left-32 w-[500px] h-[500px] rounded-full
+          bg-gradient-to-br from-indigo-600/30 to-violet-700/20 blur-3xl" />
+        {/* Medium orb bottom-right */}
+        <div className="absolute -bottom-48 -right-32 w-[450px] h-[450px] rounded-full
+          bg-gradient-to-tl from-purple-600/25 to-pink-600/15 blur-3xl" />
+        {/* Small accent mid-right */}
+        <div className="absolute top-1/3 right-10 w-64 h-64 rounded-full
+          bg-gradient-to-br from-sky-500/20 to-indigo-500/10 blur-2xl" />
+
+        {/* Subtle grid overlay */}
+        <div className="absolute inset-0 opacity-[0.03]"
+          style={{backgroundImage: "linear-gradient(rgba(255,255,255,.8) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.8) 1px, transparent 1px)", backgroundSize: "48px 48px"}} />
+      </div>
+
+      {/* ── Login card ──────────────────────────────────────── */}
+      <div className="relative z-10 w-full max-w-md px-4 animate-fade-in-up">
+
+        {/* Top badge */}
+        <div className="flex justify-center mb-6">
+          <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm
+            text-white/80 text-xs font-semibold px-4 py-2 rounded-full
+            ring-1 ring-white/20 shadow-lg">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse-dot" />
+            Platform Belajar Coding #1 untuk Anak
           </div>
-          <h1 className="text-2xl font-bold text-slate-900">Bits2Bytes LMS</h1>
-          <p className="mt-1 text-sm text-slate-500">Platform Belajar Coding Terstruktur</p>
         </div>
 
-        {/* Card */}
-        <div className="bg-white rounded-2xl shadow-xl ring-1 ring-slate-200 p-8">
-          <h2 className="text-lg font-semibold text-slate-800 mb-6">Masuk ke Akun</h2>
-          <SignInForm redirectTo={redirectTo} />
+        {/* Branding */}
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center justify-center w-20 h-20 rounded-3xl
+            bg-gradient-to-br from-indigo-500 to-violet-600
+            shadow-2xl shadow-indigo-500/40 mb-5 animate-float ring-2 ring-white/20">
+            <span className="text-4xl">🎮</span>
+          </div>
+          <h1 className="text-3xl font-extrabold text-white tracking-tight">
+            Bits<span className="text-indigo-300">2</span>Bytes
+          </h1>
+          <p className="mt-2 text-sm text-indigo-200/80 font-medium">
+            Belajar coding seru bersama instruktur terbaik!
+          </p>
         </div>
 
-        <p className="mt-6 text-center text-xs text-slate-400">
-          Belum punya akun? Hubungi administrator.
+        {/* Form card */}
+        <div className="bg-white/10 backdrop-blur-2xl rounded-3xl shadow-2xl
+          ring-1 ring-white/20 p-8">
+
+          <div className="mb-6">
+            <h2 className="text-xl font-bold text-white tracking-tight">Selamat datang kembali 👋</h2>
+            <p className="mt-1 text-sm text-indigo-200/70">Masuk untuk melanjutkan belajar</p>
+          </div>
+
+          {/* The form (preserves all actions/bindings) */}
+          <SignInFormDark redirectTo={redirectTo} />
+        </div>
+
+        <p className="mt-6 text-center text-xs text-indigo-300/60">
+          Belum punya akun?{" "}
+          <span className="text-indigo-300 font-semibold">Hubungi administrator.</span>
         </p>
+
+        {/* Role info pills */}
+        <div className="mt-6 flex items-center justify-center gap-3 flex-wrap">
+          {[
+            { icon: "⚙️", label: "Admin", color: "bg-violet-500/20 text-violet-300" },
+            { icon: "📚", label: "Guru",  color: "bg-sky-500/20    text-sky-300" },
+            { icon: "🎮", label: "Siswa", color: "bg-indigo-500/20 text-indigo-300" },
+          ].map(({ icon, label, color }) => (
+            <div key={label}
+              className={`flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full ${color}
+                ring-1 ring-white/10`}>
+              <span>{icon}</span> {label}
+            </div>
+          ))}
+        </div>
       </div>
     </main>
+  );
+}
+
+// ── Dark-themed wrapper for SignInForm ──────────────────────────
+// We wrap SignInForm here to apply dark-themed input overrides via className
+// without touching the form actions or bindings.
+import { SignInForm as SignInFormBase } from "@/features/auth/components/SignInForm";
+
+function SignInFormDark({ redirectTo }: { redirectTo?: string }) {
+  return (
+    <div className="[&_label]:text-indigo-100 [&_label]:font-medium
+      [&_input]:bg-white/10 [&_input]:border-white/20 [&_input]:text-white
+      [&_input]:placeholder:text-white/30 [&_input]:focus:ring-indigo-400/60
+      [&_input]:focus:border-indigo-300/60 [&_input]:rounded-xl
+      [&_input]:backdrop-blur-sm [&_input]:hover:border-white/30
+      [&_button[type=submit]]:bg-gradient-to-r [&_button[type=submit]]:from-indigo-500
+      [&_button[type=submit]]:to-violet-600 [&_button[type=submit]]:hover:from-indigo-600
+      [&_button[type=submit]]:hover:to-violet-700 [&_button[type=submit]]:shadow-lg
+      [&_button[type=submit]]:shadow-indigo-500/40 [&_button[type=submit]]:text-white
+      [&_button[type=submit]]:font-bold [&_button[type=submit]]:py-3 [&_button[type=submit]]:w-full
+      [&_button[type=submit]]:rounded-xl [&_button[type=submit]]:text-base">
+      <SignInFormBase redirectTo={redirectTo} />
+    </div>
   );
 }
