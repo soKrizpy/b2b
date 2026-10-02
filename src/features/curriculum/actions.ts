@@ -1,72 +1,30 @@
 ﻿// src/features/curriculum/actions.ts
 // Admin Server Actions: JSON bulk import/export + delete (module/topic).
-// The old manual create/update forms have been removed — use importCurriculumJson instead.
+// 'use server' files may ONLY export async functions — all schemas and types
+// live in ./validation.ts.
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { z } from 'zod';
 import { requireAdmin } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { getAllModulesWithTopics } from './queries';
+import {
+  curriculumJsonSchema,
+  type ModuleImport,
+  type NodeImport,
+} from './validation';
+
+// ── Return type ───────────────────────────────────────────────────────────────
+// Exported as a type — allowed in 'use server' files (type exports are erased
+// at runtime and do not violate the async-function-only constraint).
 
 export type CurriculumActionResult =
   | { success: true; message: string; stats?: { modules: number; topics: number } }
   | { success: false; error: string; fields?: Record<string, string> };
 
-// ── Curriculum JSON schema (Zod v4) ───────────────────────────────────────────
-// Must be a superset of the engine's LearningNode shape so lesson_content is
-// written in the canonical { learningPath: [...] } format read by the student UI.
+// ── Private helpers ───────────────────────────────────────────────────────────
 
-const nodeSchema = z.object({
-  node_id:           z.string().min(1, 'node_id wajib diisi'),
-  order:             z.number().int().min(0),
-  type:              z.enum(['theory', 'quiz', 'challenge', 'code', 'practice', 'lesson']),
-  title:             z.string().min(1),
-  content:           z.string().optional(),        // explanation / body text
-  code_content:      z.string().optional(),        // for code-type nodes
-  code_language:     z.string().optional(),
-  options:           z.array(z.string()).optional(), // quiz options
-  correct_option:    z.string().optional(),          // free-text correct answer
-  instructions:      z.string().optional(),
-  xp:                z.number().int().min(0).default(0),
-});
-
-const topicImportSchema = z.object({
-  topic_title:  z.string().min(1, 'topic_title wajib diisi').max(200),
-  topic_order:  z.number().int().min(0),
-  description:  z.string().optional(),
-  project_link: z.string().url().optional().or(z.literal('')),
-  nodes:        z.array(nodeSchema).default([]),
-});
-
-const moduleImportSchema = z.object({
-  module_title:      z.string().min(1, 'module_title wajib diisi').max(200),
-  module_order:      z.number().int().min(0),
-  description:       z.string().optional(),
-  level:             z.enum(['beginner', 'intermediate', 'advanced']).default('beginner'),
-  gamification_type: z.enum(['mimo', 'duolingo', 'boardgame', 'quest', 'flashcard']).default('mimo'),
-  topics:            z.array(topicImportSchema).default([]),
-});
-
-// Top-level payload: a single module OR an array of modules
-export const curriculumJsonSchema = z.union([
-  z.array(moduleImportSchema).min(1, 'JSON harus berisi minimal satu modul'),
-  moduleImportSchema.transform((m) => [m]),  // also accept a single module object
-]);
-
-export type CurriculumJsonInput = z.infer<typeof curriculumJsonSchema>;
-export type ModuleImport = z.infer<typeof moduleImportSchema>;
-export type TopicImport  = z.infer<typeof topicImportSchema>;
-export type NodeImport   = z.infer<typeof nodeSchema>;
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-/**
- * Converts a NodeImport to the canonical LearningNode shape stored in
- * lesson_content.learningPath — compatible with the existing lesson engine.
- */
 function nodeToLearningNode(n: NodeImport) {
-  // Map our type names to the engine's NodeType values
   const typeMap: Record<string, string> = {
     theory:    'lesson',
     quiz:      'quiz',
@@ -75,7 +33,6 @@ function nodeToLearningNode(n: NodeImport) {
     practice:  'practice',
     lesson:    'lesson',
   };
-
   return {
     id:            n.node_id,
     type:          typeMap[n.type] ?? n.type,
@@ -99,28 +56,16 @@ function revalidateAll() {
 
 // ── importCurriculumJson ──────────────────────────────────────────────────────
 
-/**
- * Bulk-upserts modules and topics from a validated curriculum JSON payload.
- *
- * Strategy:
- *   - Match existing modules by title (case-insensitive). If found, update; otherwise insert.
- *   - Match existing topics by (module_id, title). If found, update lesson_content + metadata;
- *     otherwise insert.
- *   - lesson_content is always overwritten with the new nodes (stored as learningPath[]).
- *   - Existing quiz_attempts and topic_progress are NEVER touched.
- *   - Status is set to 'published' for topics that have nodes, 'draft' otherwise.
- */
 export async function importCurriculumJson(
   payload: unknown
 ): Promise<CurriculumActionResult> {
   const auth = await requireAdmin();
   if (!auth.ok) return { success: false, error: auth.message };
 
-  // ── 1. Validate ────────────────────────────────────────────────────────────
   const parsed = curriculumJsonSchema.safeParse(payload);
   if (!parsed.success) {
     const flat = parsed.error.flatten();
-    const firstFormError = flat.formErrors[0];
+    const firstFormError  = flat.formErrors[0];
     const firstFieldError = Object.values(flat.fieldErrors)[0];
     const msg = firstFormError
       ?? (Array.isArray(firstFieldError) ? firstFieldError[0] : null)
@@ -133,7 +78,6 @@ export async function importCurriculumJson(
   let importedModules = 0;
   let importedTopics  = 0;
 
-  // ── 2. Fetch existing modules (match by title) ─────────────────────────────
   const { data: existingModules } = await (db
     .from('modules')
     .select('id, title') as unknown as Promise<{
@@ -145,13 +89,11 @@ export async function importCurriculumJson(
     (existingModules ?? []).map((m) => [m.title.toLowerCase().trim(), m.id])
   );
 
-  // ── 3. Upsert each module ──────────────────────────────────────────────────
   for (const mod of modules) {
     const normalizedTitle = mod.module_title.trim();
     let moduleId = modTitleMap.get(normalizedTitle.toLowerCase());
 
     if (moduleId) {
-      // Update existing module metadata
       await (db
         .from('modules')
         .update({
@@ -161,7 +103,6 @@ export async function importCurriculumJson(
         } as never)
         .eq('id', moduleId) as unknown as Promise<unknown>);
     } else {
-      // Insert new module
       const { data: newMod, error: modErr } = await (db
         .from('modules')
         .insert({
@@ -179,14 +120,12 @@ export async function importCurriculumJson(
       if (modErr || !newMod) {
         return { success: false, error: `Gagal membuat modul "${normalizedTitle}": ${modErr?.message}` };
       }
-
       moduleId = newMod.id;
       modTitleMap.set(normalizedTitle.toLowerCase(), moduleId);
     }
 
     importedModules++;
 
-    // ── 4. Fetch existing topics for this module ───────────────────────────
     const { data: existingTopics } = await (db
       .from('topics')
       .select('id, title')
@@ -199,10 +138,9 @@ export async function importCurriculumJson(
       (existingTopics ?? []).map((t) => [t.title.toLowerCase().trim(), t.id])
     );
 
-    // ── 5. Upsert each topic ───────────────────────────────────────────────
     for (const topic of mod.topics) {
-      const topicTitle  = topic.topic_title.trim();
-      const hasNodes    = topic.nodes.length > 0;
+      const topicTitle    = topic.topic_title.trim();
+      const hasNodes      = topic.nodes.length > 0;
       const lessonContent = hasNodes
         ? { learningPath: topic.nodes.map(nodeToLearningNode) }
         : null;
@@ -239,7 +177,6 @@ export async function importCurriculumJson(
           return { success: false, error: `Gagal membuat topik "${topicTitle}": ${topicErr.message}` };
         }
       }
-
       importedTopics++;
     }
   }
@@ -254,10 +191,6 @@ export async function importCurriculumJson(
 
 // ── exportCurriculumJson ──────────────────────────────────────────────────────
 
-/**
- * Returns the entire curriculum as a CurriculumJsonInput-compatible payload
- * ready for JSON.stringify and download. Called from the client export handler.
- */
 export async function exportCurriculumJson(): Promise<
   | { success: true; data: unknown }
   | { success: false; error: string }
@@ -274,19 +207,14 @@ export async function exportCurriculumJson(): Promise<
     level:             (mod.level as ModuleImport['level']) ?? 'beginner',
     gamification_type: (mod.gamification_type as ModuleImport['gamification_type']) ?? 'mimo',
     topics: mod.topics.map((topic) => {
-      // Extract learningPath nodes and reverse-map to our schema
-      const lc = topic.lesson_content as { learningPath?: unknown[] } | null;
+      const lc       = topic.lesson_content as { learningPath?: unknown[] } | null;
       const rawNodes = lc?.learningPath ?? [];
 
       const nodes: NodeImport[] = rawNodes.map((n: unknown, idx: number) => {
-        const node = n as Record<string, unknown>;
-        // Reverse-map engine type → our type
+        const node       = n as Record<string, unknown>;
         const typeRevMap: Record<string, NodeImport['type']> = {
-          lesson:    'theory',
-          quiz:      'quiz',
-          challenge: 'challenge',
-          code:      'code',
-          practice:  'practice',
+          lesson: 'theory', quiz: 'quiz', challenge: 'challenge',
+          code: 'code', practice: 'practice',
         };
         const rawType = (node.type as string) ?? 'lesson';
         return {

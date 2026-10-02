@@ -1,12 +1,12 @@
-'use client';
+﻿'use client';
 // src/features/curriculum/components/CurriculumImportModal.tsx
 // Accepts JSON via textarea paste OR .json file upload.
 // Validates client-side first (Zod), then calls importCurriculumJson server action.
-// Antigravity handles visual polish — keep markup semantic.
+// Antigravity handles visual polish â€” keep markup semantic.
 
 import { useCallback, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { curriculumJsonSchema } from '../actions';
+import { curriculumJsonSchema } from '../validation';
 import { importCurriculumJson, type CurriculumActionResult } from '../actions';
 
 interface Props { onClose: () => void }
@@ -25,7 +25,7 @@ export function CurriculumImportModal({ onClose }: Props) {
   const [vs, setVs]        = useState<ValidationState>({ status: 'idle' });
   const [isPending, start] = useTransition();
 
-  // ── Client-side JSON parse + Zod validate ──────────────────────────────────
+  // â”€â”€ Client-side JSON parse + Zod validate â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const validate = useCallback((raw: string): boolean => {
     if (!raw.trim()) { setVs({ status: 'error', message: 'JSON tidak boleh kosong.' }); return false; }
 
@@ -49,7 +49,7 @@ export function CurriculumImportModal({ onClose }: Props) {
     return true;
   }, []);
 
-  // ── File upload handler ────────────────────────────────────────────────────
+  // â”€â”€ File upload handler â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const onFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -66,13 +66,13 @@ export function CurriculumImportModal({ onClose }: Props) {
     reader.readAsText(file);
   };
 
-  // ── Textarea change ────────────────────────────────────────────────────────
+  // â”€â”€ Textarea change â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const onTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setText(e.target.value);
     setVs({ status: 'idle' }); // reset until user clicks validate
   };
 
-  // ── Submit ─────────────────────────────────────────────────────────────────
+  // â”€â”€ Submit â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const handleImport = () => {
     if (!validate(text)) return;
 
@@ -118,7 +118,7 @@ export function CurriculumImportModal({ onClose }: Props) {
             className="text-slate-400 hover:text-slate-600 disabled:opacity-40 text-xl leading-none"
             aria-label="Tutup"
           >
-            ×
+            Ã—
           </button>
         </div>
 
@@ -222,20 +222,20 @@ export function CurriculumImportModal({ onClose }: Props) {
 
           {vs.status === 'valid' && (
             <div className="rounded-lg bg-green-50 border border-green-200 px-4 py-3 text-sm text-green-700">
-              ✓ JSON valid — <span className="font-semibold">{vs.moduleCount}</span> modul,{' '}
+              âœ“ JSON valid â€” <span className="font-semibold">{vs.moduleCount}</span> modul,{' '}
               <span className="font-semibold">{vs.topicCount}</span> topik siap diimpor.
             </div>
           )}
 
           {vs.status === 'importing' && (
             <div className="rounded-lg bg-indigo-50 border border-indigo-200 px-4 py-3 text-sm text-indigo-700">
-              ⏳ Mengimpor ke database…
+              â³ Mengimpor ke databaseâ€¦
             </div>
           )}
 
           {vs.status === 'done' && (
             <div className="rounded-lg bg-green-50 border border-green-200 px-4 py-3 text-sm text-green-700">
-              🎉 {vs.message}
+              ðŸŽ‰ {vs.message}
             </div>
           )}
         </div>
@@ -276,7 +276,7 @@ export function CurriculumImportModal({ onClose }: Props) {
                   className="px-5 py-2 text-sm font-medium bg-indigo-600 text-white rounded-lg
                     hover:bg-indigo-700 disabled:opacity-40"
                 >
-                  {isImporting ? 'Mengimpor…' : 'Import Sekarang'}
+                  {isImporting ? 'Mengimporâ€¦' : 'Import Sekarang'}
                 </button>
               </div>
             </>
@@ -286,3 +286,4 @@ export function CurriculumImportModal({ onClose }: Props) {
     </div>
   );
 }
+

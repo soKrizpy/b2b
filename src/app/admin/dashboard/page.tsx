@@ -1,18 +1,69 @@
 // src/app/admin/dashboard/page.tsx
+// Admin operational hub — KPI cards, filter tabs, 2-column SaaS command center.
 import type { Metadata } from "next";
 import {
   getSessionsForAdmin,
   getTeacherOptions,
   getStudentOptions,
 } from "@/features/sessions/queries";
-import { SessionCard } from "@/features/sessions/components/SessionCard";
-import { AdminSessionActions } from "@/features/sessions/components/AdminSessionActions";
-import { CreateSessionModal } from "@/features/sessions/components/CreateSessionModal";
-import { isUpcoming, isLive } from "@/lib/formatDate";
+import { computeAdminMetrics } from "@/features/dashboard/admin/metrics";
+import { DashboardShell } from "@/features/dashboard/admin/DashboardShell";
+import { isLive } from "@/lib/formatDate";
 
 export const metadata: Metadata = { title: "Dasbor Admin — Bits2Bytes" };
 export const dynamic = "force-dynamic";
 
+// ── Refined KPI card ──────────────────────────────────────────────────────────
+function KPICard({
+  label,
+  value,
+  icon,
+  bgColor,
+  borderColor,
+  textColor,
+  iconBg,
+  pulse,
+}: {
+  label: string;
+  value: number;
+  icon: React.ReactNode;
+  bgColor: string;
+  borderColor: string;
+  textColor: string;
+  iconBg: string;
+  pulse?: boolean;
+}) {
+  return (
+    <div
+      className={`relative rounded-2xl p-4 sm:p-5 flex flex-col justify-between gap-3
+        border ${bgColor} ${borderColor} shadow-sm
+        hover:shadow-md hover:-translate-y-0.5 transition-all duration-200`}
+    >
+      <div className="flex items-center justify-between">
+        <div className={`p-2.5 rounded-xl ${iconBg} flex items-center justify-center`}>
+          {icon}
+        </div>
+        {pulse && value > 0 && (
+          <span className="relative flex h-3 w-3">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
+            <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500" />
+          </span>
+        )}
+      </div>
+
+      <div>
+        <p className={`text-2xl sm:text-3xl font-extrabold ${textColor} tabular-nums tracking-tight`}>
+          {value}
+        </p>
+        <p className="text-xs font-semibold text-slate-600 dark:text-slate-400 mt-0.5">
+          {label}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ── Page ──────────────────────────────────────────────────────────────────────
 export default async function AdminDashboardPage() {
   const [meetings, teachers, students] = await Promise.all([
     getSessionsForAdmin(),
@@ -20,200 +71,121 @@ export default async function AdminDashboardPage() {
     getStudentOptions(),
   ]);
 
-  const upcoming = meetings.filter(
-    (m) => !m.is_completed && isUpcoming(m.meeting_date)
-  );
-  const past = meetings
-    .filter((m) => m.is_completed || !isUpcoming(m.meeting_date))
-    .slice(0, 20);
-
-  const live = meetings.filter((m) => isLive(m.meeting_date));
-
-  const totalStudents = new Set(
-    meetings.flatMap((m) => m.meeting_students.map((ms) => ms.student_id))
-  ).size;
-
-  const stats = [
-    {
-      label: "Mendatang",
-      value: upcoming.length,
-      icon: (
-        <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-          <path d="M5.25 2A2.25 2.25 0 003 4.25v11.5A2.25 2.25 0 005.25 18h9.5A2.25 2.25 0 0017 15.75V4.25A2.25 2.25 0 0014.75 2h-9.5zm0 1.5h9.5a.75.75 0 01.75.75v.75H4.5v-.75a.75.75 0 01.75-.75zm-.75 3h11V15.75a.75.75 0 01-.75.75h-9.5a.75.75 0 01-.75-.75V6.5z"/>
-        </svg>
-      ),
-      gradient: "from-indigo-500 to-violet-600",
-      bg: "bg-indigo-50",
-      text: "text-indigo-700",
-      ring: "ring-indigo-200/80",
-    },
-    {
-      label: "Selesai",
-      value: meetings.filter((m) => m.is_completed).length,
-      icon: (
-        <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clipRule="evenodd"/>
-        </svg>
-      ),
-      gradient: "from-emerald-500 to-teal-600",
-      bg: "bg-emerald-50",
-      text: "text-emerald-700",
-      ring: "ring-emerald-200/80",
-    },
-    {
-      label: "Siswa Aktif",
-      value: totalStudents,
-      icon: (
-        <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-          <path d="M10 8a3 3 0 100-6 3 3 0 000 6zM3.465 14.493a1.23 1.23 0 00.41 1.412A9.957 9.957 0 0010 18c2.31 0 4.438-.784 6.131-2.1.43-.333.604-.903.408-1.41a7.002 7.002 0 00-13.074.003z"/>
-        </svg>
-      ),
-      gradient: "from-sky-500 to-blue-600",
-      bg: "bg-sky-50",
-      text: "text-sky-700",
-      ring: "ring-sky-200/80",
-    },
-    {
-      label: "Guru Pengajar",
-      value: teachers.length,
-      icon: (
-        <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-          <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v1h8v-1zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-1a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v1h-3zM4.75 14.094A5.973 5.973 0 004 17v1H1v-1a3 3 0 013.75-2.906z"/>
-        </svg>
-      ),
-      gradient: "from-amber-500 to-orange-500",
-      bg: "bg-amber-50",
-      text: "text-amber-700",
-      ring: "ring-amber-200/80",
-    },
-  ];
+  const metrics = computeAdminMetrics(meetings);
+  const liveNow = meetings.filter((m) => isLive(m.meeting_date));
 
   return (
-    <div className="space-y-8 animate-fade-in-up">
+    <div className="max-w-7xl mx-auto space-y-6 sm:space-y-8 animate-fade-in-up">
 
-      {/* ── Page header ────────────────────────────────────── */}
-      <div className="flex items-start justify-between gap-4 flex-wrap">
+      {/* ── Page header ──────────────────────────────────── */}
+      <div className="flex items-center justify-between gap-4 flex-wrap pb-2 border-b border-slate-200/60 dark:border-white/10">
         <div>
-          <p className="text-xs font-bold uppercase tracking-widest text-indigo-500 mb-1">
-            Panel Kontrol
+          <p className="text-xs font-bold uppercase tracking-widest text-[#7cc62f] mb-1">
+            Pusat Kontrol Operasional
           </p>
-          <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
             Dasbor Admin
           </h1>
-          <p className="mt-1 text-sm text-slate-500">
-            Kelola jadwal kelas dan pantau perkembangan siswa.
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+            Monitor aktivitas pembelajaran, jadwal kelas, dan performa akademik secara real-time.
           </p>
         </div>
-        <CreateSessionModal teachers={teachers} students={students} />
       </div>
 
-      {/* ── Live alert banner ──────────────────────────────── */}
-      {live.length > 0 && (
+      {/* ── KPI Grid ──────────────────────────────────────── */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+        {/* Live Sekarang */}
+        <KPICard
+          label="Live Sekarang"
+          value={metrics.liveNowCount}
+          bgColor="bg-emerald-50/70 dark:bg-emerald-950/20"
+          borderColor="border-emerald-200/80 dark:border-emerald-800/40"
+          textColor="text-emerald-950 dark:text-emerald-200"
+          iconBg="bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 dark:text-emerald-400"
+          pulse
+          icon={
+            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z" />
+            </svg>
+          }
+        />
+
+        {/* Jadwal Hari Ini */}
+        <KPICard
+          label="Jadwal Hari Ini"
+          value={metrics.todayTotalCount}
+          bgColor="bg-indigo-50/70 dark:bg-indigo-950/20"
+          borderColor="border-indigo-200/80 dark:border-indigo-800/40"
+          textColor="text-indigo-950 dark:text-indigo-200"
+          iconBg="bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400"
+          icon={
+            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
+            </svg>
+          }
+        />
+
+        {/* Siswa Aktif */}
+        <KPICard
+          label="Siswa Aktif"
+          value={metrics.activeStudentsCount}
+          bgColor="bg-violet-50/70 dark:bg-violet-950/20"
+          borderColor="border-violet-200/80 dark:border-violet-800/40"
+          textColor="text-violet-950 dark:text-violet-200"
+          iconBg="bg-violet-100 dark:bg-violet-900/50 text-violet-600 dark:text-violet-400"
+          icon={
+            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4.26 10.147a60.438 60.438 0 00-.491 6.347A48.62 48.62 0 0112 20.904a48.62 48.62 0 018.232-4.41 60.46 60.46 0 00-.491-6.347m-15.482 0a50.636 50.636 0 00-2.658-.813A.75.75 0 010 7.848V7.5a.75.75 0 01.75-.75h22.5a.75.75 0 01.75.75v.348a.75.75 0 01-.351.636 50.655 50.655 0 00-2.658.813m-15.482 0A50.71 50.71 0 0112 13.489a50.702 50.702 0 017.74-3.342" />
+            </svg>
+          }
+        />
+
+        {/* Perlu Perhatian */}
+        <KPICard
+          label="Perlu Perhatian"
+          value={metrics.needsAttentionCount}
+          bgColor="bg-amber-50/70 dark:bg-amber-950/20"
+          borderColor="border-amber-200/80 dark:border-amber-800/40"
+          textColor="text-amber-950 dark:text-amber-200"
+          iconBg="bg-amber-100 dark:bg-amber-900/50 text-amber-600 dark:text-amber-400"
+          pulse={metrics.needsAttentionCount > 0}
+          icon={
+            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+            </svg>
+          }
+        />
+      </div>
+
+      {/* ── Live alert banner ────────────────────────────── */}
+      {liveNow.length > 0 && (
         <div className="flex items-center gap-4 p-4 rounded-2xl
-          bg-gradient-to-r from-emerald-600 to-teal-600 text-white
-          shadow-lg shadow-emerald-200/60 ring-1 ring-emerald-500/30">
+          bg-gradient-to-r from-emerald-600 via-teal-600 to-indigo-600
+          text-white shadow-lg shadow-emerald-900/20
+          ring-1 ring-emerald-500/30">
           <span className="relative flex h-3 w-3 flex-shrink-0">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75" />
             <span className="relative inline-flex rounded-full h-3 w-3 bg-white" />
           </span>
           <div className="flex-1 min-w-0">
-            <p className="font-bold text-sm">Kelas Sedang Berlangsung!</p>
+            <p className="font-bold text-sm tracking-wide">
+              {liveNow.length} Kelas Sedang Berlangsung!
+            </p>
             <p className="text-emerald-100 text-xs mt-0.5 truncate">
-              {live.map((m) => m.title).join(" · ")}
+              {liveNow.map((m) => m.title).join(" · ")}
             </p>
           </div>
-          <span className="text-xs font-semibold bg-white/20 backdrop-blur-sm
-            px-3 py-1.5 rounded-lg ring-1 ring-white/30 flex-shrink-0">
-            {live.length} LIVE
+          <span className="text-xs font-bold bg-white/20 backdrop-blur-sm
+            px-3 py-1.5 rounded-lg ring-1 ring-white/30 flex-shrink-0 tabular-nums">
+            {liveNow.length} LIVE
           </span>
         </div>
       )}
 
-      {/* ── Stats row ──────────────────────────────────────── */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-        {stats.map(({ label, value, icon, gradient, bg, text, ring }) => (
-          <div key={label}
-            className="bg-white rounded-2xl ring-1 ring-slate-200/80 shadow-sm
-              hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 p-5
-              animate-fade-in-up">
-            <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${gradient}
-              flex items-center justify-center mb-3 shadow-sm text-white`}>
-              {icon}
-            </div>
-            <p className={`text-2xl font-extrabold ${text}`}>{value}</p>
-            <p className="text-xs text-slate-500 font-medium mt-0.5">{label}</p>
-          </div>
-        ))}
-      </div>
+      {/* ── 2-Column Dashboard Shell ────────────────────── */}
+      <DashboardShell meetings={meetings} teachers={teachers} students={students} />
 
-      {/* ── Upcoming sessions ──────────────────────────────── */}
-      <section>
-        <div className="flex items-center justify-between gap-3 mb-5">
-          <div className="flex items-center gap-3 flex-1">
-            <div className="flex-1 h-px bg-gradient-to-r from-slate-200 to-transparent" />
-            <h2 className="flex items-center gap-2 text-xs font-bold text-slate-500
-              uppercase tracking-widest whitespace-nowrap">
-              <span className="h-2 w-2 rounded-full bg-indigo-400 flex-shrink-0" />
-              Jadwal Mendatang
-            </h2>
-            <div className="flex-1 h-px bg-gradient-to-l from-slate-200 to-transparent" />
-          </div>
-          {upcoming.length > 0 && (
-            <span className="text-xs font-semibold text-slate-500 bg-slate-100
-              px-2.5 py-1 rounded-full ring-1 ring-slate-200/80 flex-shrink-0">
-              {upcoming.length}
-            </span>
-          )}
-        </div>
-
-        {upcoming.length === 0 ? (
-          <div className="flex flex-col items-center justify-center rounded-2xl
-            border-2 border-dashed border-slate-200 bg-white py-20 px-6 text-center">
-            <div className="w-14 h-14 rounded-2xl bg-indigo-50 ring-1 ring-indigo-200/80
-              flex items-center justify-center mb-4">
-              <svg className="h-7 w-7 text-indigo-400" viewBox="0 0 24 24" fill="none"
-                stroke="currentColor" strokeWidth="1.5">
-                <path strokeLinecap="round" strokeLinejoin="round"
-                  d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5"/>
-              </svg>
-            </div>
-            <p className="font-bold text-slate-700 text-lg">Belum ada jadwal mendatang</p>
-            <p className="mt-2 text-sm text-slate-400 max-w-xs">
-              Klik &quot;Buat Jadwal&quot; di atas untuk membuat sesi baru.
-            </p>
-          </div>
-        ) : (
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 stagger">
-            {upcoming.map((m) => (
-              <SessionCard key={m.id} meeting={m} showStudents
-                actions={
-                  <AdminSessionActions meeting={m} teachers={teachers} students={students} />
-                }
-              />
-            ))}
-          </div>
-        )}
-      </section>
-
-      {/* ── Past sessions ──────────────────────────────────── */}
-      {past.length > 0 && (
-        <section>
-          <div className="flex items-center gap-3 mb-5">
-            <div className="flex-1 h-px bg-gradient-to-r from-slate-200 to-transparent" />
-            <h2 className="flex items-center gap-2 text-xs font-bold text-slate-500
-              uppercase tracking-widest whitespace-nowrap">
-              <span className="h-2 w-2 rounded-full bg-slate-300 flex-shrink-0" />
-              Riwayat Kelas
-            </h2>
-            <div className="flex-1 h-px bg-gradient-to-l from-slate-200 to-transparent" />
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 stagger">
-            {past.map((m) => (
-              <SessionCard key={m.id} meeting={m} showStudents />
-            ))}
-          </div>
-        </section>
-      )}
     </div>
   );
 }
+

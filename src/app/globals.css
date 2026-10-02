@@ -1,77 +1,88 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+﻿@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* ── Design tokens ─────────────────────────────────────── */
 :root {
-  --background: #f8fafc;
-  --foreground: #0f172a;
+  --background:      #f8fafc;
+  --foreground:      #0f172a;
+  --surface:         #ffffff;
+  --surface-raised:  #f1f5f9;
+  --border:          rgba(226, 232, 240, 0.8);
+  --muted:           #64748b;
 
-  /* Brand palette */
-  --brand-50:  #eef2ff;
-  --brand-100: #e0e7ff;
-  --brand-500: #6366f1;
-  --brand-600: #4f46e5;
-  --brand-700: #4338ca;
+  /* bits2bytes brand green */
+  --brand:           #7cc62f;
+  --brand-dark:      #5fa31f;
 
-  /* Sidebar / header */
-  --header-bg: rgba(255, 255, 255, 0.85);
-  --header-border: rgba(226, 232, 240, 0.8);
+  /* Header */
+  --header-bg:       rgba(255, 255, 255, 0.88);
+  --header-border:   rgba(226, 232, 240, 0.8);
+
+  /* Indigo accent */
+  --accent-500:      #6366f1;
+  --accent-600:      #4f46e5;
+}
+
+.dark {
+  --background:      #0d0d14;
+  --foreground:      #f1f5f9;
+  --surface:         #161622;
+  --surface-raised:  #1e1e2e;
+  --border:          rgba(255, 255, 255, 0.08);
+  --muted:           #94a3b8;
+  --header-bg:       rgba(13, 13, 20, 0.90);
+  --header-border:   rgba(255, 255, 255, 0.07);
 }
 
 /* ── Base resets ───────────────────────────────────────────── */
-html {
-  scroll-behavior: smooth;
-}
+html { scroll-behavior: smooth; }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background:    var(--background);
+  color:         var(--foreground);
+  font-family:   'Inter', system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  transition: background 0.2s ease, color 0.2s ease;
 }
 
-/* ── Custom scrollbar (Chrome / Edge) ────────────────────── */
+/* ── Custom scrollbar ─────────────────────────────────────── */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 9999px; }
-::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+.dark ::-webkit-scrollbar-thumb { background: #374151; }
 
-/* ── Keyframe animations ─────────────────────────────────── */
+/* ── Keyframes ───────────────────────────────────────────── */
 @keyframes fadeInUp {
   from { opacity: 0; transform: translateY(14px); }
-  to   { opacity: 1; transform: translateY(0); }
+  to   { opacity: 1; transform: translateY(0);    }
 }
-
 @keyframes fadeIn {
   from { opacity: 0; }
   to   { opacity: 1; }
 }
-
-@keyframes shimmer {
-  0%   { background-position: -200% center; }
-  100% { background-position: 200% center; }
-}
-
 @keyframes floatY {
   0%, 100% { transform: translateY(0px);   }
   50%       { transform: translateY(-10px); }
 }
-
 @keyframes pulseDot {
   0%, 100% { transform: scale(1);   opacity: 1;   }
   50%       { transform: scale(1.4); opacity: 0.7; }
 }
+@keyframes shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position: 200% center;  }
+}
 
 /* ── Utility classes ─────────────────────────────────────── */
-.animate-fade-in-up  { animation: fadeInUp 0.4s ease both; }
-.animate-fade-in     { animation: fadeIn   0.3s ease both; }
-.animate-float       { animation: floatY   3s   ease-in-out infinite; }
-.animate-pulse-dot   { animation: pulseDot 1.5s ease-in-out infinite; }
+.animate-fade-in-up { animation: fadeInUp 0.4s ease both; }
+.animate-fade-in    { animation: fadeIn   0.3s ease both; }
+.animate-float      { animation: floatY   3s   ease-in-out infinite; }
+.animate-pulse-dot  { animation: pulseDot 1.5s ease-in-out infinite; }
 
-/* Staggered children */
 .stagger > *:nth-child(1) { animation-delay: 0.05s; }
 .stagger > *:nth-child(2) { animation-delay: 0.10s; }
 .stagger > *:nth-child(3) { animation-delay: 0.15s; }
@@ -86,18 +97,26 @@ body {
   -webkit-backdrop-filter: blur(16px) saturate(180%);
   border: 1px solid rgba(255, 255, 255, 0.6);
 }
+.dark .glass {
+  background: rgba(22, 22, 34, 0.75);
+  border: 1px solid rgba(255,255,255,0.08);
+}
+
+/* Surface utility */
+.surface       { background: var(--surface); }
+.surface-raised { background: var(--surface-raised); }
+.border-token  { border-color: var(--border); }
+.text-muted    { color: var(--muted); }
 
 /* Gradient text */
 .gradient-text {
-  background: linear-gradient(135deg, #6366f1, #8b5cf6, #ec4899);
+  background: linear-gradient(135deg, #7cc62f, #4f46e5);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
-/* Focus ring reset — handled per-component */
 [data-focus-ring]:focus-visible {
-  outline: 2px solid #6366f1;
+  outline: 2px solid var(--brand);
   outline-offset: 2px;
 }
-

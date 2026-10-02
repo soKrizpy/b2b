@@ -28,6 +28,7 @@ export interface StudentRow {
   avatar_id: string | null;
   title_id: string | null;
   coins: number;
+  total_xp: number;
   equipped_hat_id: string | null;
   inventory: string[];
   created_at: string | null;
@@ -386,4 +387,7 @@ export interface Database {
     Enums: Record<string, never>;
   };
 }
+
+
+
 

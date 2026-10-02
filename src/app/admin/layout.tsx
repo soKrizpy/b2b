@@ -30,11 +30,12 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const fullName: string | null = user.user_metadata?.full_name ?? user.email ?? null;
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50">
+    <div className="min-h-screen flex flex-col bg-[var(--background)] transition-colors">
       <AppHeader role="admin" fullName={fullName} currentPath={pathname} />
-      <main className="flex-1 mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
+      <main className="flex-1 mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 py-8 text-[var(--foreground)]">
         {children}
       </main>
     </div>
   );
 }
+

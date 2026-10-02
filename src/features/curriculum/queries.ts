@@ -1,12 +1,12 @@
-// src/features/curriculum/queries.ts
+﻿// src/features/curriculum/queries.ts
 // Read-side query helpers for modules and topics.
-// All queries use the admin client (bypasses RLS) — called only from
+// All queries use the admin client (bypasses RLS) â€” called only from
 // Server Components, Server Actions, and Route Handlers.
 
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import type { ModuleRow, TopicRow, StudentModuleRow } from '@/types/database';
 
-// ── Result shapes ─────────────────────────────────────────────────────────────
+// â”€â”€ Result shapes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export interface TopicWithChallengeCount extends TopicRow {
   challenge_count: number;
@@ -16,7 +16,7 @@ export interface ModuleWithTopics extends ModuleRow {
   topics: TopicWithChallengeCount[];
 }
 
-// ── Modules ───────────────────────────────────────────────────────────────────
+// â”€â”€ Modules â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 /** All modules, ordered newest-first. Admin use. */
 export async function getAllModules(): Promise<ModuleRow[]> {
@@ -87,7 +87,7 @@ export async function getStudentModulesWithTopics(studentId: string): Promise<Mo
   const topicIds  = topicList.map((t) => t.id);
 
   // 4. Challenge counts per topic
-  let challengeCountMap = new Map<number, number>();
+  const challengeCountMap = new Map<number, number>();
   if (topicIds.length > 0) {
     const { data: challenges } = await db
       .from('challenges')
@@ -111,9 +111,9 @@ export async function getStudentModulesWithTopics(studentId: string): Promise<Mo
   }));
 }
 
-// ── Topics ────────────────────────────────────────────────────────────────────
+// â”€â”€ Topics â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-/** All topics for a module (admin — all statuses). */
+/** All topics for a module (admin â€” all statuses). */
 export async function getTopicsByModuleId(moduleId: number): Promise<TopicRow[]> {
   const db = createSupabaseAdminClient();
   const { data, error } = await db
@@ -163,7 +163,7 @@ export async function getAllModulesWithTopics(): Promise<ModuleWithTopics[]> {
   const topicList  = (topics ?? []) as unknown as TopicRow[];
   const topicIds   = topicList.map((t) => t.id);
 
-  let challengeCountMap = new Map<number, number>();
+  const challengeCountMap = new Map<number, number>();
   if (topicIds.length > 0) {
     const { data: challenges } = await db
       .from('challenges')
@@ -184,3 +184,4 @@ export async function getAllModulesWithTopics(): Promise<ModuleWithTopics[]> {
       .map((t) => ({ ...t, challenge_count: challengeCountMap.get(t.id) ?? 0 })),
   }));
 }
+

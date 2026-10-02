@@ -5,6 +5,7 @@
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { requireAdmin, requireRole, getAuthUser } from '@/lib/auth';
+import { awardRewardEvent } from '@/features/pet/lib/rewardActions';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 
 export type ChallengeActionResult =
@@ -214,14 +215,33 @@ export async function reviewSubmission(
 
   if (error) return { success: false, error: error.message };
 
+  // Award XP + coins to the student when the teacher approves their submission
+  if (status === 'approved') {
+    // Fetch the student_id from the submission so we can reward the correct student
+    const { data: sub } = await (db
+      .from('challenge_submissions')
+      .select('student_id')
+      .eq('id', submission_id)
+      .maybeSingle() as unknown as Promise<{ data: { student_id: string } | null }>);
+
+    if (sub?.student_id) {
+      // Non-fatal — reward failure should not block the review confirmation
+      awardRewardEvent(sub.student_id, 'CHALLENGE_APPROVED').catch((err) => {
+        console.error('[reviewSubmission] reward error:', err);
+      });
+    }
+  }
+
   revalidatePath('/teacher/submissions', 'layout');
   revalidatePath('/student/lessons', 'layout');
 
   return {
     success: true,
     message: status === 'approved'
-      ? 'Submission disetujui! Siswa akan mendapat notifikasi.'
+      ? 'Submission disetujui! Siswa mendapat +30 XP dan +10 koin 🎉'
       : 'Feedback telah dikirim ke siswa.',
   };
 }
+
+
 
