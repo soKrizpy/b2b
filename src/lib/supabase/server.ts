@@ -5,9 +5,30 @@
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import type { Database } from '@/types/database';
+import { isSupabaseConfigured, createMockSupabaseClient } from './mock';
 
 export async function createSupabaseServerClient() {
   const cookieStore = await cookies();
+
+  if (!isSupabaseConfigured()) {
+    return createMockSupabaseClient({
+      getCookie: (name) => cookieStore.get(name)?.value,
+      setCookie: (name, value) => {
+        try {
+          cookieStore.set(name, value, { path: '/', httpOnly: false, sameSite: 'lax' });
+        } catch {
+          // ignore in read-only Server Components
+        }
+      },
+      deleteCookie: (name) => {
+        try {
+          cookieStore.delete(name);
+        } catch {
+          // ignore
+        }
+      },
+    }) as unknown as ReturnType<typeof createServerClient<Database>>;
+  }
 
   return createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

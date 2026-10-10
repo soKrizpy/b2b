@@ -3,7 +3,6 @@
 // Teacher Portal Interface — Guild Command & Session Broadcast Hub.
 
 import React, { useState } from 'react';
-import { FaIcon } from './common/FaIcon';
 
 interface StudentRating {
   id: string;
@@ -17,17 +16,16 @@ interface TeacherPortalProps {
   isRoomLive?: boolean;
   meetingTitle?: string;
   meetingUrl?: string;
-  onPublishReport?: (reportData: any) => void;
+  onPublishReport?: (reportData: unknown) => void;
 }
 
 export function TeacherPortal({
   teacherName = 'Sensei Alpha',
   isRoomLive = true,
-  meetingTitle = 'Algorithmic Thinking & Logic Quest #4',
   meetingUrl = 'https://meet.google.com/xyz-abc-def',
   onPublishReport,
 }: TeacherPortalProps) {
-  const [liveState, setLiveState] = useState(isRoomLive);
+  const [liveState] = useState(isRoomLive);
   const [ratings, setRatings] = useState<StudentRating[]>([
     { id: '1', name: 'Budi Santoso', rating: 5, feedback: 'Sangat paham materi Scratch loop!' },
     { id: '2', name: 'Siti Rahma', rating: 4, feedback: 'Logika percabangan sudah bagus.' },

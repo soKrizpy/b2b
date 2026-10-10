@@ -12,17 +12,14 @@
 
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from '@/types/database';
+import { isSupabaseAdminConfigured, createMockSupabaseClient } from './mock';
 
 export function createSupabaseAdminClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-  if (!url || !key) {
-    throw new Error(
-      '[createSupabaseAdminClient] Missing environment variables: ' +
-      'NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY. ' +
-      'This function must only be called from server-side code.'
-    );
+  if (!isSupabaseAdminConfigured() || !url || !key) {
+    return createMockSupabaseClient() as unknown as ReturnType<typeof createClient<Database>>;
   }
 
   return createClient<Database>(url, key, {

@@ -152,7 +152,7 @@ export async function getStudentHubData(studentId: string): Promise<StudentHubDa
   const enrolledModuleIds = (enrollments ?? []).map((e) => e.module_id);
 
   // All published topics in enrolled modules, ordered for globalIndex alignment
-  let flattenedTopics: Array<{ id: number; title: string; module_id: number; order_index: number }> = [];
+  const flattenedTopics: Array<{ id: number; title: string; module_id: number; order_index: number }> = [];
 
   if (enrolledModuleIds.length > 0) {
     const { data: topicsData } = await (db
@@ -536,7 +536,7 @@ export async function getMonthlySnapshots(
     }>);
 
   const enrolledModuleIds = (enrollments ?? []).map((e) => e.module_id);
-  let flatTopics: Array<{ id: number; title: string; module_id: number; order_index: number }> = [];
+  const flatTopics: Array<{ id: number; title: string; module_id: number; order_index: number }> = [];
 
   if (enrolledModuleIds.length > 0) {
     const { data: topicsData } = await (db

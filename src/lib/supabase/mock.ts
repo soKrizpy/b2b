@@ -1,0 +1,818 @@
+// src/lib/supabase/mock.ts
+// In-memory mock Supabase store & query builder used when NEXT_PUBLIC_SUPABASE_URL
+// or SUPABASE_SERVICE_ROLE_KEY are not configured.
+
+export interface MockUser {
+  id: string;
+  email: string;
+  password?: string;
+  user_metadata: {
+    full_name?: string;
+    role?: 'admin' | 'teacher' | 'student';
+    [key: string]: unknown;
+  };
+}
+
+type MockRow = Record<string, unknown>;
+
+interface MockStore {
+  users: MockUser[];
+  profiles: MockRow[];
+  students: MockRow[];
+  modules: MockRow[];
+  topics: MockRow[];
+  student_modules: MockRow[];
+  meetings: MockRow[];
+  meeting_students: MockRow[];
+  quizzes: MockRow[];
+  quiz_questions: MockRow[];
+  quiz_attempts: MockRow[];
+  topic_progress: MockRow[];
+  student_pets: MockRow[];
+  student_badges: MockRow[];
+  parent_links: MockRow[];
+  announcements: MockRow[];
+  module_assessments: MockRow[];
+  module_assessment_questions: MockRow[];
+  module_assessment_attempts: MockRow[];
+  topic_quiz_attempts: MockRow[];
+  certificates: MockRow[];
+  challenges: MockRow[];
+  challenge_submissions: MockRow[];
+  invoices: MockRow[];
+  [table: string]: unknown[];
+}
+
+const globalForMock = globalThis as unknown as { __b2bMockStore?: MockStore };
+
+function createInitialMockStore(): MockStore {
+  const now = new Date();
+  const inTwoHours = new Date(now.getTime() + 2 * 60 * 60 * 1000).toISOString();
+  const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
+  const nextWeek = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString();
+  const currentMonthYear = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const prevMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const prevMonthYear = `${prevMonthDate.getFullYear()}-${String(prevMonthDate.getMonth() + 1).padStart(2, '0')}`;
+
+  return {
+    users: [
+      {
+        id: 'admin-demo-1',
+        email: 'admin@b2b.id',
+        password: 'password123',
+        user_metadata: { full_name: 'Admin Bits2Bytes', role: 'admin' },
+      },
+      {
+        id: 'teacher-demo-1',
+        email: 'guru@b2b.id',
+        password: 'password123',
+        user_metadata: { full_name: 'Kak Budi Santoso', role: 'teacher' },
+      },
+      {
+        id: 'student-demo-1',
+        email: '08123456789@student.mylms.app',
+        password: '123456',
+        user_metadata: { full_name: 'Raka Pratama', role: 'student' },
+      },
+      {
+        id: 'student-demo-2',
+        email: '08987654321@student.mylms.app',
+        password: '123456',
+        user_metadata: { full_name: 'Nadia Putri', role: 'student' },
+      },
+    ],
+    profiles: [
+      { id: 'admin-demo-1', role: 'admin', full_name: 'Admin Bits2Bytes', created_at: yesterday },
+      { id: 'teacher-demo-1', role: 'teacher', full_name: 'Kak Budi Santoso', created_at: yesterday },
+      { id: 'student-demo-1', role: 'student', full_name: 'Raka Pratama', created_at: yesterday },
+      { id: 'student-demo-2', role: 'student', full_name: 'Nadia Putri', created_at: yesterday },
+    ],
+    students: [
+      {
+        id: 'student-demo-1',
+        email_or_phone: '08123456789',
+        full_name: 'Raka Pratama',
+        grade: '5 SD',
+        bio: 'Suka bikin game RPG di Scratch & Roblox!',
+        mpin: '123456',
+        avatar_id: 'dragon',
+        title_id: 'coder',
+        coins: 150,
+        total_xp: 280,
+        equipped_hat_id: 'hat-wizard',
+        inventory: ['hat-wizard'],
+        created_at: yesterday,
+      },
+      {
+        id: 'student-demo-2',
+        email_or_phone: '08987654321',
+        full_name: 'Nadia Putri',
+        grade: '6 SD',
+        bio: 'Suka desain 3D dan animasi.',
+        mpin: '123456',
+        avatar_id: 'cat',
+        title_id: null,
+        coins: 90,
+        total_xp: 160,
+        equipped_hat_id: null,
+        inventory: [],
+        created_at: yesterday,
+      },
+    ],
+    modules: [
+      {
+        id: 1,
+        title: 'Scratch Game Development: Petualangan Luar Angkasa',
+        description: 'Pelajari logika pemrograman blok dengan membangun game luar angkasa interaktif.',
+        level: 'beginner',
+        gamification_type: 'mimo',
+        is_active: true,
+        created_at: yesterday,
+      },
+      {
+        id: 2,
+        title: 'Python Dasar untuk Anak: Misi Robot AI',
+        description: 'Mengenal sintaks Python, variabel, perulangan, dan fungsi melalui misi interaktif.',
+        level: 'intermediate',
+        gamification_type: 'mimo',
+        is_active: true,
+        created_at: yesterday,
+      },
+    ],
+    topics: [
+      {
+        id: 101,
+        module_id: 1,
+        title: 'Pengenalan Sprite & Koordinat X-Y',
+        order_index: 1,
+        description: 'Memahami cara menggerakkan karakter (Sprite) di panggung menggunakan sistem koordinat.',
+        project_link: 'https://scratch.mit.edu',
+        topic_link: null,
+        engine_topic_id: 'topic-101',
+        lesson_content: {
+          learningPath: [
+            {
+              id: 'node-1',
+              type: 'lesson',
+              title: 'Apa itu Panggung & Koordinat?',
+              xp: 15,
+              explanation: 'Di Scratch, posisi karakter ditentukan oleh nilai X (kiri-kanan) dan Y (atas-bawah). Titik tengah panggung adalah (0, 0).',
+            },
+            {
+              id: 'node-2',
+              type: 'quiz',
+              title: 'Cek Pemahaman Koordinat',
+              xp: 20,
+              explanation: 'Jika kita ingin menggerakkan pesawat ke kanan, nilai apa yang harus ditambah?',
+              options: ['Tambah nilai X', 'Kurangi nilai X', 'Tambah nilai Y', 'Ubah ukuran Sprite'],
+              correctOption: 'Tambah nilai X',
+            },
+          ],
+          quiz: [
+            {
+              question: 'Berapakah koordinat titik tengah panggung di Scratch?',
+              options: ['X: 0, Y: 0', 'X: 100, Y: 100', 'X: -240, Y: 180', 'X: 1, Y: 1'],
+              answer_index: 0,
+              explanation: 'Titik pusat panggung berada tepat di X: 0 dan Y: 0.',
+            },
+            {
+              question: 'Blok mana yang digunakan untuk menggerakkan sprite ke atas?',
+              options: ['change y by 10', 'change x by 10', 'move -10 steps', 'turn right 15 degrees'],
+              answer_index: 0,
+              explanation: 'Sumbu Y mengatur posisi vertikal (atas-bawah). Menambah nilai Y positif menggerakkan sprite ke atas.',
+            },
+          ],
+        },
+        status: 'published',
+        published_at: yesterday,
+        created_at: yesterday,
+      },
+      {
+        id: 102,
+        module_id: 1,
+        title: 'Looping & Animasi Kostum Roket',
+        order_index: 2,
+        description: 'Menggunakan blok Forever dan Repeat untuk membuat animasi api roket yang hidup.',
+        project_link: 'https://scratch.mit.edu',
+        topic_link: null,
+        engine_topic_id: 'topic-102',
+        lesson_content: {
+          learningPath: [
+            {
+              id: 'node-201',
+              type: 'lesson',
+              title: 'Mengenal Perulangan (Loop)',
+              xp: 15,
+              explanation: 'Blok Forever akan menjalankan kode di dalamnya terus-menerus selama game berjalan.',
+            },
+          ],
+          quiz: [
+            {
+              question: 'Blok apa yang membuat kode berjalan tanpa henti sampai tombol stop ditekan?',
+              options: ['Forever', 'Repeat 10', 'Wait 1 second', 'If then'],
+              answer_index: 0,
+              explanation: 'Blok Forever menjalankan instruksi secara berulang tanpa batas.',
+            },
+          ],
+        },
+        status: 'published',
+        published_at: yesterday,
+        created_at: yesterday,
+      },
+    ],
+    student_modules: [
+      { student_id: 'student-demo-1', module_id: 1, status: 'active' },
+      { student_id: 'student-demo-2', module_id: 1, status: 'active' },
+    ],
+    meetings: [
+      {
+        id: 1,
+        title: 'Sesi 1: Pengenalan Sprite & Koordinat X-Y',
+        meeting_date: yesterday,
+        link_url: 'https://zoom.us/j/123456789',
+        notes: 'Raka sangat antusias membuat pesawat ruang angkasa.',
+        session_count: 4,
+        session_number: 1,
+        series_id: 'series-demo-1',
+        teacher_id: 'teacher-demo-1',
+        is_completed: true,
+        completion_status: 'selesai',
+        progress_report: 'Raka sudah paham konsep sumbu X dan Y dengan sangat cepat!',
+        created_at: yesterday,
+      },
+      {
+        id: 2,
+        title: 'Sesi 2: Looping & Animasi Kostum Roket',
+        meeting_date: inTwoHours,
+        link_url: 'https://zoom.us/j/123456789',
+        notes: 'Persiapkan akun Scratch sebelum kelas dimulai.',
+        session_count: 4,
+        session_number: 2,
+        series_id: 'series-demo-1',
+        teacher_id: 'teacher-demo-1',
+        is_completed: false,
+        completion_status: null,
+        progress_report: null,
+        created_at: yesterday,
+      },
+      {
+        id: 3,
+        title: 'Sesi 3: Sensor Tabrakan & Skor Game',
+        meeting_date: nextWeek,
+        link_url: 'https://zoom.us/j/123456789',
+        notes: 'Membuat meteor dan variabel skor.',
+        session_count: 4,
+        session_number: 3,
+        series_id: 'series-demo-1',
+        teacher_id: 'teacher-demo-1',
+        is_completed: false,
+        completion_status: null,
+        progress_report: null,
+        created_at: yesterday,
+      },
+    ],
+    meeting_students: [
+      { meeting_id: 1, student_id: 'student-demo-1', has_joined: true },
+      { meeting_id: 1, student_id: 'student-demo-2', has_joined: true },
+      { meeting_id: 2, student_id: 'student-demo-1', has_joined: true },
+      { meeting_id: 2, student_id: 'student-demo-2', has_joined: true },
+      { meeting_id: 3, student_id: 'student-demo-1', has_joined: false },
+      { meeting_id: 3, student_id: 'student-demo-2', has_joined: false },
+    ],
+    quizzes: [],
+    quiz_questions: [],
+    quiz_attempts: [],
+    topic_progress: [
+      {
+        id: 1,
+        student_id: 'student-demo-1',
+        topic_id: 101,
+        engine_topic_id: 'topic-101',
+        xp_earned: 50,
+        best_quiz_score: 100,
+        completed_at: yesterday,
+      },
+    ],
+    student_pets: [
+      {
+        id: 1,
+        student_id: 'student-demo-1',
+        pet_name: 'Draco',
+        species_id: 'dragon',
+        stage: 'BABY_PET',
+        hatch_progress: 100,
+        logic_data: 40,
+        creative_data: 35,
+        spatial_data: 25,
+        created_at: yesterday,
+      },
+    ],
+    student_badges: [],
+    parent_links: [
+      {
+        id: 'plink-1',
+        token: 'demo-parent-token',
+        student_id: 'student-demo-1',
+        expires_at: nextWeek,
+        invoice_id: 'inv-demo-1',
+        created_at: yesterday,
+      },
+    ],
+    announcements: [],
+    module_assessments: [],
+    module_assessment_questions: [],
+    module_assessment_attempts: [],
+    topic_quiz_attempts: [
+      {
+        id: 1,
+        student_id: 'student-demo-1',
+        topic_id: 101,
+        attempt_num: 1,
+        score: 100,
+        answers: [
+          { question_index: 0, chosen_index: 0 },
+          { question_index: 1, chosen_index: 0 },
+        ],
+        submitted_at: yesterday,
+      },
+    ],
+    certificates: [],
+    challenges: [
+      {
+        id: 1,
+        topic_id: 101,
+        title: 'Buat Roket Bergerak dengan Tombol Panah',
+        instructions: 'Buat project di Scratch di mana roket bisa bergerak ke 4 arah menggunakan tombol panah keyboard, lalu bagikan link project-mu!',
+        order_index: 1,
+        allows_file_upload: false,
+        created_at: yesterday,
+      },
+    ],
+    challenge_submissions: [
+      {
+        id: 1,
+        challenge_id: 1,
+        student_id: 'student-demo-1',
+        submission_url: 'https://scratch.mit.edu/projects/123456',
+        submission_note: 'Sudah selesai kak, saya tambahkan efek suara laser juga!',
+        status: 'approved',
+        review_note: 'Keren banget Raka! Gerakannya halus dan ada suara lasernya.',
+        reviewed_by: 'teacher-demo-1',
+        reviewed_at: yesterday,
+        submitted_at: yesterday,
+        created_at: yesterday,
+      },
+    ],
+    invoices: [
+      {
+        id: 'inv-demo-1',
+        student_id: 'student-demo-1',
+        month_year: prevMonthYear,
+        total_meetings: 4,
+        attended_meetings: 4,
+        price_per_meeting: 125000,
+        total_amount: 500000,
+        bank_account: 'BCA 1234567890 a/n Bits2Bytes Edukasi',
+        status: 'paid',
+        created_at: yesterday,
+      },
+      {
+        id: 'inv-demo-2',
+        student_id: 'student-demo-2',
+        month_year: currentMonthYear,
+        total_meetings: 4,
+        attended_meetings: 2,
+        price_per_meeting: 125000,
+        total_amount: 250000,
+        bank_account: 'BCA 1234567890 a/n Bits2Bytes Edukasi',
+        status: 'draft',
+        created_at: yesterday,
+      },
+    ],
+  };
+}
+
+export function getMockStore(): MockStore {
+  if (!globalForMock.__b2bMockStore) {
+    globalForMock.__b2bMockStore = createInitialMockStore();
+  }
+  return globalForMock.__b2bMockStore;
+}
+
+export function isSupabaseConfigured(): boolean {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  return Boolean(url && anon && url.startsWith('http'));
+}
+
+export function isSupabaseAdminConfigured(): boolean {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  return Boolean(url && serviceKey && url.startsWith('http'));
+}
+
+function enrichRow(table: string, row: MockRow, selectStr: string, store: MockStore): MockRow {
+  const copy: MockRow = { ...row };
+
+  if (table === 'meetings' && selectStr.includes('meeting_students')) {
+    const msRows = store.meeting_students
+      .filter((ms) => ms.meeting_id === row.id)
+      .map((ms) => {
+        const student = store.students.find((s) => s.id === ms.student_id) ?? null;
+        return {
+          ...ms,
+          students: student ? { ...student } : null,
+        };
+      });
+    copy.meeting_students = msRows;
+  }
+
+  if (table === 'meeting_students') {
+    if (selectStr.includes('students')) {
+      copy.students = store.students.find((s) => s.id === row.student_id) ?? null;
+    }
+    if (selectStr.includes('meetings')) {
+      copy.meetings = store.meetings.find((m) => m.id === row.meeting_id) ?? null;
+    }
+  }
+
+  if (table === 'students' && selectStr.includes('student_modules')) {
+    copy.student_modules = store.student_modules
+      .filter((sm) => sm.student_id === row.id)
+      .map((sm) => ({
+        ...sm,
+        modules: store.modules.find((m) => m.id === sm.module_id) ?? null,
+      }));
+  }
+
+  if (table === 'student_modules' && selectStr.includes('modules')) {
+    copy.modules = store.modules.find((m) => m.id === row.module_id) ?? null;
+  }
+
+  if (table === 'invoices' && selectStr.includes('students')) {
+    copy.students = store.students.find((s) => s.id === row.student_id) ?? null;
+  }
+
+  if (table === 'certificates' && selectStr.includes('modules')) {
+    copy.modules = store.modules.find((m) => m.id === row.module_id) ?? null;
+  }
+
+  if (table === 'topic_progress' && selectStr.includes('topics')) {
+    copy.topics = store.topics.find((t) => t.id === row.topic_id) ?? null;
+  }
+
+  return copy;
+}
+
+class MockQueryBuilder {
+  private table: string;
+  private store: MockStore;
+  private op: 'select' | 'insert' | 'update' | 'delete' | 'upsert' = 'select';
+  private selectStr = '*';
+  private countExact = false;
+  private headOnly = false;
+  private filters: Array<(row: MockRow) => boolean> = [];
+  private orderByField: string | null = null;
+  private orderAsc = true;
+  private rangeBounds: [number, number] | null = null;
+  private limitCount: number | null = null;
+  private returnSingle = false;
+  private returnMaybeSingle = false;
+  private payload: unknown = null;
+  private upsertConflict: string | null = null;
+
+  constructor(table: string, store: MockStore) {
+    this.table = table;
+    this.store = store;
+  }
+
+  select(columns = '*', opts?: { count?: 'exact'; head?: boolean }) {
+    this.selectStr = columns;
+    if (opts?.count === 'exact') this.countExact = true;
+    if (opts?.head) this.headOnly = true;
+    return this;
+  }
+
+  insert(values: unknown) {
+    this.op = 'insert';
+    this.payload = values;
+    return this;
+  }
+
+  update(values: unknown) {
+    this.op = 'update';
+    this.payload = values;
+    return this;
+  }
+
+  upsert(values: unknown, opts?: { onConflict?: string }) {
+    this.op = 'upsert';
+    this.payload = values;
+    this.upsertConflict = opts?.onConflict ?? null;
+    return this;
+  }
+
+  delete() {
+    this.op = 'delete';
+    return this;
+  }
+
+  eq(col: string, val: unknown) {
+    this.filters.push((row) => {
+      if (col.includes('.')) {
+        const [rel, field] = col.split('.');
+        const relVal = row[rel];
+        if (Array.isArray(relVal)) {
+          return relVal.some((item) => (item as MockRow)?.[field] === val);
+        }
+        return (relVal as MockRow | undefined)?.[field] === val;
+      }
+      return row[col] === val;
+    });
+    return this;
+  }
+
+  in(col: string, vals: unknown[]) {
+    this.filters.push((row) => vals.includes(row[col]));
+    return this;
+  }
+
+  gt(col: string, val: string | number) {
+    this.filters.push((row) => {
+      const rVal = row[col] as string | number;
+      return rVal > val;
+    });
+    return this;
+  }
+
+  gte(col: string, val: string | number) {
+    this.filters.push((row) => {
+      const rVal = row[col] as string | number;
+      return rVal >= val;
+    });
+    return this;
+  }
+
+  lt(col: string, val: string | number) {
+    this.filters.push((row) => {
+      const rVal = row[col] as string | number;
+      return rVal < val;
+    });
+    return this;
+  }
+
+  lte(col: string, val: string | number) {
+    this.filters.push((row) => {
+      const rVal = row[col] as string | number;
+      return rVal <= val;
+    });
+    return this;
+  }
+
+  order(col: string, opts?: { ascending?: boolean }) {
+    this.orderByField = col;
+    this.orderAsc = opts?.ascending ?? true;
+    return this;
+  }
+
+  range(from: number, to: number) {
+    this.rangeBounds = [from, to];
+    return this;
+  }
+
+  limit(n: number) {
+    this.limitCount = n;
+    return this;
+  }
+
+  single() {
+    this.returnSingle = true;
+    return this;
+  }
+
+  maybeSingle() {
+    this.returnMaybeSingle = true;
+    return this;
+  }
+
+  private execute(): { data: unknown; error: null | { message: string }; count?: number } {
+    if (!this.store[this.table]) {
+      this.store[this.table] = [];
+    }
+    const tableArr = this.store[this.table] as MockRow[];
+
+    if (this.op === 'insert') {
+      const rawItems = Array.isArray(this.payload) ? this.payload : [this.payload];
+      const inserted = rawItems.map((item) => {
+        const row: MockRow = { ...(item as MockRow) };
+        if (row.id === undefined) {
+          if (this.table === 'parent_links' || this.table === 'invoices') {
+            row.id = crypto.randomUUID();
+          } else {
+            const maxId = tableArr.reduce(
+              (m, r) => (typeof r.id === 'number' && r.id > m ? r.id : m),
+              0
+            );
+            row.id = maxId + 1;
+          }
+        }
+        if (this.table === 'parent_links' && !row.token) {
+          row.token = crypto.randomUUID();
+          row.expires_at = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+        }
+        if (!row.created_at) {
+          row.created_at = new Date().toISOString();
+        }
+        tableArr.push(row);
+        return row;
+      });
+      const data = this.returnSingle || this.returnMaybeSingle ? (inserted[0] ?? null) : inserted;
+      return { data, error: null };
+    }
+
+    if (this.op === 'upsert') {
+      const rawItems = Array.isArray(this.payload) ? this.payload : [this.payload];
+      const conflictCols = this.upsertConflict
+        ? this.upsertConflict.split(',').map((s) => s.trim())
+        : ['id'];
+      const results = rawItems.map((rawItem) => {
+        const item = rawItem as MockRow;
+        const idx = tableArr.findIndex((r) => conflictCols.every((c) => r[c] === item[c]));
+        if (idx >= 0) {
+          tableArr[idx] = { ...tableArr[idx], ...item };
+          return tableArr[idx];
+        } else {
+          const newRow: MockRow = { ...item, created_at: new Date().toISOString() };
+          tableArr.push(newRow);
+          return newRow;
+        }
+      });
+      const data = this.returnSingle || this.returnMaybeSingle ? (results[0] ?? null) : results;
+      return { data, error: null };
+    }
+
+    if (this.op === 'update') {
+      const matched: MockRow[] = [];
+      for (let i = 0; i < tableArr.length; i++) {
+        const enriched = enrichRow(this.table, tableArr[i], this.selectStr, this.store);
+        if (this.filters.every((f) => f(enriched))) {
+          tableArr[i] = { ...tableArr[i], ...(this.payload as MockRow) };
+          matched.push(tableArr[i]);
+        }
+      }
+      const data = this.returnSingle || this.returnMaybeSingle ? (matched[0] ?? null) : matched;
+      return { data, error: null };
+    }
+
+    if (this.op === 'delete') {
+      const remaining: MockRow[] = [];
+      for (const row of tableArr) {
+        const enriched = enrichRow(this.table, row, this.selectStr, this.store);
+        if (!this.filters.every((f) => f(enriched))) {
+          remaining.push(row);
+        }
+      }
+      this.store[this.table] = remaining;
+      return { data: null, error: null };
+    }
+
+    // SELECT
+    let rows = tableArr.map((r) => enrichRow(this.table, r, this.selectStr, this.store));
+    rows = rows.filter((r) => this.filters.every((f) => f(r)));
+
+    const totalCount = rows.length;
+
+    if (this.orderByField) {
+      const field = this.orderByField;
+      const dir = this.orderAsc ? 1 : -1;
+      rows.sort((a, b) => {
+        const va = String(a[field] ?? '');
+        const vb = String(b[field] ?? '');
+        if (va < vb) return -1 * dir;
+        if (va > vb) return 1 * dir;
+        return 0;
+      });
+    }
+
+    if (this.rangeBounds) {
+      const [from, to] = this.rangeBounds;
+      rows = rows.slice(from, to + 1);
+    }
+
+    if (this.limitCount !== null) {
+      rows = rows.slice(0, this.limitCount);
+    }
+
+    if (this.headOnly) {
+      return { data: null, error: null, count: totalCount };
+    }
+
+    if (this.returnSingle || this.returnMaybeSingle) {
+      return { data: rows[0] ?? null, error: null, count: totalCount };
+    }
+
+    return { data: rows, error: null, count: totalCount };
+  }
+
+  then<TResult1 = { data: unknown; error: null | { message: string }; count?: number }, TResult2 = never>(
+    onfulfilled?: ((value: { data: unknown; error: null | { message: string }; count?: number }) => TResult1 | PromiseLike<TResult1>) | null,
+    onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null
+  ): Promise<TResult1 | TResult2> {
+    try {
+      const res = this.execute();
+      return Promise.resolve(res).then(onfulfilled, onrejected);
+    } catch (err) {
+      return Promise.reject(err).then(onfulfilled, onrejected);
+    }
+  }
+}
+
+export const MOCK_SESSION_COOKIE = 'b2b_mock_user_id';
+
+export function createMockSupabaseClient(options?: {
+  getCookie?: (name: string) => string | undefined;
+  setCookie?: (name: string, value: string) => void;
+  deleteCookie?: (name: string) => void;
+}) {
+  const store = getMockStore();
+
+  return {
+    from(table: string) {
+      return new MockQueryBuilder(table, store);
+    },
+    auth: {
+      async getUser() {
+        const userId = options?.getCookie?.(MOCK_SESSION_COOKIE);
+        const user = store.users.find((u) => u.id === userId) ?? null;
+        return { data: { user }, error: null };
+      },
+      async signInWithPassword({ email }: { email: string; password?: string }) {
+        const lower = email.toLowerCase().trim();
+        let user = store.users.find((u) => u.email.toLowerCase() === lower);
+
+        if (!user) {
+          if (lower.includes('admin')) {
+            user = store.users.find((u) => u.user_metadata.role === 'admin');
+          } else if (lower.includes('guru') || lower.includes('teacher')) {
+            user = store.users.find((u) => u.user_metadata.role === 'teacher');
+          } else if (lower.includes('student') || lower.includes('siswa')) {
+            user = store.users.find((u) => u.user_metadata.role === 'student');
+          }
+        }
+
+        if (!user) {
+          return { data: { user: null, session: null }, error: { message: 'Invalid login credentials' } };
+        }
+
+        options?.setCookie?.(MOCK_SESSION_COOKIE, user.id);
+        return { data: { user, session: { access_token: 'mock-token', user } }, error: null };
+      },
+      async signOut() {
+        options?.deleteCookie?.(MOCK_SESSION_COOKIE);
+        return { error: null };
+      },
+      async exchangeCodeForSession() {
+        return { data: { session: null }, error: null };
+      },
+      admin: {
+        async listUsers() {
+          return { data: { users: store.users }, error: null };
+        },
+        async createUser(attrs: {
+          email: string;
+          password?: string;
+          email_confirm?: boolean;
+          user_metadata?: Record<string, unknown>;
+        }) {
+          const exists = store.users.some((u) => u.email.toLowerCase() === attrs.email.toLowerCase());
+          if (exists) {
+            return { data: { user: null }, error: { message: 'User already been registered' } };
+          }
+          const newUser: MockUser = {
+            id: crypto.randomUUID(),
+            email: attrs.email,
+            password: attrs.password,
+            user_metadata: (attrs.user_metadata ?? {}) as MockUser['user_metadata'],
+          };
+          store.users.push(newUser);
+          return { data: { user: newUser }, error: null };
+        },
+        async updateUserById(id: string, attrs: { user_metadata?: Record<string, unknown>; password?: string }) {
+          const user = store.users.find((u) => u.id === id);
+          if (!user) return { data: { user: null }, error: { message: 'User not found' } };
+          if (attrs.user_metadata) {
+            user.user_metadata = { ...user.user_metadata, ...attrs.user_metadata };
+          }
+          if (attrs.password) {
+            user.password = attrs.password;
+          }
+          return { data: { user }, error: null };
+        },
+        async deleteUser(id: string) {
+          store.users = store.users.filter((u) => u.id !== id);
+          return { data: { user: null }, error: null };
+        },
+      },
+    },
+  };
+}

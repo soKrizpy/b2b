@@ -284,11 +284,12 @@ export function MonthlyReportCard({
   const [selectedIdx, setSelectedIdx] = useState(0);
 
   const snap = snapshots[selectedIdx];
-  if (!snap) return null;
 
   const handlePrint = useCallback(() => {
-    printMonthReport(snap, studentName);
+    if (snap) printMonthReport(snap, studentName);
   }, [snap, studentName]);
+
+  if (!snap) return null;
 
   const archiveMonths = snapshots.filter((s) => s.totalScheduled > 0);
 

@@ -1,4 +1,4 @@
-﻿import type { NextConfig } from "next";
+import type { NextConfig } from "next";
 
 // Required environment variables — set all of these in Vercel project settings
 // and in .env.local for local development.
@@ -10,6 +10,7 @@
 // SUPABASE_SERVICE_ROLE_KEY         — Supabase service-role key (SERVER ONLY — never expose to client)
 
 const nextConfig: NextConfig = {
+  output: 'standalone',
   // Enforce HTTPS by redirecting HTTP → HTTPS in production.
   async redirects() {
     return [];

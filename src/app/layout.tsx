@@ -8,6 +8,10 @@ const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"]
 export const metadata: Metadata = {
   title: "Bits2Bytes LMS",
   description: "Platform Belajar Coding Terstruktur untuk Anak",
+  openGraph: {
+    title: "Bits2Bytes LMS",
+    description: "Platform Belajar Coding Terstruktur untuk Anak",
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
