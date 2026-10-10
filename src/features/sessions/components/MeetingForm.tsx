@@ -27,7 +27,7 @@ function toLocalDatetimeInput(iso: string): string {
   return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-export function MeetingForm({ mode, students, meeting, onSuccess }: MeetingFormProps) {
+export function MeetingForm({ mode, teachers = [], students, meeting, onSuccess }: MeetingFormProps) {
   const action = mode === "create" ? createSession : updateSession;
   const [state, formAction, pending] = useActionState(action, initial);
   const [selectedStudents, setSelectedStudents] = useState<string[]>(
@@ -81,6 +81,27 @@ export function MeetingForm({ mode, students, meeting, onSuccess }: MeetingFormP
         placeholder="Kelas HTML Dasar — Sesi 1"
         error={err("title")}
       />
+
+      {/* Teacher picker */}
+      <div className="flex flex-col gap-1.5">
+        <label htmlFor="meeting-teacher" className="text-sm font-medium text-slate-700">
+          Guru <span className="text-slate-400 font-normal">(opsional)</span>
+        </label>
+        <select
+          id="meeting-teacher"
+          name="teacher_id"
+          defaultValue={meeting?.teacher_id ?? ""}
+          className="rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm
+            bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        >
+          <option value="">— Pilih guru —</option>
+          {teachers.map((t) => (
+            <option key={t.id} value={t.id}>
+              {t.full_name ?? t.email ?? t.id}
+            </option>
+          ))}
+        </select>
+      </div>
 
       {/* Date-time */}
       <Input label="Waktu Mulai" name="meeting_date" type="datetime-local" required

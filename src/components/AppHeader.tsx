@@ -1,4 +1,4 @@
-﻿// src/components/AppHeader.tsx
+// src/components/AppHeader.tsx
 // Shared top navigation bar — bits2bytes branding, dark/light mode, role pill.
 // Server Component shell; ThemeToggle and SignOutButton are Client sub-components.
 
@@ -33,15 +33,17 @@ const ROLE_NAV: Record<UserRole, Array<{ href: string; label: string; icon: stri
     { href: "/admin/dashboard",  label: "Dasbor",    icon: "🏠" },
     { href: "/admin/sessions",   label: "Jadwal",    icon: "📅" },
     { href: "/admin/curriculum", label: "Kurikulum", icon: "📖" },
-    { href: "/admin/users",       label: "Pengguna",   icon: "👥" },
+    { href: "/admin/users",      label: "Pengguna",  icon: "👥" },
+    { href: "/admin/invoices",   label: "Invoice",   icon: "🧾" },
   ],
   teacher: [
     { href: "/teacher/dashboard",   label: "Dasbor",     icon: "🏠" },
     { href: "/teacher/submissions", label: "Submissions", icon: "📝" },
   ],
   student: [
-    { href: "/student/dashboard", label: "Dasbor",    icon: "🏠" },
-    { href: "/student/lessons",   label: "Pelajaran", icon: "📖" },
+    { href: "/student/dashboard",  label: "Town Square", icon: "🏰" },
+    { href: "/student/lessons",    label: "Quest Map",   icon: "🗺️" },
+    { href: "/student/parent-hub", label: "Parent Hub",  icon: "👨‍👩‍👧" },
   ],
 };
 
@@ -67,9 +69,9 @@ export function AppHeader({ role, fullName, currentPath }: AppHeaderProps) {
   return (
     <header
       className="sticky top-0 z-40 border-b transition-colors
-        bg-white/90 dark:bg-[#0d0d14]/90
-        border-slate-200/80 dark:border-white/8
-        backdrop-blur-xl shadow-sm dark:shadow-black/40"
+        bg-white/90 dark:bg-slate-950/90
+        border-blue-400/40 dark:border-purple-500/40
+        backdrop-blur-xl shadow-sm dark:shadow-purple-950/30"
     >
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between gap-4">
@@ -99,9 +101,9 @@ export function AppHeader({ role, fullName, currentPath }: AppHeaderProps) {
               />
               {/* Brand wordmark */}
               <span className="hidden sm:block text-sm font-black tracking-tight select-none">
-                <span className="text-slate-900 dark:text-white">bits</span>
+                <span className="text-slate-900 dark:text-purple-50">bits</span>
                 <span className="text-[#7cc62f]">2</span>
-                <span className="text-slate-900 dark:text-white">bytes</span>
+                <span className="text-slate-900 dark:text-purple-50">bytes</span>
               </span>
 
               {/* Role pill — sits right next to the wordmark */}
@@ -112,7 +114,7 @@ export function AppHeader({ role, fullName, currentPath }: AppHeaderProps) {
             </Link>
 
             {/* Divider */}
-            <div className="hidden sm:block h-5 w-px bg-slate-200 dark:bg-white/10" />
+            <div className="hidden sm:block h-5 w-px bg-blue-300/40 dark:bg-purple-500/30" />
 
             {/* Nav items */}
             <nav className="hidden sm:flex items-center gap-0.5" aria-label="Main navigation">
@@ -123,10 +125,10 @@ export function AppHeader({ role, fullName, currentPath }: AppHeaderProps) {
                     key={href}
                     href={href}
                     className={`relative px-3 py-1.5 rounded-xl text-sm font-medium
-                      transition-all duration-150 flex items-center gap-1.5
+                      transition-all duration-200 flex items-center gap-1.5
                       ${active
                         ? activeClass
-                        : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/8"
+                        : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-purple-50 hover:bg-blue-50/60 dark:hover:bg-purple-950/40"
                       }`}
                   >
                     <span className="text-base leading-none">{icon}</span>
@@ -145,15 +147,15 @@ export function AppHeader({ role, fullName, currentPath }: AppHeaderProps) {
             <ThemeToggle />
 
             {/* User pill */}
-            <div className="hidden sm:flex items-center gap-2 rounded-xl px-3 py-1.5 ring-1
-              bg-slate-50 ring-slate-200/80
-              dark:bg-white/5 dark:ring-white/10">
+            <div className="hidden sm:flex items-center gap-2 rounded-xl px-3 py-1.5 border
+              bg-white border-blue-400/40
+              dark:bg-[#0B0F19] dark:border-purple-500/40 shadow-xs">
               <div className="w-5 h-5 rounded-md bg-[#7cc62f] flex items-center justify-center flex-shrink-0">
                 <span className="text-[10px] text-white font-bold">
                   {(fullName ?? "?")[0].toUpperCase()}
                 </span>
               </div>
-              <span className="text-xs font-semibold text-slate-700 dark:text-slate-200
+              <span className="text-xs font-semibold text-slate-700 dark:text-purple-100
                 max-w-[120px] truncate">
                 {fullName ?? "–"}
               </span>
@@ -164,29 +166,45 @@ export function AppHeader({ role, fullName, currentPath }: AppHeaderProps) {
         </div>
       </div>
 
-      {/* Mobile nav strip */}
-      <div className="sm:hidden border-t border-slate-100 dark:border-white/8
-        px-4 py-2 flex items-center gap-1 overflow-x-auto">
+      {/* ── Smartphone Bottom Navbar (Icon only, fixed at bottom) ───────── */}
+      <nav
+        className="sm:hidden fixed bottom-0 left-0 right-0 z-50
+          bg-white/95 dark:bg-slate-950/95 backdrop-blur-2xl
+          border-t border-blue-400/40 dark:border-purple-500/40
+          shadow-[0_-4px_20px_rgba(59,130,246,0.1)] dark:shadow-[0_-4px_25px_rgba(168,85,247,0.25)]
+          px-3 py-2 flex items-center justify-around gap-1
+          pb-[calc(0.5rem+env(safe-area-inset-bottom))]"
+        aria-label="Mobile navigation bar"
+      >
         {navItems.map(({ href, label, icon }) => {
           const active = currentPath?.startsWith(href);
           return (
             <Link
               key={href}
               href={href}
-              className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5
-                rounded-lg text-sm font-medium transition-all whitespace-nowrap
+              aria-label={label}
+              className={`relative flex flex-col items-center justify-center gap-0.5
+                min-w-[3rem] px-2 py-1.5 rounded-2xl
+                transition-all duration-200 active:scale-95
                 ${active
-                  ? `${activeClass}`
-                  : "text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/8"
+                  ? `${activeClass} shadow-md scale-105`
+                  : 'text-slate-400 dark:text-slate-500 hover:text-slate-800 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/8'
                 }`}
             >
-              <span>{icon}</span>
-              {label}
+              {active && (
+                <span className="absolute -top-1 w-2 h-2 rounded-full bg-[#7cc62f] shadow-sm shadow-[#7cc62f]" />
+              )}
+              <span className="text-xl leading-none">{icon}</span>
+              <span className={`text-[9px] font-bold leading-tight tracking-wide
+                ${active ? 'text-slate-800 dark:text-white' : 'text-slate-400 dark:text-slate-500'}`}>
+                {label}
+              </span>
             </Link>
           );
         })}
-      </div>
+      </nav>
     </header>
   );
 }
+
 

@@ -10,6 +10,7 @@ import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { getAllModulesWithTopics } from './queries';
 import {
   curriculumJsonSchema,
+  encodeFinalAssessment,
   type ModuleImport,
   type NodeImport,
 } from './validation';
@@ -97,7 +98,9 @@ export async function importCurriculumJson(
       await (db
         .from('modules')
         .update({
-          description:       mod.description ?? null,
+          description:       mod.final_assessment
+            ? encodeFinalAssessment(mod.final_assessment)
+            : (mod.description ?? null),
           level:             mod.level,
           gamification_type: mod.gamification_type,
         } as never)
@@ -107,7 +110,9 @@ export async function importCurriculumJson(
         .from('modules')
         .insert({
           title:             normalizedTitle,
-          description:       mod.description ?? null,
+          description:       mod.final_assessment
+            ? encodeFinalAssessment(mod.final_assessment)
+            : (mod.description ?? null),
           level:             mod.level,
           gamification_type: mod.gamification_type,
         } as never)
@@ -141,8 +146,11 @@ export async function importCurriculumJson(
     for (const topic of mod.topics) {
       const topicTitle    = topic.topic_title.trim();
       const hasNodes      = topic.nodes.length > 0;
-      const lessonContent = hasNodes
-        ? { learningPath: topic.nodes.map(nodeToLearningNode) }
+      const lessonContent = (hasNodes || topic.quiz?.length)
+        ? {
+            learningPath: topic.nodes.map(nodeToLearningNode),
+            ...(topic.quiz?.length && { quiz: topic.quiz }),
+          }
         : null;
 
       const existingTopicId = topicTitleMap.get(topicTitle.toLowerCase());
@@ -312,4 +320,220 @@ export async function deleteTopic(
   if (error) return { success: false, error: error.message };
   revalidateAll();
   return { success: true, message: 'Topik berhasil dihapus.' };
+}
+
+
+// ── createModuleAction ────────────────────────────────────────────────────────
+
+export async function createModuleAction(
+  _prev: CurriculumActionResult | null,
+  formData: FormData
+): Promise<CurriculumActionResult> {
+  const auth = await requireAdmin();
+  if (!auth.ok) return { success: false, error: auth.message };
+
+  const title            = (formData.get('title') as string | null)?.trim();
+  const description      = (formData.get('description') as string | null)?.trim() || null;
+  const level            = (formData.get('level') as string) || 'beginner';
+  const gamification_type = (formData.get('gamification_type') as string) || 'mimo';
+
+  if (!title) return { success: false, error: 'Judul modul wajib diisi.', fields: { title: 'Wajib diisi.' } };
+
+  const db = createSupabaseAdminClient();
+  const { data, error } = await (db
+    .from('modules')
+    .insert({ title, description, level, gamification_type } as never)
+    .select('id')
+    .single() as unknown as Promise<{ data: { id: number } | null; error: { message: string } | null }>);
+
+  if (error) return { success: false, error: error.message };
+  revalidateAll();
+  return { success: true, message: `Modul "${title}" berhasil dibuat.`, stats: { modules: 1, topics: 0 } };
+}
+
+// ── updateModuleAction ────────────────────────────────────────────────────────
+
+export async function updateModuleAction(
+  _prev: CurriculumActionResult | null,
+  formData: FormData
+): Promise<CurriculumActionResult> {
+  const auth = await requireAdmin();
+  if (!auth.ok) return { success: false, error: auth.message };
+
+  const id               = Number(formData.get('id'));
+  const title            = (formData.get('title') as string | null)?.trim();
+  const description      = (formData.get('description') as string | null)?.trim() || null;
+  const level            = (formData.get('level') as string) || 'beginner';
+  const gamification_type = (formData.get('gamification_type') as string) || 'mimo';
+
+  if (!id) return { success: false, error: 'ID modul tidak valid.' };
+  if (!title) return { success: false, error: 'Judul modul wajib diisi.', fields: { title: 'Wajib diisi.' } };
+
+  const db = createSupabaseAdminClient();
+  const { error } = await (db
+    .from('modules')
+    .update({ title, description, level, gamification_type } as never)
+    .eq('id', id) as unknown as Promise<{ error: { message: string } | null }>);
+
+  if (error) return { success: false, error: error.message };
+  revalidateAll();
+  revalidatePath(`/admin/curriculum/${id}`, 'layout');
+  return { success: true, message: 'Modul berhasil diperbarui.' };
+}
+
+// ── importCurriculumJsonForModule ─────────────────────────────────────────────
+// Like importCurriculumJson but scoped to a single existing module.
+// The JSON payload is a topics-only array (no module wrapper needed) OR
+// a full single-module object. Topics are attached to the given moduleId.
+
+export async function importCurriculumJsonForModule(
+  moduleId: number,
+  payload: unknown
+): Promise<CurriculumActionResult> {
+  const auth = await requireAdmin();
+  if (!auth.ok) return { success: false, error: auth.message };
+  if (!moduleId) return { success: false, error: 'moduleId tidak valid.' };
+
+  // Accept { topics: [...], final_assessment?: {...} } OR full module object
+  // We normalise both into a single module entry with the given moduleId.
+  const db = createSupabaseAdminClient();
+
+  // Parse: accept single-module JSON or a wrapper with just topics[]
+  let parsed: unknown;
+  try {
+    // If it's an array, treat as multi-module (legacy) and pick the first
+    const raw = Array.isArray(payload) ? payload[0] : payload;
+    if (!raw || typeof raw !== 'object') throw new Error('Payload kosong.');
+    parsed = raw;
+  } catch (e: unknown) {
+    return { success: false, error: e instanceof Error ? e.message : 'Payload tidak valid.' };
+  }
+
+  // Validate just the module import schema
+  const { moduleImportSchema, encodeFinalAssessment: encFA } = await import('./validation');
+  // Inject a dummy title if missing so the schema validates
+  const toValidate = { module_title: 'ignored', module_order: 0, ...(parsed as object) };
+  const result = moduleImportSchema.safeParse(toValidate);
+  if (!result.success) {
+    const firstErr = result.error.flatten().formErrors[0]
+      ?? Object.values(result.error.flatten().fieldErrors)[0]?.[0]
+      ?? 'Format JSON tidak valid.';
+    return { success: false, error: firstErr as string };
+  }
+
+  const mod = result.data;
+  let importedTopics = 0;
+
+  // Update module metadata if final_assessment is in the JSON
+  if (mod.final_assessment) {
+    await (db
+      .from('modules')
+      .update({ description: encFA(mod.final_assessment) } as never)
+      .eq('id', moduleId) as unknown as Promise<unknown>);
+  }
+
+  // Upsert topics into this module
+  const { data: existingTopics } = await (db
+    .from('topics')
+    .select('id, title')
+    .eq('module_id', moduleId) as unknown as Promise<{
+      data: Array<{ id: number; title: string }>;
+      error: unknown;
+    }>);
+
+  const topicTitleMap = new Map<string, number>(
+    (existingTopics ?? []).map((t) => [t.title.toLowerCase().trim(), t.id])
+  );
+
+  const { nodeToLearningNode: n2ln } = await import('./actions').then(async () => {
+    // Re-use the private helper by inlining it here
+    const typeMap: Record<string, string> = {
+      theory: 'lesson', quiz: 'quiz', challenge: 'challenge', code: 'code', practice: 'practice', lesson: 'lesson',
+    };
+    return {
+      nodeToLearningNode: (n: import('./validation').NodeImport) => ({
+        id: n.node_id, type: typeMap[n.type] ?? n.type, title: n.title, xp: n.xp,
+        explanation: n.content, instructions: n.instructions, options: n.options,
+        correctOption: n.correct_option, content: n.content,
+        ...(n.code_content && { code: { language: n.code_language ?? 'text', content: n.code_content } }),
+      }),
+    };
+  });
+
+  for (const topic of mod.topics) {
+    const topicTitle    = topic.topic_title.trim();
+    const hasNodes      = topic.nodes.length > 0;
+    const lessonContent = (hasNodes || topic.quiz?.length)
+      ? { learningPath: topic.nodes.map(n2ln), ...(topic.quiz?.length && { quiz: topic.quiz }) }
+      : null;
+
+    const existingId = topicTitleMap.get(topicTitle.toLowerCase());
+    if (existingId) {
+      await (db
+        .from('topics')
+        .update({
+          order_index: topic.topic_order, description: topic.description ?? null,
+          project_link: topic.project_link || null, lesson_content: lessonContent,
+          status: hasNodes ? 'published' : 'draft',
+          ...(hasNodes && { published_at: new Date().toISOString() }),
+        } as never)
+        .eq('id', existingId) as unknown as Promise<unknown>);
+    } else {
+      const { error: tErr } = await (db
+        .from('topics')
+        .insert({
+          module_id: moduleId, title: topicTitle, order_index: topic.topic_order,
+          description: topic.description ?? null, project_link: topic.project_link || null,
+          lesson_content: lessonContent, status: hasNodes ? 'published' : 'draft',
+          ...(hasNodes && { published_at: new Date().toISOString() }),
+        } as never) as unknown as Promise<{ error: { message: string } | null }>);
+      if (tErr) return { success: false, error: `Gagal membuat topik "${topicTitle}": ${tErr.message}` };
+    }
+    importedTopics++;
+  }
+
+  revalidateAll();
+  revalidatePath(`/admin/curriculum/${moduleId}`, 'layout');
+  return { success: true, message: `${importedTopics} topik berhasil diimpor ke modul ini.`, stats: { modules: 1, topics: importedTopics } };
+}
+
+// ── updateTopicAction ─────────────────────────────────────────────────────────
+
+export async function updateTopicAction(
+  _prev: CurriculumActionResult | null,
+  formData: FormData
+): Promise<CurriculumActionResult> {
+  const auth = await requireAdmin();
+  if (!auth.ok) return { success: false, error: auth.message };
+
+  const id          = Number(formData.get('id'));
+  const moduleId    = Number(formData.get('module_id'));
+  const title       = (formData.get('title') as string | null)?.trim();
+  const description = (formData.get('description') as string | null)?.trim() || null;
+  const projectLink = (formData.get('project_link') as string | null)?.trim() || null;
+  const status      = (formData.get('status') as string) || 'draft';
+  const orderIndex  = Number(formData.get('order_index'));
+
+  if (!id)    return { success: false, error: 'ID topik tidak valid.' };
+  if (!title) return { success: false, error: 'Judul topik wajib diisi.', fields: { title: 'Wajib diisi.' } };
+
+  const db = createSupabaseAdminClient();
+  const { error } = await (db
+    .from('topics')
+    .update({
+      title,
+      description,
+      project_link:   projectLink,
+      status:         status === 'published' ? 'published' : 'draft',
+      order_index:    Number.isFinite(orderIndex) ? orderIndex : undefined,
+      ...(status === 'published' && { published_at: new Date().toISOString() }),
+      ...(status === 'draft'     && { published_at: null }),
+    } as never)
+    .eq('id', id) as unknown as Promise<{ error: { message: string } | null }>);
+
+  if (error) return { success: false, error: error.message };
+
+  revalidateAll();
+  if (moduleId) revalidatePath(`/admin/curriculum/${moduleId}`, 'layout');
+  return { success: true, message: `Topik "${title}" berhasil diperbarui.` };
 }

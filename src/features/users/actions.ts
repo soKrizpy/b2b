@@ -1,4 +1,4 @@
-﻿// src/features/users/actions.ts
+// src/features/users/actions.ts
 // Admin Server Actions: create/delete students and teachers.
 // Mirrors the proven 3-step flow from the existing bits2bytes-lms:
 //   1. auth.admin.createUser  — creates the Supabase Auth user
@@ -213,4 +213,81 @@ export async function deleteUser(
 
   revalidateAll();
   return { success: true, message: 'Akun berhasil dihapus.' };
+}
+
+// ── setActiveStudentModule ────────────────────────────────────────────────────
+// Atomically sets one module as 'active' for a student and pauses all others.
+// Creates the student_modules row if it doesn't exist yet.
+
+export type SetModuleResult =
+  | { success: true;  message: string }
+  | { success: false; error: string };
+
+export async function setActiveStudentModule(
+  _prev: SetModuleResult | null,
+  formData: FormData
+): Promise<SetModuleResult> {
+  const auth = await requireAdmin();
+  if (!auth.ok) return { success: false, error: auth.message };
+
+  const studentId = (formData.get('student_id') as string | null)?.trim();
+  const moduleId  = Number(formData.get('module_id'));
+
+  if (!studentId) return { success: false, error: 'student_id wajib diisi.' };
+  if (!moduleId || isNaN(moduleId)) return { success: false, error: 'module_id tidak valid.' };
+
+  const db = createSupabaseAdminClient();
+
+  // 1. Set ALL existing enrollments for this student to 'paused'
+  const { error: pauseErr } = await (db
+    .from('student_modules')
+    .update({ status: 'paused' } as never)
+    .eq('student_id', studentId) as unknown as Promise<{ error: { message: string } | null }>);
+
+  if (pauseErr) {
+    return { success: false, error: `Gagal menonaktifkan modul lain: ${pauseErr.message}` };
+  }
+
+  // 2. Upsert the target module as 'active'
+  const { error: upsertErr } = await (db
+    .from('student_modules')
+    .upsert(
+      { student_id: studentId, module_id: moduleId, status: 'active' } as never,
+      { onConflict: 'student_id,module_id' }
+    ) as unknown as Promise<{ error: { message: string } | null }>);
+
+  if (upsertErr) {
+    return { success: false, error: `Gagal mengaktifkan modul: ${upsertErr.message}` };
+  }
+
+  revalidatePath('/admin/users', 'layout');
+  revalidatePath('/student/lessons', 'layout');
+  return { success: true, message: 'Modul aktif berhasil diubah.' };
+}
+
+// ── resetTeacherPassword ──────────────────────────────────────────────────────
+
+export type ResetPasswordResult =
+  | { success: true;  message: string }
+  | { success: false; error: string };
+
+export async function resetTeacherPassword(
+  _prev: ResetPasswordResult | null,
+  formData: FormData,
+): Promise<ResetPasswordResult> {
+  const auth = await requireAdmin();
+  if (!auth.ok) return { success: false, error: auth.message };
+
+  const userId      = (formData.get('teacher_id') as string | null)?.trim();
+  const newPassword = (formData.get('new_password') as string | null)?.trim();
+
+  if (!userId)      return { success: false, error: 'Teacher ID tidak ditemukan.' };
+  if (!newPassword || newPassword.length < 8)
+    return { success: false, error: 'Password baru minimal 8 karakter.' };
+
+  const db = createSupabaseAdminClient();
+  const { error } = await db.auth.admin.updateUserById(userId, { password: newPassword });
+  if (error) return { success: false, error: error.message };
+
+  return { success: true, message: 'Password berhasil diperbarui.' };
 }

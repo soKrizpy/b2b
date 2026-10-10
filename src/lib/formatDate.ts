@@ -1,4 +1,4 @@
-﻿// src/lib/formatDate.ts
+// src/lib/formatDate.ts
 // Locale-aware date/time formatting helpers (Indonesian locale by default).
 
 const IDN = "id-ID";
@@ -35,4 +35,15 @@ export function isLive(iso: string): boolean {
 /** How many minutes until meeting starts (negative if already started). */
 export function minutesUntil(iso: string): number {
   return Math.round((new Date(iso).getTime() - Date.now()) / 60_000);
+}
+
+/** Returns true when the meeting date is today. */
+export function isToday(iso: string): boolean {
+  const d = new Date(iso);
+  const now = new Date();
+  return (
+    d.getFullYear() === now.getFullYear() &&
+    d.getMonth() === now.getMonth() &&
+    d.getDate() === now.getDate()
+  );
 }

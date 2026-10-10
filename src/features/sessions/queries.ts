@@ -74,13 +74,14 @@ export async function getSessionsForAdmin(): Promise<MeetingWithStudents[]> {
 }
 
 /**
- * Meetings for a specific teacher, sorted ascending.
- * Uses the server (cookie) client — RLS applies on top of the eq filter.
+ * Meetings assigned to a specific teacher (teacher_id = teacherId).
+ * Uses the admin client so RLS doesn't interfere with the filter.
+ * teacher_id was added in migration 0007.
  */
 export async function getSessionsForTeacher(
   teacherId: string
 ): Promise<MeetingWithStudents[]> {
-  const db = await createSupabaseServerClient();
+  const db = createSupabaseAdminClient();
   const { data, error } = await db
     .from('meetings')
     .select(MEETING_SELECT)
@@ -224,3 +225,169 @@ export async function getStudentsWithModules(opts?: {
 }
 
 
+
+// ── Town Square enriched meeting ─────────────────────────────────────────────
+
+export interface TownSquareSeat {
+  student_id:      string;
+  full_name:       string;
+  avatar_id:       string | null;
+  equipped_hat_id: string | null;
+  total_xp:        number;
+  is_self:         boolean;
+}
+
+export interface TownSquareMeeting {
+  id: number;
+  title: string;
+  meeting_date: string;
+  link_url: string | null;
+  notes: string | null;
+  session_count: number;
+  session_number: number;
+  teacher_id: string | null;
+  teacher_name: string | null;
+  seats: TownSquareSeat[];   // max 4 enrolled students
+}
+
+/**
+ * Returns the next upcoming (non-completed) meeting for a student, enriched
+ * with teacher name (from profiles) and all enrolled classmate names+avatars.
+ * Returns null if no upcoming meeting exists.
+ */
+export async function getUpcomingMeetingForStudent(
+  studentId: string
+): Promise<TownSquareMeeting | null> {
+  const db  = createSupabaseAdminClient();
+  const now = new Date().toISOString();
+
+  // 1. Find the next upcoming meeting where this student is enrolled
+  const { data: meetings, error: meetErr } = await (db
+    .from('meetings')
+    .select(`
+      id, title, meeting_date, link_url, notes,
+      session_count, session_number, teacher_id,
+      meeting_students!inner (
+        student_id,
+        students ( id, full_name, avatar_id )
+      )
+    `)
+    .eq('is_completed', false)
+    .eq('meeting_students.student_id', studentId)
+    .gt('meeting_date', now)
+    .order('meeting_date', { ascending: true })
+    .limit(1) as unknown as Promise<{
+      data: Array<{
+        id: number;
+        title: string;
+        meeting_date: string;
+        link_url: string | null;
+        notes: string | null;
+        session_count: number;
+        session_number: number;
+        teacher_id: string | null;
+        meeting_students: Array<{
+          student_id: string;
+          students: { id: string; full_name: string; avatar_id: string | null } | null;
+        }>;
+      }> | null;
+      error: { message: string } | null;
+    }>);
+
+  // Also check for live meetings (meeting_date <= now, not completed)
+  const { data: liveMeetings, error: liveErr } = await (db
+    .from('meetings')
+    .select(`
+      id, title, meeting_date, link_url, notes,
+      session_count, session_number, teacher_id,
+      meeting_students!inner (
+        student_id,
+        students ( id, full_name, avatar_id )
+      )
+    `)
+    .eq('is_completed', false)
+    .eq('meeting_students.student_id', studentId)
+    .lte('meeting_date', now)
+    .order('meeting_date', { ascending: false })
+    .limit(1) as unknown as Promise<{
+      data: Array<{
+        id: number;
+        title: string;
+        meeting_date: string;
+        link_url: string | null;
+        notes: string | null;
+        session_count: number;
+        session_number: number;
+        teacher_id: string | null;
+        meeting_students: Array<{
+          student_id: string;
+          students: { id: string; full_name: string; avatar_id: string | null } | null;
+        }>;
+      }> | null;
+      error: { message: string } | null;
+    }>);
+
+  if (meetErr)  console.error('[getUpcomingMeetingForStudent] meetings:', meetErr.message);
+  if (liveErr)  console.error('[getUpcomingMeetingForStudent] live:', liveErr.message);
+
+  // Prefer live meeting, then upcoming
+  const raw = (liveMeetings?.[0]) ?? (meetings?.[0]) ?? null;
+  if (!raw) return null;
+
+  // 2. Fetch all enrolled students for THIS meeting (not just inner-joined on current student)
+  const { data: allSeats } = await (db
+    .from('meeting_students')
+    .select('student_id, students ( id, full_name, avatar_id, equipped_hat_id, total_xp )')
+    .eq('meeting_id', raw.id) as unknown as Promise<{
+      data: Array<{
+        student_id: string;
+        students: {
+          id: string;
+          full_name: string;
+          avatar_id:       string | null;
+          equipped_hat_id: string | null;
+          total_xp:        number;
+        } | null;
+      }> | null;
+      error: unknown;
+    }>);
+
+  // 3. Fetch teacher name from profiles (if teacher_id set)
+  let teacherName: string | null = null;
+  if (raw.teacher_id) {
+    const { data: profile } = await (db
+      .from('profiles')
+      .select('full_name')
+      .eq('id', raw.teacher_id)
+      .maybeSingle() as unknown as Promise<{
+        data: { full_name: string | null } | null;
+        error: unknown;
+      }>);
+    teacherName = profile?.full_name ?? null;
+  }
+
+  // 4. Build seats array (max 4)
+  const seats: TownSquareSeat[] = (allSeats ?? [])
+    .slice(0, 4)
+    .map((ms) => ({
+      student_id:      ms.student_id,
+      full_name:       ms.students?.full_name       ?? 'Siswa',
+      avatar_id:       ms.students?.avatar_id       ?? null,
+      equipped_hat_id: ms.students?.equipped_hat_id ?? null,
+      total_xp:        ms.students?.total_xp        ?? 0,
+      is_self:         ms.student_id === studentId,
+    }));
+
+  return {
+    id:             raw.id,
+    title:          raw.title,
+    meeting_date:   raw.meeting_date,
+    link_url:       raw.link_url,
+    notes:          raw.notes,
+    session_count:  raw.session_count,
+    session_number: raw.session_number,
+    teacher_id:     raw.teacher_id,
+    teacher_name:   teacherName,
+    seats,
+  };
+}

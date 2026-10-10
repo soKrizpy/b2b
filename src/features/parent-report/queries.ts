@@ -5,15 +5,18 @@
 // This module never exposes any data unless the token is valid and unexpired.
 
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
+import { getStudentCertificates, type CertificateWithModule } from '@/features/certificates/queries';
 
 // ── Return shapes ─────────────────────────────────────────────────────────────
 
-export interface CompletedSession {
+export interface SessionItem {
   id: number;
   title: string;
   meeting_date: string;
   progress_report: string | null;
   completion_status: string | null;
+  /** Whether the student actually joined this session (from meeting_students.has_joined). */
+  has_joined: boolean;
 }
 
 export interface CompletedTopic {
@@ -24,26 +27,34 @@ export interface CompletedTopic {
   completed_at: string;
 }
 
+/** Billing snapshot attached to this report link (if admin linked an invoice). */
+export interface InvoiceSummary {
+  month_year: string;
+  total_meetings: number;
+  attended_meetings: number;
+  price_per_meeting: number;
+  total_amount: number;
+  bank_account: string | null;
+  status: 'draft' | 'sent' | 'paid';
+}
+
 export interface ParentReportData {
   studentName: string;
-  completedSessions: CompletedSession[];
+  /** All completed sessions, sorted newest first. */
+  completedSessions: SessionItem[];
   completedTopics: CompletedTopic[];
   totalSessions: number;
   totalTopics: number;
   totalXp: number;
+  /** Attended sessions (has_joined = true) across ALL the student's sessions. */
+  attendedCount: number;
+  /** Invoice linked to this report, or null if the admin hasn't attached one. */
+  invoice: InvoiceSummary | null;
+  certificates: CertificateWithModule[];
 }
 
 // ── getParentReportData ───────────────────────────────────────────────────────
 
-/**
- * Validates the token and returns the parent report payload.
- *
- * Returns null when:
- *   • The token does not exist in public.parent_links
- *   • expires_at is in the past
- *
- * Never throws — callers must handle null as "token invalid".
- */
 export async function getParentReportData(
   token: string | undefined | null
 ): Promise<ParentReportData | null> {
@@ -54,10 +65,15 @@ export async function getParentReportData(
   // ── 1. Validate token ──────────────────────────────────────────────────────
   const { data: link, error: linkErr } = await (db
     .from('parent_links')
-    .select('id, student_id, expires_at')
+    .select('id, student_id, expires_at, invoice_id')
     .eq('token', token.trim())
     .maybeSingle() as unknown as Promise<{
-      data: { id: string; student_id: string; expires_at: string } | null;
+      data: {
+        id: string;
+        student_id: string;
+        expires_at: string;
+        invoice_id: string | null;
+      } | null;
       error: { message: string } | null;
     }>);
 
@@ -65,15 +81,12 @@ export async function getParentReportData(
     console.error('[getParentReportData] token lookup error:', linkErr.message);
     return null;
   }
-
-  if (!link) return null; // token not found
-
-  // Check expiry — compare against current UTC time
-  if (new Date(link.expires_at) <= new Date()) return null; // expired
+  if (!link) return null;
+  if (new Date(link.expires_at) <= new Date()) return null;
 
   const studentId = link.student_id;
 
-  // ── 2. Fetch student name ──────────────────────────────────────────────────
+  // ── 2. Student name ────────────────────────────────────────────────────────
   const { data: student } = await (db
     .from('students')
     .select('full_name')
@@ -85,17 +98,31 @@ export async function getParentReportData(
 
   const studentName = student?.full_name ?? 'Siswa';
 
-  // ── 3. Fetch completed meetings ────────────────────────────────────────────
-  const { data: meetingStudents } = await (db
+  // ── 3. All meetings for this student with attendance status ────────────────
+  // We fetch via meeting_students so we get has_joined per session.
+  // is_completed filters to teacher-confirmed finished sessions for display;
+  // has_joined drives the attendance count for billing.
+  const { data: msRows } = await (db
     .from('meeting_students')
-    .select('meeting_id')
+    .select('meeting_id, has_joined')
     .eq('student_id', studentId) as unknown as Promise<{
-      data: Array<{ meeting_id: number }>;
+      data: Array<{ meeting_id: number; has_joined: boolean }>;
       error: unknown;
     }>);
 
-  const meetingIds = (meetingStudents ?? []).map((ms) => ms.meeting_id);
-  let completedSessions: CompletedSession[] = [];
+  const allRows  = msRows ?? [];
+  const meetingIds = allRows.map((ms) => ms.meeting_id);
+
+  // Build a quick lookup: meetingId → has_joined
+  const hasJoinedMap = new Map<number, boolean>(
+    allRows.map((ms) => [ms.meeting_id, ms.has_joined])
+  );
+
+  // Attended count (used for billing verification — mirrors production logic)
+  const attendedCount = allRows.filter((ms) => ms.has_joined).length;
+
+  // ── 4. Completed sessions (display list) ──────────────────────────────────
+  let completedSessions: SessionItem[] = [];
 
   if (meetingIds.length > 0) {
     const { data: sessions } = await (db
@@ -104,14 +131,23 @@ export async function getParentReportData(
       .in('id', meetingIds)
       .eq('is_completed', true)
       .order('meeting_date', { ascending: false }) as unknown as Promise<{
-        data: CompletedSession[];
+        data: Array<{
+          id: number;
+          title: string;
+          meeting_date: string;
+          progress_report: string | null;
+          completion_status: string | null;
+        }>;
         error: unknown;
       }>);
 
-    completedSessions = sessions ?? [];
+    completedSessions = (sessions ?? []).map((s) => ({
+      ...s,
+      has_joined: hasJoinedMap.get(s.id) ?? false,
+    }));
   }
 
-  // ── 4. Fetch completed engine topics ──────────────────────────────────────
+  // ── 5. Engine topic progress ───────────────────────────────────────────────
   const { data: topicRows } = await (db
     .from('topic_progress')
     .select('engine_topic_id, xp_earned, best_quiz_score, completed_at, topics(title)')
@@ -137,6 +173,26 @@ export async function getParentReportData(
 
   const totalXp = completedTopics.reduce((sum, t) => sum + t.xp_earned, 0);
 
+  // ── 6. Invoice (if the admin linked one to this report) ────────────────────
+  let invoice: InvoiceSummary | null = null;
+
+  if (link.invoice_id) {
+    const { data: inv } = await (db
+      .from('invoices')
+      .select(
+        'month_year, total_meetings, attended_meetings, price_per_meeting, total_amount, bank_account, status'
+      )
+      .eq('id', link.invoice_id)
+      .maybeSingle() as unknown as Promise<{
+        data: InvoiceSummary | null;
+        error: unknown;
+      }>);
+
+    invoice = inv ?? null;
+  }
+
+  const certificates = await getStudentCertificates(studentId);
+
   return {
     studentName,
     completedSessions,
@@ -144,5 +200,9 @@ export async function getParentReportData(
     totalSessions: completedSessions.length,
     totalTopics:   completedTopics.length,
     totalXp,
+    attendedCount,
+    invoice,
+    certificates,
   };
 }
+

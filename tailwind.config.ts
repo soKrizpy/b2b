@@ -1,4 +1,4 @@
-﻿import type { Config } from 'tailwindcss';
+import type { Config } from 'tailwindcss';
 
 const config: Config = {
   darkMode: 'class',
@@ -10,6 +10,12 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      colors: {
+        brand: {
+          DEFAULT: '#7cc62f',
+          dark:    '#5fa31f',
+        },
+      },
       fontFamily: {
         sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
       },
@@ -18,8 +24,10 @@ const config: Config = {
         '3xl': '1.5rem',
       },
       boxShadow: {
-        'glow-indigo': '0 0 20px -5px rgba(99, 102, 241, 0.4)',
-        'glow-red':    '0 0 20px -5px rgba(239, 68, 68, 0.4)',
+        'neon-blue': '0 0 20px rgba(59, 130, 246, 0.35)',
+        'neon-purple': '0 0 20px rgba(168, 85, 247, 0.45)',
+        'card': '0 1px 3px 0 rgba(15, 23, 42, 0.06), 0 1px 2px -1px rgba(15, 23, 42, 0.04)',
+        'card-md': '0 4px 6px -1px rgba(15, 23, 42, 0.08), 0 2px 4px -2px rgba(15, 23, 42, 0.05)',
       },
       animation: {
         'fade-in-up': 'fadeInUp 0.4s ease both',
@@ -51,4 +59,3 @@ const config: Config = {
 };
 
 export default config;
-

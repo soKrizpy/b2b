@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 // src/features/pet/components/CyberPetWidget.tsx
 // Main-stage Cyber Pet widget for the Student Dashboard.
 //
@@ -184,9 +184,10 @@ export function CyberPetWidget({
         {/* Status message */}
         <p
           data-pet-status
-          className="text-sm font-bold text-indigo-700 text-center"
+          className="text-sm font-bold text-indigo-700 text-center flex items-center justify-center gap-1.5"
           aria-live="polite"
         >
+          <i className="fa-solid fa-heart-pulse text-rose-500 fa-beat text-xs" aria-hidden="true" />
           {status}
         </p>
 
@@ -229,18 +230,18 @@ export function CyberPetWidget({
         {/* Coin counter */}
         <div
           data-pet-coins
-          className="flex items-center gap-2 bg-amber-50 border border-amber-200
-            rounded-xl px-3 py-2 w-fit"
+          className="flex items-center gap-2 bg-amber-500/10 border border-amber-500/20
+            rounded-2xl px-4 py-2 w-fit group/coin shadow-sm"
           aria-label={`${coins} koin`}
         >
-          <span className="text-xl" aria-hidden="true">🪙</span>
+          <i className="fa-solid fa-coins text-amber-400 text-lg group-hover/coin:fa-bounce" aria-hidden="true" />
           <span
             data-pet-coin-count
-            className="text-lg font-extrabold text-amber-700 tabular-nums"
+            className="text-base font-black text-amber-600 dark:text-amber-300 tabular-nums"
           >
             {coins.toLocaleString('id-ID')}
           </span>
-          <span className="text-xs text-amber-600 font-medium">koin</span>
+          <span className="text-xs text-amber-600/80 dark:text-amber-300/80 font-bold">Koin</span>
         </div>
       </div>
     </section>

@@ -60,3 +60,29 @@ export async function requireAdmin(): Promise<AuthResult> {
   return requireRole('admin');
 }
 
+/**
+ * Like requireRole() but accepts any one of several allowed roles.
+ * Returns 403 if the authenticated user's role is not in the allowed list.
+ */
+export async function requireAnyRole(allowed: UserRole[]): Promise<AuthResult> {
+  const result = await getAuthUser();
+  if (!result.ok) return result;
+
+  if (!allowed.includes(result.role)) {
+    return {
+      ok: false,
+      status: 403,
+      message: `Aksi ini memerlukan hak akses ${allowed.join(' atau ')}.`,
+    };
+  }
+
+  return result;
+}
+
+/**
+ * Convenience wrapper — asserts the user is an admin or teacher.
+ * Used by actions that both roles are permitted to perform (e.g. markSessionComplete).
+ */
+export async function requireAdminOrTeacher(): Promise<AuthResult> {
+  return requireAnyRole(['admin', 'teacher']);
+}

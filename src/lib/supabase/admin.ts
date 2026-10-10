@@ -1,4 +1,4 @@
-﻿// src/lib/supabase/admin.ts
+// src/lib/supabase/admin.ts
 // Service-role Supabase client — bypasses RLS entirely.
 //
 // SERVER-ONLY BY CONVENTION: Only import this from Server Actions, Route
@@ -29,6 +29,9 @@ export function createSupabaseAdminClient() {
     auth: {
       persistSession: false,
       autoRefreshToken: false,
+    },
+    global: {
+      fetch: (url, options) => fetch(url, { ...options, cache: 'no-store' }),
     },
   });
 }

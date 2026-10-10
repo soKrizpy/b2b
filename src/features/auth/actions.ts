@@ -1,4 +1,4 @@
-﻿// src/features/auth/actions.ts
+// src/features/auth/actions.ts
 'use server';
 
 import { redirect } from 'next/navigation';
@@ -25,8 +25,6 @@ export async function signIn(
   _prevState: SignInResult | null,
   formData: FormData
 ): Promise<SignInResult> {
-  console.log('[signIn payload]:', Object.fromEntries(formData));
-
   // 1. Validate
   const raw = {
     identifier: formData.get('identifier'),
@@ -36,7 +34,6 @@ export async function signIn(
 
   const parsed = signInSchema.safeParse(raw);
   if (!parsed.success) {
-    console.log('[signIn Zod error]:', parsed.error.flatten());
     const flat = parsed.error.flatten();
     return {
       success: false,
@@ -50,14 +47,11 @@ export async function signIn(
 
   const { identifier, password, redirectTo } = parsed.data;
 
-  // 2. Resolve email — phone numbers use the synthetic email pattern
+  // 2. Resolve email -- phone numbers use the synthetic email pattern
   //    {phone}@student.mylms.app  (set during student account creation)
   const email = isPhoneNumber(identifier)
     ? phoneToEmail(identifier)
     : identifier;
-
-  console.log('[signIn] identifier type:', isPhoneNumber(identifier) ? 'phone' : 'email',
-    '| resolved email:', email);
 
   // 3. Authenticate
   const supabase = await createSupabaseServerClient();
@@ -65,10 +59,6 @@ export async function signIn(
     email,
     password,
   });
-
-  if (authError) console.log('[signIn Supabase error]:', authError.message);
-  console.log('[signIn] auth result → userId:', authData?.user?.id ?? null,
-    '| authError:', authError?.message ?? null);
 
   if (authError || !authData.user) {
     return {
@@ -81,11 +71,9 @@ export async function signIn(
 
   // 4. Resolve role
   const role = await resolveUserRole(user.id);
-  console.log('[signIn] resolved role:', role);
 
   if (!role) {
     await supabase.auth.signOut();
-    console.error('[signIn] no role found — returning error to form');
     return {
       success: false,
       error: 'Akun ini belum dikonfigurasi. Hubungi administrator.',
@@ -98,7 +86,6 @@ export async function signIn(
     await adminClient.auth.admin.updateUserById(user.id, {
       user_metadata: { ...user.user_metadata, role },
     });
-    console.log('[signIn] stamped user_metadata.role =', role, 'for user', user.id);
   } catch (err) {
     console.error('[signIn] failed to stamp user_metadata.role:', err);
   }
@@ -108,7 +95,6 @@ export async function signIn(
     ? redirectTo!
     : ROLE_DASHBOARD_MAP[role];
 
-  console.log('[signIn] redirecting to:', destination);
   redirect(destination);
 }
 

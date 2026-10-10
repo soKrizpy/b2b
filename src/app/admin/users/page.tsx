@@ -3,15 +3,17 @@
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import { getAllStudents, getAllTeachers } from '@/features/users/queries';
+import { getAllModules } from '@/features/curriculum/queries';
 import { UsersShell } from './UsersShell';
 
 export const metadata: Metadata = { title: 'Kelola Pengguna — Admin Bits2Bytes' };
 export const dynamic = 'force-dynamic';
 
 export default async function AdminUsersPage() {
-  const [students, teachers] = await Promise.all([
+  const [students, teachers, allModules] = await Promise.all([
     getAllStudents(),
     getAllTeachers(),
+    getAllModules(),
   ]);
 
   return (
@@ -30,7 +32,7 @@ export default async function AdminUsersPage() {
       </div>
 
       <Suspense fallback={null}>
-        <UsersShell students={students} teachers={teachers} />
+        <UsersShell students={students} teachers={teachers} allModules={allModules} />
       </Suspense>
     </div>
   );

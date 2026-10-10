@@ -1,4 +1,4 @@
-﻿// src/middleware.ts
+// src/middleware.ts
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
@@ -45,20 +45,12 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // ── DIAGNOSTIC LOG ──────────────────────────────────────────────────────────
   const userRole = (user?.user_metadata?.role as UserRole | undefined) ?? null;
-  console.log(
-    '[middleware]', pathname,
-    '→ userId:', user?.id ?? 'NONE',
-    '| role in JWT:', userRole ?? 'NONE'
-  );
-  // ───────────────────────────────────────────────────────────────────────────
 
   // 3. Unauthenticated redirect
   if (!user) {
     const loginUrl = new URL('/login', request.url);
     loginUrl.searchParams.set('redirectTo', pathname);
-    console.log('[middleware] no session — redirecting to', loginUrl.pathname + loginUrl.search);
     return NextResponse.redirect(loginUrl);
   }
 
@@ -71,11 +63,6 @@ export async function middleware(request: NextRequest) {
     const [, requiredRole] = matchedEntry;
 
     if (userRole !== requiredRole) {
-      console.warn(
-        '[middleware] RBAC mismatch — path needs', requiredRole,
-        'but JWT has', userRole ?? 'NONE',
-        '— bouncing user', user.id
-      );
       if (userRole && userRole in ROLE_DASHBOARD_MAP) {
         const ownDashboard = new URL(ROLE_DASHBOARD_MAP[userRole], request.url);
         return NextResponse.redirect(ownDashboard);

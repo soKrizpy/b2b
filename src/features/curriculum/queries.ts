@@ -185,3 +185,104 @@ export async function getAllModulesWithTopics(): Promise<ModuleWithTopics[]> {
   }));
 }
 
+
+// ── Student module progress (for lessons page) ────────────────────────────────
+
+export interface ModuleProgress {
+  moduleId: number;
+  totalTopics: number;
+  /** Topics where the student achieved quiz score >= 70 (or no quiz exists). */
+  completedTopics: number;
+  isModuleComplete: boolean;
+  hasAssessment: boolean;
+}
+
+/**
+ * Returns quiz-based completion progress for each module the student is enrolled in.
+ * A topic is "completed" if:
+ *   (a) it has a quiz and the student scored >= 70 on their best attempt, OR
+ *   (b) it has no quiz (description/nodes only).
+ */
+export async function getStudentModuleProgress(
+  studentId: string,
+  moduleIds: number[]
+): Promise<ModuleProgress[]> {
+  if (moduleIds.length === 0) return [];
+
+  const db = createSupabaseAdminClient();
+
+  // Fetch topics for these modules
+  const { data: topicsData } = await db
+    .from('topics')
+    .select('id, module_id, lesson_content, description')
+    .in('module_id', moduleIds)
+    .eq('status', 'published') as unknown as {
+      data: Array<{ id: number; module_id: number; lesson_content: unknown; description: string | null }>;
+      error: unknown;
+    };
+
+  const topics = topicsData ?? [];
+
+  // Fetch all quiz attempts for this student (across these topics)
+  const topicIds = topics.map((t) => t.id);
+  const bestScoreMap = new Map<number, number>();
+
+  if (topicIds.length > 0) {
+    const { data: attempts } = await db
+      .from('topic_quiz_attempts')
+      .select('topic_id, score')
+      .eq('student_id', studentId)
+      .in('topic_id', topicIds) as unknown as {
+        data: Array<{ topic_id: number; score: number }>;
+        error: unknown;
+      };
+
+    for (const a of attempts ?? []) {
+      const prev = bestScoreMap.get(a.topic_id) ?? 0;
+      if (a.score > prev) bestScoreMap.set(a.topic_id, a.score);
+    }
+  }
+
+  // Check which modules have a final_assessment encoded in description
+  const { data: modules } = await db
+    .from('modules')
+    .select('id, description')
+    .in('id', moduleIds) as unknown as {
+      data: Array<{ id: number; description: string | null }>;
+      error: unknown;
+    };
+
+  const FA_PREFIX = 'FINAL_ASSESSMENT:';
+  const hasAssessmentMap = new Map<number, boolean>(
+    (modules ?? []).map((m) => [m.id, (m.description ?? '').startsWith(FA_PREFIX)])
+  );
+
+  return moduleIds.map((modId) => {
+    const modTopics = topics.filter((t) => t.module_id === modId);
+    const total = modTopics.length;
+
+    let completed = 0;
+    for (const t of modTopics) {
+      // A topic without a quiz in lesson_content counts as auto-complete
+      const lc = t.lesson_content as Record<string, unknown> | null;
+      const hasQuiz = Array.isArray(lc?.quiz) && (lc!.quiz as unknown[]).length > 0;
+
+      if (!hasQuiz) {
+        // No quiz — complete if topic exists (student just needs to view it)
+        completed++;
+      } else {
+        const best = bestScoreMap.get(t.id) ?? 0;
+        if (best >= 70) completed++;
+      }
+    }
+
+    return {
+      moduleId:         modId,
+      totalTopics:      total,
+      completedTopics:  completed,
+      isModuleComplete: total > 0 && completed >= total,
+      hasAssessment:    hasAssessmentMap.get(modId) ?? false,
+    };
+  });
+}
+

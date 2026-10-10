@@ -1,4 +1,4 @@
-﻿// src/lib/supabase/server.ts
+// src/lib/supabase/server.ts
 // SSR Supabase client — reads/writes session cookies via next/headers.
 // Use inside Server Components, Server Actions, and Route Handlers.
 
@@ -27,6 +27,9 @@ export async function createSupabaseServerClient() {
             // The session will still be refreshed via the middleware.
           }
         },
+      },
+      global: {
+        fetch: (url, options) => fetch(url, { ...options, cache: 'no-store' }),
       },
     }
   );

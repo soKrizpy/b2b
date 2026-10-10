@@ -1,6 +1,7 @@
-﻿// src/features/sessions/actions.ts
+// src/features/sessions/actions.ts
 // Server Actions for meeting CRUD operations.
-// All mutations are admin-only. Role is verified via requireAdmin() before
+// Most mutations are admin-only; markSessionComplete additionally accepts 'teacher'.
+// Role is verified via requireAdmin() or requireAdminOrTeacher() before
 // any DB write. revalidatePath() is called after each mutation so all three
 // role dashboards reflect the change immediately.
 
@@ -8,7 +9,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
-import { requireAdmin } from '@/lib/auth';
+import { requireAdmin, requireAdminOrTeacher } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import {
   validate,
@@ -36,7 +37,7 @@ function revalidateAll() {
   }
 }
 
-// ── createSession ─────────────────────────────────────────────────────────────
+// ── createSession ─────────────────────────────────────────────────────────────────────────────
 
 export async function createSession(
   _prevState: ActionResult | null,
@@ -44,6 +45,8 @@ export async function createSession(
 ): Promise<ActionResult> {
   const auth = await requireAdmin();
   if (!auth.ok) return { success: false, error: auth.message };
+
+  const teacherId = (formData.get('teacher_id') as string) || null;
 
   const raw = {
     title:          formData.get('title'),
@@ -82,6 +85,7 @@ export async function createSession(
         session_count,
         session_number: i + 1,
         series_id:      seriesId,
+        teacher_id:     teacherId,
       } as never)
       .select('id')
       .single() as unknown as Promise<{ data: { id: number } | null; error: { message: string } | null }>);
@@ -118,7 +122,7 @@ export async function createSession(
   return { success: true, message: `Berhasil membuat ${label} kelas.` };
 }
 
-// ── updateSession ─────────────────────────────────────────────────────────────
+// ── updateSession ─────────────────────────────────────────────────────────────────────────────
 
 export async function updateSession(
   _prevState: ActionResult | null,
@@ -137,6 +141,7 @@ export async function updateSession(
   const seriesId   = (formData.get('series_id')  as string) || null;
   const sessionNum = Number(formData.get('session_number') ?? 1);
   const studentIds = formData.getAll('student_ids') as string[];
+  const teacherId  = (formData.get('teacher_id') as string) || null;
 
   const raw = Object.fromEntries(
     [
@@ -153,6 +158,8 @@ export async function updateSession(
   if (!v.success) return { success: false, error: v.error, fields: v.fields };
 
   const patch = v.data as UpdateInput;
+  // Merge teacher_id into the patch (not part of Zod schema — handled separately)
+  const patchWithTeacher = { ...patch, teacher_id: teacherId } as Record<string, unknown>;
   const db    = createSupabaseAdminClient();
 
   if (editMode === 'series' && seriesId) {
@@ -172,7 +179,7 @@ export async function updateSession(
 
     for (let i = 0; i < futures.length; i++) {
       const m          = futures[i];
-      const sessionPatch: Record<string, unknown> = { ...patch };
+      const sessionPatch: Record<string, unknown> = { ...patchWithTeacher };
 
       if (baseDate) {
         const d = new Date(baseDate);
@@ -191,7 +198,7 @@ export async function updateSession(
   } else {
     const { error: updateErr } = await (db
       .from('meetings')
-      .update(patch as never)
+      .update(patchWithTeacher as never)
       .eq('id', id) as unknown as Promise<{ error: { message: string } | null }>);
 
     if (updateErr) {
@@ -212,7 +219,7 @@ export async function updateSession(
   return { success: true, message: 'Jadwal berhasil diperbarui.' };
 }
 
-// ── deleteSession ─────────────────────────────────────────────────────────────
+// ── deleteSession ─────────────────────────────────────────────────────────────────────────────
 
 export async function deleteSession(
   _prevState: ActionResult | null,
@@ -270,13 +277,13 @@ export async function deleteSession(
   return { success: true, message: 'Jadwal berhasil dihapus.' };
 }
 
-// ── markSessionComplete ───────────────────────────────────────────────────────
+// ── markSessionComplete ─────────────────────────────────────────────────────────────────────────────
 
 export async function markSessionComplete(
   _prevState: ActionResult | null,
   formData: FormData
 ): Promise<ActionResult> {
-  const auth = await requireAdmin();
+  const auth = await requireAdminOrTeacher();
   if (!auth.ok) return { success: false, error: auth.message };
 
   const idRaw = formData.get('id');

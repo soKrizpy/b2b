@@ -103,16 +103,16 @@ import { SignInForm as SignInFormBase } from "@/features/auth/components/SignInF
 
 function SignInFormDark({ redirectTo }: { redirectTo?: string }) {
   return (
-    <div className="[&_label]:text-indigo-100 [&_label]:font-medium
-      [&_input]:bg-white/10 [&_input]:border-white/20 [&_input]:text-white
-      [&_input]:placeholder:text-white/30 [&_input]:focus:ring-indigo-400/60
-      [&_input]:focus:border-indigo-300/60 [&_input]:rounded-xl
-      [&_input]:backdrop-blur-sm [&_input]:hover:border-white/30
+    <div className="[&_label]:text-indigo-100 [&_label]:font-semibold
+      [&_input]:bg-white/15 [&_input]:border-white/25 [&_input]:text-white
+      [&_input]:placeholder:text-white/60 [&_input]:focus:ring-2 [&_input]:focus:ring-indigo-400
+      [&_input]:focus:border-indigo-300 [&_input]:focus:shadow-[0_0_20px_rgba(129,140,248,0.35)]
+      [&_input]:rounded-xl [&_input]:backdrop-blur-md [&_input]:hover:border-white/40
       [&_button[type=submit]]:bg-gradient-to-r [&_button[type=submit]]:from-indigo-500
       [&_button[type=submit]]:to-violet-600 [&_button[type=submit]]:hover:from-indigo-600
       [&_button[type=submit]]:hover:to-violet-700 [&_button[type=submit]]:shadow-lg
       [&_button[type=submit]]:shadow-indigo-500/40 [&_button[type=submit]]:text-white
-      [&_button[type=submit]]:font-bold [&_button[type=submit]]:py-3 [&_button[type=submit]]:w-full
+      [&_button[type=submit]]:font-extrabold [&_button[type=submit]]:py-3 [&_button[type=submit]]:w-full
       [&_button[type=submit]]:rounded-xl [&_button[type=submit]]:text-base">
       <SignInFormBase redirectTo={redirectTo} />
     </div>

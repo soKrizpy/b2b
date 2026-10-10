@@ -1,89 +1,140 @@
 'use client';
 // src/app/admin/curriculum/CurriculumShell.tsx
-// Thin client shell: owns the import-modal open state and the export button handler.
-// The actual module list is passed as children (server-rendered).
+// Owns the "Buat Modul Baru" modal on the module list page.
+// Import/Export JSON is now per-module, handled in /admin/curriculum/[moduleId].
 
-import { useState, useTransition } from 'react';
-import { CurriculumImportModal } from '@/features/curriculum/components/CurriculumImportModal';
-import { exportCurriculumJson } from '@/features/curriculum/actions';
+import { useActionState, useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { createModuleAction } from '@/features/curriculum/actions';
 
 interface Props { children: React.ReactNode }
 
 export function CurriculumShell({ children }: Props) {
-  const [showImport, setShowImport]   = useState(false);
-  const [exporting, startExport]      = useTransition();
-  const [exportError, setExportError] = useState<string | null>(null);
+  const router              = useRouter();
+  const [showCreate, setShowCreate] = useState(false);
+  const [state, dispatch, pending]  = useActionState(createModuleAction, null);
 
-  const handleExport = () => {
-    setExportError(null);
-    startExport(async () => {
-      const result = await exportCurriculumJson();
-      if (!result.success) { setExportError(result.error); return; }
-
-      // Trigger browser download
-      const blob = new Blob(
-        [JSON.stringify(result.data, null, 2)],
-        { type: 'application/json' }
-      );
-      const url  = URL.createObjectURL(blob);
-      const a    = document.createElement('a');
-      a.href     = url;
-      a.download = `curriculum-${new Date().toISOString().slice(0, 10)}.json`;
-      a.click();
-      URL.revokeObjectURL(url);
-    });
-  };
+  useEffect(() => {
+    if (state?.success) { setShowCreate(false); router.refresh(); }
+  }, [state, router]);
 
   return (
     <>
-      {/* Toolbar */}
-      <div className="flex items-center gap-2 flex-wrap">
+      {/* ── Top toolbar: only "Buat Modul Baru" ─────────────────────────── */}
+      <div className="flex items-center justify-end">
         <button
           type="button"
-          onClick={() => setShowImport(true)}
-          className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold
-            bg-gradient-to-r from-indigo-600 to-violet-600 text-white rounded-xl shadow-sm
-            hover:from-indigo-700 hover:to-violet-700 hover:shadow-md hover:-translate-y-0.5
-            active:scale-95 transition-all duration-150"
+          onClick={() => setShowCreate(true)}
+          className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-bold
+            bg-slate-900 dark:bg-white text-white dark:text-slate-900
+            rounded-xl shadow-sm hover:opacity-90 active:scale-95 transition-all"
         >
           <svg className="h-4 w-4" viewBox="0 0 16 16" fill="currentColor">
-            <path d="M7.47 1.47a.75.75 0 011.06 0l3.75 3.75a.75.75 0 01-1.06 1.06L8.75 3.81V10.5a.75.75 0 01-1.5 0V3.81L4.78 6.28a.75.75 0 01-1.06-1.06l3.75-3.75zM3.5 13.5a.75.75 0 000 1.5h9a.75.75 0 000-1.5h-9z"/>
+            <path d="M8 2a.75.75 0 01.75.75v4.5h4.5a.75.75 0 010 1.5h-4.5v4.5a.75.75 0 01-1.5 0v-4.5h-4.5a.75.75 0 010-1.5h4.5v-4.5A.75.75 0 018 2z"/>
           </svg>
-          Import JSON
+          Buat Modul Baru
         </button>
-
-        <button
-          type="button"
-          onClick={handleExport}
-          disabled={exporting}
-          className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold
-            bg-white text-slate-700 rounded-xl ring-1 ring-slate-200 shadow-sm
-            hover:bg-slate-50 hover:ring-slate-300 hover:-translate-y-0.5 hover:shadow-md
-            active:scale-95 transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed"
-        >
-          <svg className="h-4 w-4 text-slate-500" viewBox="0 0 16 16" fill="currentColor">
-            <path d="M7.47 12.78a.75.75 0 001.06 0l3.75-3.75a.75.75 0 00-1.06-1.06L8.75 10.44V3.75a.75.75 0 00-1.5 0v6.69L4.78 7.97a.75.75 0 00-1.06 1.06l3.75 3.75zM3.5 14.25a.75.75 0 000 1.5h9a.75.75 0 000-1.5h-9z"/>
-          </svg>
-          {exporting ? 'Mengekspor…' : 'Export JSON'}
-        </button>
-
-        {exportError && (
-          <span className="text-xs font-medium text-red-600 bg-red-50 px-3 py-2
-            rounded-xl ring-1 ring-red-200 flex items-center gap-1.5" role="alert">
-            <svg className="h-3.5 w-3.5 flex-shrink-0" viewBox="0 0 16 16" fill="currentColor">
-              <path d="M8 1a7 7 0 100 14A7 7 0 008 1zm-.75 3.75a.75.75 0 011.5 0v4a.75.75 0 01-1.5 0v-4zm.75 7a.75.75 0 110-1.5.75.75 0 010 1.5z"/>
-            </svg>
-            {exportError}
-          </span>
-        )}
       </div>
 
-      {/* Module list (server-rendered, passed as children) */}
+      {/* Module list (server-rendered) */}
       {children}
 
-      {/* Import modal — rendered at root level to avoid layout clipping */}
-      {showImport && (
-        <CurriculumImportModal onClose={() => setShowImport(false)} />
+      {/* ── Create Module Modal ──────────────────────────────────────────── */}
+      {showCreate && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="create-module-title"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+          onClick={(e) => { if (e.target === e.currentTarget && !pending) setShowCreate(false); }}
+        >
+          <div className="w-full max-w-md bg-white dark:bg-[var(--surface)] rounded-2xl shadow-2xl overflow-hidden">
+
+            {/* Header */}
+            <div className="px-6 py-4 border-b border-slate-100 dark:border-white/8 flex items-center justify-between">
+              <h2 id="create-module-title" className="font-bold text-slate-900 dark:text-white text-base">
+                Buat Modul Baru
+              </h2>
+              <button type="button" onClick={() => setShowCreate(false)} disabled={pending}
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-white text-2xl leading-none disabled:opacity-40"
+                aria-label="Tutup">×</button>
+            </div>
+
+            {/* Form */}
+            <form action={dispatch} className="px-6 py-5 flex flex-col gap-4">
+
+              {state && !state.success && (
+                <p role="alert" className="text-sm text-red-600 bg-red-50 px-3 py-2.5 rounded-xl ring-1 ring-red-200">
+                  {state.error}
+                </p>
+              )}
+
+              {/* Title */}
+              <div className="flex flex-col gap-1.5">
+                <label htmlFor="new-mod-title" className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                  Judul Modul <span className="text-red-500">*</span>
+                </label>
+                <input id="new-mod-title" name="title" required autoFocus
+                  placeholder="contoh: Pengenalan HTML & CSS"
+                  className={`rounded-xl border px-3.5 py-2.5 text-sm
+                    bg-white dark:bg-white/5 text-slate-900 dark:text-white
+                    placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500
+                    ${state && !state.success && state.fields?.title
+                      ? 'border-red-400'
+                      : 'border-slate-300 dark:border-white/15'}`} />
+                {state && !state.success && state.fields?.title && (
+                  <p className="text-xs text-red-600">{state.fields.title}</p>
+                )}
+              </div>
+
+              {/* Hardcoded gamification type — not exposed to user */}
+              <input type="hidden" name="gamification_type" value="mimo" />
+
+              {/* Level */}
+              <div className="flex flex-col gap-1.5">
+                <label htmlFor="new-mod-level" className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                  Level
+                </label>
+                <select id="new-mod-level" name="level" defaultValue="beginner"
+                  className="rounded-xl border border-slate-300 dark:border-white/15 px-3.5 py-2.5 text-sm
+                    bg-white dark:bg-[var(--surface)] text-slate-900 dark:text-white
+                    focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                  <option value="beginner">Beginner</option>
+                  <option value="intermediate">Intermediate</option>
+                  <option value="advanced">Advanced</option>
+                </select>
+              </div>
+
+              {/* Description */}
+              <div className="flex flex-col gap-1.5">
+                <label htmlFor="new-mod-desc" className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                  Deskripsi <span className="text-slate-400 font-normal">(opsional)</span>
+                </label>
+                <textarea id="new-mod-desc" name="description" rows={3}
+                  placeholder="Deskripsi singkat isi modul ini…"
+                  className="rounded-xl border border-slate-300 dark:border-white/15 px-3.5 py-2.5 text-sm resize-y
+                    bg-white dark:bg-white/5 text-slate-900 dark:text-white
+                    placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+              </div>
+
+              {/* Footer */}
+              <div className="flex justify-end gap-2.5 pt-2 border-t border-slate-100 dark:border-white/8">
+                <button type="button" onClick={() => setShowCreate(false)} disabled={pending}
+                  className="px-4 py-2.5 text-sm rounded-xl ring-1 ring-slate-200 dark:ring-white/15
+                    text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/5
+                    disabled:opacity-40 transition-colors">
+                  Batal
+                </button>
+                <button type="submit" disabled={pending}
+                  className="px-5 py-2.5 text-sm font-bold rounded-xl text-white
+                    bg-slate-900 dark:bg-white dark:text-slate-900
+                    hover:opacity-90 disabled:opacity-50 transition-all shadow-sm">
+                  {pending ? 'Membuat…' : '+ Buat Modul'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
     </>
   );

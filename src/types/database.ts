@@ -89,14 +89,13 @@ export interface MeetingRow {
   session_count: number;
   session_number: number;
   series_id: string | null;
+  teacher_id: string | null;    // uuid FK → profiles.id (added in migration 0007)
   is_completed: boolean;
   completion_status: string | null;
   progress_report: string | null;
   created_at: string | null;
 }
-// MeetingInsert — matches the real production meetings table insert shape.
-// No teacher_id column exists in this table — teachers are not directly linked.
-// series_id is generated server-side; session_number defaults to 1.
+// MeetingInsert — teacher_id optional (nullable; existing rows stay valid).
 export type MeetingInsert = {
   title: string;
   meeting_date: string;       // ISO 8601
@@ -105,6 +104,7 @@ export type MeetingInsert = {
   session_count: number;
   session_number: number;
   series_id: string | null;
+  teacher_id?: string | null;
   is_completed?: boolean;
 };
 export type MeetingUpdate = Partial<Omit<MeetingRow, 'id' | 'created_at'>>;
@@ -190,6 +190,7 @@ export interface ParentLinkRow {
   token: string;        // unique random token
   student_id: string;
   expires_at: string;   // timestamptz
+  invoice_id: string | null; // optional link to an invoice row
   created_at: string | null;
 }
 export type ParentLinkInsert = Omit<ParentLinkRow, 'created_at'>;
@@ -237,6 +238,54 @@ export interface ModuleAssessmentAttemptRow {
   answers: Record<string, 'A' | 'B' | 'C' | 'D'>;
   submitted_at: string;
 }
+
+// ── Invoices (production table — already exists, additive reference) ─────────
+// Billing is post-paid: attended_meetings × price_per_meeting = total_amount.
+// Attendance is determined by meeting_students.has_joined = true.
+export interface InvoiceRow {
+  id: string;             // uuid
+  student_id: string;
+  month_year: string;     // "YYYY-MM"
+  total_meetings: number;
+  attended_meetings: number;
+  price_per_meeting: number;
+  total_amount: number;
+  bank_account: string | null;
+  status: 'draft' | 'sent' | 'paid';
+  created_at: string | null;
+}
+
+// ── Phase 5: Topic Quiz Attempts ─────────────────────────────────────────────
+
+export interface QuizAnswer {
+  question_index: number;
+  chosen_index: number;
+}
+
+export interface TopicQuizAttemptRow {
+  id: number;
+  student_id: string;
+  topic_id: number;
+  attempt_num: 1 | 2;
+  score: number;           // 0–100
+  answers: QuizAnswer[];   // JSONB
+  submitted_at: string;
+}
+
+// ── Phase 5: Certificates ─────────────────────────────────────────────────────
+
+export type CertificateTier = 'achievement' | 'excellent' | 'completion';
+
+export interface CertificateRow {
+  id: number;
+  student_id: string;
+  module_id: number;
+  score: number;
+  tier: CertificateTier;
+  certificate_number: string;
+  issued_at: string;
+}
+export type CertificateInsert = Omit<CertificateRow, 'id' | 'issued_at'>;
 
 // ── Phase 2: Challenges & Submissions (new tables — additive) ────────────────
 
@@ -371,6 +420,16 @@ export interface Database {
         Insert: Omit<ModuleAssessmentAttemptRow, 'id'>;
         Update: never;
       };
+      topic_quiz_attempts: {
+        Row: TopicQuizAttemptRow;
+        Insert: Omit<TopicQuizAttemptRow, 'id' | 'submitted_at'>;
+        Update: never;
+      };
+      certificates: {
+        Row: CertificateRow;
+        Insert: CertificateInsert;
+        Update: Partial<Omit<CertificateRow, 'id' | 'student_id' | 'module_id' | 'issued_at'>>;
+      };
       challenges: {
         Row: ChallengeRow;
         Insert: ChallengeInsert;
@@ -387,6 +446,8 @@ export interface Database {
     Enums: Record<string, never>;
   };
 }
+
+
 
 
 
