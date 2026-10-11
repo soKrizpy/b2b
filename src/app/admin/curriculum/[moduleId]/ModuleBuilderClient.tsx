@@ -12,6 +12,7 @@ import {
 import type { ModuleWithTopics } from '@/features/curriculum/queries';
 import type { TopicRow } from '@/types/database';
 import { moduleImportSchema } from '@/features/curriculum/validation';
+import { AiCurriculumGenerator } from '@/features/ai/components/AiCurriculumGenerator';
 
 interface Props { module: ModuleWithTopics }
 
@@ -480,6 +481,16 @@ export function ModuleBuilderClient({ module: mod }: Props) {
           </svg>
           {exporting ? 'Mengekspor…' : 'Export JSON'}
         </button>
+
+        {/* AI Curriculum Generator */}
+        <AiCurriculumGenerator
+          moduleTitle={mod.title ?? 'Modul'}
+          onGenerated={(json) => {
+            setText(json);
+            setShowImport(true);
+            validate(json);
+          }}
+        />
       </div>
 
       {/* ── Topic list ───────────────────────────────────────────────────── */}

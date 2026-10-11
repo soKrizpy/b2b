@@ -10,6 +10,7 @@ import { getTopicQuizState } from '@/features/quiz/queries';
 import { SubmitChallengeForm } from '@/features/challenges/components/SubmitChallengeForm';
 import { TopicQuizWidget } from '@/features/quiz/components/TopicQuizWidget';
 import { LessonNodeWalker, type LearningNode } from '@/features/curriculum/components/LessonNodeWalker';
+import { TopicChatbot } from '@/features/ai/components/TopicChatbot';
 
 export const metadata: Metadata = { title: 'Topik — Bits2Bytes' };
 export const dynamic = 'force-dynamic';
@@ -53,8 +54,18 @@ export default async function TopicPage({ params }: Props) {
     ? (lc!.learningPath as LearningNode[])
     : [];
 
+  // Build a compact context string for the AI tutor (title + node summaries)
+  const topicContext = [
+    `Topik: ${topic.title}`,
+    topic.description ? `Deskripsi: ${topic.description}` : '',
+    ...learningPath.slice(0, 4).map((n, i) =>
+      `Node ${i + 1} (${n.type}): ${n.title}${n.explanation ? ' — ' + n.explanation.slice(0, 120) : ''}`
+    ),
+  ].filter(Boolean).join('\n');
+
   return (
-    <div className="flex flex-col gap-6">
+    <>
+      <div className="flex flex-col gap-6">
       {/* Breadcrumb */}
       <Link href="/student/lessons"
         className="inline-flex items-center gap-1.5 text-sm text-slate-500 dark:text-slate-400
@@ -164,5 +175,9 @@ export default async function TopicPage({ params }: Props) {
         </div>
       )}
     </div>
+
+      {/* Fixed chatbot — position:fixed, outside normal flow */}
+      <TopicChatbot topicTitle={topic.title} topicContext={topicContext} />
+    </>
   );
 }

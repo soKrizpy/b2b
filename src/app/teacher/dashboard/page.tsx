@@ -188,7 +188,11 @@ export default async function TeacherDashboardPage() {
                             {live ? "Masuk Kelas" : "Buka Meeting"}
                           </a>
                         )}
-                        <TeacherCompleteAction meetingId={m.id} meetingTitle={m.title} />
+                        <TeacherCompleteAction
+                          meetingId={m.id}
+                          meetingTitle={m.title}
+                          studentNames={students.map((s) => s.students?.full_name ?? '').filter(Boolean).join(', ')}
+                        />
                       </div>
                     </div>
                   </div>

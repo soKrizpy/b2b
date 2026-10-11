@@ -6,6 +6,7 @@
 
 import { useState, useActionState, useEffect, useTransition } from 'react';
 import { submitTopicQuiz, awardQuizReward, type QuizActionResult, type RewardResult } from '@/features/quiz/actions';
+import { explainQuizAnswer } from '@/features/ai/actions';
 import type { QuizQuestion } from '@/features/curriculum/validation';
 import type { TopicQuizAttemptRow } from '@/types/database';
 
@@ -121,16 +122,112 @@ function RewardScreen({
   );
 }
 
+// ── Breakdown card with AI explain button ─────────────────────────────────────
+
+type BreakdownItem = {
+  questionIndex: number;
+  question:      string;
+  chosenIndex:   number;
+  correctIndex:  number;
+  isCorrect:     boolean;
+  explanation:   string;
+};
+
+function BreakdownCard({
+  item: b,
+  index: i,
+  topicTitle,
+}: { item: BreakdownItem; index: number; topicTitle: string }) {
+  const [aiText,    setAiText]    = useState<string | null>(null);
+  const [aiPending, setAiPending] = useState(false);
+  const [, startAi] = useTransition();
+
+  const handleExplain = () => {
+    setAiPending(true);
+    const fd = new FormData();
+    fd.append('question',    b.question);
+    fd.append('wrong_answer', b.isCorrect ? '' : (b.question)); // won't be called if correct
+    fd.append('right_answer', ['A','B','C','D'][b.correctIndex] ?? '');
+    fd.append('explanation',  b.explanation);
+    fd.append('topic_title',  topicTitle);
+    startAi(async () => {
+      const r = await explainQuizAnswer(null, fd);
+      setAiPending(false);
+      if (r.success) setAiText(r.data);
+    });
+  };
+
+  return (
+    <div className={`rounded-2xl ring-1 p-4 flex flex-col gap-2 ${
+      b.isCorrect
+        ? 'ring-emerald-200 dark:ring-emerald-700/40 bg-emerald-50/60 dark:bg-emerald-900/10'
+        : 'ring-red-200 dark:ring-red-700/40 bg-red-50/60 dark:bg-red-900/10'
+    }`}>
+      <p className="text-sm font-semibold text-slate-800 dark:text-white flex items-start gap-2">
+        <span>{b.isCorrect ? '✅' : '❌'}</span>
+        <span>{i + 1}. {b.question}</span>
+      </p>
+      <p className={`text-xs font-medium ${b.isCorrect ? 'text-emerald-700 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+        Jawabanmu: <strong>{['A','B','C','D'][b.chosenIndex] ?? '–'}</strong>
+        {!b.isCorrect && (
+          <span className="ml-2 text-emerald-700 dark:text-emerald-400">
+            Jawaban benar: <strong>{['A','B','C','D'][b.correctIndex]}</strong>
+          </span>
+        )}
+      </p>
+      <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed italic">
+        💡 {b.explanation}
+      </p>
+
+      {/* AI deeper explanation — only for wrong answers */}
+      {!b.isCorrect && !aiText && (
+        <button
+          type="button"
+          onClick={handleExplain}
+          disabled={aiPending}
+          className="self-start inline-flex items-center gap-1.5 px-3 py-1.5
+            rounded-xl text-[10px] font-extrabold
+            bg-gradient-to-r from-violet-600 to-purple-600 text-white
+            hover:shadow-md hover:-translate-y-0.5 active:scale-95
+            disabled:opacity-50 transition-all duration-150 mt-1"
+        >
+          {aiPending ? (
+            <><span className="inline-block w-3 h-3 border border-white/40 border-t-white
+              rounded-full animate-spin" /> Menjelaskan…</>
+          ) : (
+            <>✨ Jelaskan Lebih Dalam</>
+          )}
+        </button>
+      )}
+
+      {aiText && (
+        <div className="mt-2 rounded-xl bg-violet-50 dark:bg-violet-950/30
+          border border-violet-200 dark:border-violet-700/40 px-4 py-3">
+          <p className="text-[10px] font-black uppercase tracking-wide
+            text-violet-500 dark:text-violet-400 mb-1.5 flex items-center gap-1.5">
+            ✨ Penjelasan AI
+          </p>
+          <p className="text-xs text-slate-700 dark:text-slate-200 leading-relaxed whitespace-pre-wrap">
+            {aiText}
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Quiz form (reused logic from TopicQuizWidget, inline for modal) ───────────
 
 function QuizForm({
   topicId,
+  topicTitle,
   questions,
   attemptsUsed,
   bestScore,
   onResult,
 }: {
   topicId:      number;
+  topicTitle:   string;
   questions:    QuizQuestion[];
   attemptsUsed: number;
   bestScore:    number;
@@ -159,28 +256,7 @@ function QuizForm({
           Pembahasan Soal
         </p>
         {result.breakdown.map((b, i) => (
-          <div key={i} className={`rounded-2xl ring-1 p-4 ${
-            b.isCorrect
-              ? 'ring-emerald-200 dark:ring-emerald-700/40 bg-emerald-50/60 dark:bg-emerald-900/10'
-              : 'ring-red-200   dark:ring-red-700/40   bg-red-50/60   dark:bg-red-900/10'
-          }`}>
-            <p className="text-sm font-semibold text-slate-800 dark:text-white mb-2 flex items-start gap-2">
-              <span>{b.isCorrect ? '✅' : '❌'}</span>
-              <span>{i + 1}. {b.question}</span>
-            </p>
-            <p className={`text-xs font-medium mb-1.5 ${b.isCorrect ? 'text-emerald-700 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
-              Jawabanmu:{' '}
-              <strong>{['A','B','C','D'][b.chosenIndex] ?? '–'}</strong>
-              {!b.isCorrect && (
-                <span className="ml-2 text-emerald-700 dark:text-emerald-400">
-                  Jawaban benar: <strong>{['A','B','C','D'][b.correctIndex]}</strong>
-                </span>
-              )}
-            </p>
-            <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed italic">
-              💡 {b.explanation}
-            </p>
-          </div>
+          <BreakdownCard key={i} item={b} index={i} topicTitle={topicTitle} />
         ))}
       </div>
     );
@@ -371,6 +447,7 @@ export function QuizModal({
             <div className="px-5 py-4">
               <QuizForm
                 topicId={topicId}
+                topicTitle={topicTitle}
                 questions={questions}
                 attemptsUsed={attemptsUsed}
                 bestScore={bestScore}
