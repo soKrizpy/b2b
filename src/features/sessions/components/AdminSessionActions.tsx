@@ -5,6 +5,7 @@
 import { useState, useTransition, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { deleteSession, markSessionComplete, type ActionResult } from "@/features/sessions/actions";
+import { draftProgressReport } from "@/features/ai/actions";
 import { Modal } from "@/components/ui/Modal";
 import { MeetingForm } from "./MeetingForm";
 import { Button } from "@/components/ui/Button";
@@ -52,6 +53,8 @@ export function AdminSessionActions({ meeting, teachers, students }: AdminSessio
   const [report,       setReport]       = useState(meeting.progress_report ?? "");
   const [pending,      startTransition] = useTransition();
   const [feedback,     setFeedback]     = useState<string | null>(null);
+  const [aiPending,    startAi]         = useTransition();
+  const [aiError,      setAiError]      = useState<string | null>(null);
 
   const handleSuccess = useCallback(() => {
     setEditOpen(false);
@@ -82,6 +85,23 @@ export function AdminSessionActions({ meeting, teachers, students }: AdminSessio
       const result: ActionResult = await markSessionComplete(null, fd);
       if (result.success) { setCompleteOpen(false); router.refresh(); }
       else setFeedback(result.error);
+    });
+  }
+
+  function handleAiDraft() {
+    setAiError(null);
+    const studentNames = meeting.meeting_students
+      .map((ms) => ms.students?.full_name ?? '')
+      .filter(Boolean)
+      .join(', ');
+    const fd = new FormData();
+    fd.append("session_title",  meeting.title);
+    fd.append("student_names",  studentNames || "siswa");
+    fd.append("topic_hint",     meeting.notes ?? "");
+    startAi(async () => {
+      const r = await draftProgressReport(null, fd);
+      if (r.success) setReport(r.data);
+      else setAiError(r.error);
     });
   }
 
@@ -142,6 +162,34 @@ export function AdminSessionActions({ meeting, teachers, students }: AdminSessio
               </p>
             </div>
           </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleAiDraft}
+              disabled={aiPending}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl
+                text-xs font-extrabold
+                bg-gradient-to-r from-violet-600 to-purple-600 text-white
+                shadow-md shadow-purple-500/25
+                hover:shadow-purple-500/45 hover:-translate-y-0.5 active:scale-95
+                disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-150"
+            >
+              {aiPending ? (
+                <><span className="inline-block w-3 h-3 border border-white/40 border-t-white
+                  rounded-full animate-spin" /> Membuat Draft…</>
+              ) : <>✨ Bantu Tulis dengan AI</>}
+            </button>
+            {report && !aiPending && (
+              <span className="text-[10px] text-slate-400">(Edit sebelum menyimpan)</span>
+            )}
+          </div>
+
+          {aiError && (
+            <p className="text-xs text-red-500 bg-red-50 rounded-lg px-3 py-2 ring-1 ring-red-200">
+              {aiError}
+            </p>
+          )}
+
           <Textarea label="Catatan Progress (laporan untuk orang tua)"
             value={report} onChange={(e) => setReport(e.target.value)}
             rows={4} placeholder="Topik yang dipelajari, perkembangan siswa…"
