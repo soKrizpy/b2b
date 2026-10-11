@@ -134,7 +134,7 @@ export function AiCurriculumGenerator({ moduleTitle, onGenerated }: Props) {
               <span className="text-emerald-400 flex-shrink-0">✓</span>
               <p className="text-xs text-emerald-300 font-bold">
                 JSON berhasil di-generate! Konten sudah masuk ke editor import.
-                Periksa dan klik "Import JSON Materi" untuk menyimpan.
+                Periksa dan klik &ldquo;Import JSON Materi&rdquo; untuk menyimpan.
               </p>
             </div>
           )}
