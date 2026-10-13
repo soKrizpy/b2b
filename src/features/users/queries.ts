@@ -13,6 +13,20 @@ export interface AssignedModule {
   level:     string | null;
 }
 
+export interface EnrolledTeacher {
+  id:            string;
+  full_name:     string | null;
+  session_count: number;
+}
+
+export interface EnrolledStudent {
+  id:             string;
+  full_name:      string;
+  email_or_phone: string;
+  grade:          string | null;
+  session_count:  number;
+}
+
 export interface StudentRecord {
   id:             string;
   full_name:      string;
@@ -27,6 +41,8 @@ export interface StudentRecord {
   module_titles:  string[];
   /** All assigned modules with detail (for detail modal) */
   modules:        AssignedModule[];
+  /** Teachers enrolled with this student */
+  teachers:       EnrolledTeacher[];
   /** Attended meeting count */
   session_count:  number;
   /** Quiz attempt count */
@@ -44,6 +60,8 @@ export interface TeacherRecord {
   session_count: number;
   /** Unique students enrolled in this teacher's meetings */
   student_count: number;
+  /** Enrolled student records */
+  enrolled_students: EnrolledStudent[];
 }
 
 // ── Queries ───────────────────────────────────────────────────────────────────
@@ -52,46 +70,69 @@ export interface TeacherRecord {
 export async function getAllStudents(): Promise<StudentRecord[]> {
   const db = createSupabaseAdminClient();
 
-  const { data, error } = await db
-    .from('students')
-    .select(`
-      id, full_name, email_or_phone, grade, bio, mpin,
-      total_xp, coins, created_at,
-      student_modules (
-        status,
-        modules ( id, title, level )
-      )
-    `)
-    .order('created_at', { ascending: false });
+  const [
+    { data, error },
+    { data: meetingStudents },
+    { data: meetings },
+    { data: teacherProfiles },
+    { data: quizAttempts },
+    { data: certs },
+  ] = await Promise.all([
+    db
+      .from('students')
+      .select(`
+        id, full_name, email_or_phone, grade, bio, mpin,
+        total_xp, coins, created_at,
+        student_modules (
+          status,
+          modules ( id, title, level )
+        )
+      `)
+      .order('created_at', { ascending: false }),
+    db
+      .from('meeting_students')
+      .select('meeting_id, student_id, has_joined') as unknown as Promise<{
+        data: Array<{ meeting_id: number; student_id: string; has_joined: boolean }> | null;
+        error: unknown;
+      }>,
+    db.from('meetings').select('id, teacher_id'),
+    db.from('profiles').select('id, full_name').eq('role', 'teacher'),
+    db.from('quiz_attempts').select('student_id'),
+    db.from('certificates').select('student_id'),
+  ]);
 
   if (error) {
     console.error('[getAllStudents]', error.message);
     return [];
   }
 
-  // Fetch meeting attendance counts in one batch
-  const { data: meetingStudents } = await db
-    .from('meeting_students')
-    .select('student_id, has_joined') as unknown as {
-      data: Array<{ student_id: string; has_joined: boolean }> | null;
-      error: unknown;
-    };
+  // Teacher lookup map
+  const teacherNameMap = new Map<string, string | null>(
+    (teacherProfiles ?? []).map((t: { id: string; full_name: string | null }) => [t.id, t.full_name])
+  );
 
-  // Fetch quiz attempt counts
-  const { data: quizAttempts } = await db
-    .from('quiz_attempts')
-    .select('student_id');
-
-  // Fetch certificate counts
-  const { data: certs } = await db
-    .from('certificates')
-    .select('student_id');
+  // Meeting -> teacher_id lookup
+  const meetingTeacherMap = new Map<number, string>();
+  (meetings ?? []).forEach((m: { id: number; teacher_id: string | null }) => {
+    if (m.teacher_id) meetingTeacherMap.set(m.id, m.teacher_id);
+  });
 
   // Build lookup maps
   const sessionMap = new Map<string, number>();
+  // student_id -> Map<teacher_id, session_count>
+  const studentTeachersMap = new Map<string, Map<string, number>>();
+
   (meetingStudents ?? []).forEach((ms) => {
     if (ms.has_joined) {
       sessionMap.set(ms.student_id, (sessionMap.get(ms.student_id) ?? 0) + 1);
+    }
+    const tid = meetingTeacherMap.get(ms.meeting_id);
+    if (tid) {
+      if (!studentTeachersMap.has(ms.student_id)) {
+        studentTeachersMap.set(ms.student_id, new Map());
+      }
+      const tMap = studentTeachersMap.get(ms.student_id)!;
+      tMap.set(tid, (tMap.get(tid) ?? 0) + 1);
     }
   });
 
@@ -137,6 +178,15 @@ export async function getAllStudents(): Promise<StudentRecord[]> {
       .filter((m) => m.status === 'active')
       .map((m) => m.title);
 
+    const tMap = studentTeachersMap.get(r.id);
+    const teachers: EnrolledTeacher[] = tMap
+      ? Array.from(tMap.entries()).map(([tid, count]) => ({
+          id:            tid,
+          full_name:     teacherNameMap.get(tid) ?? null,
+          session_count: count,
+        }))
+      : [];
+
     return {
       id:             r.id,
       full_name:      r.full_name,
@@ -149,6 +199,7 @@ export async function getAllStudents(): Promise<StudentRecord[]> {
       created_at:     r.created_at,
       module_titles,
       modules,
+      teachers,
       session_count:  sessionMap.get(r.id) ?? 0,
       quiz_count:     quizMap.get(r.id)    ?? 0,
       cert_count:     certMap.get(r.id)    ?? 0,
@@ -156,31 +207,52 @@ export async function getAllStudents(): Promise<StudentRecord[]> {
   });
 }
 
-/** All teachers (from public.profiles where role = 'teacher'), enriched with email + session count. */
+/** All teachers (from public.profiles where role = 'teacher'), enriched with email + session count + enrolled students. */
 export async function getAllTeachers(): Promise<TeacherRecord[]> {
   const db = createSupabaseAdminClient();
 
-  const { data: profiles, error } = await db
-    .from('profiles')
-    .select('id, full_name, created_at')
-    .eq('role', 'teacher')
-    .order('full_name', { ascending: true });
+  const [
+    { data: profiles, error },
+    { data: meetings },
+    { data: mStudents },
+    { data: students },
+  ] = await Promise.all([
+    db
+      .from('profiles')
+      .select('*')
+      .eq('role', 'teacher')
+      .order('full_name', { ascending: true }),
+    db.from('meetings').select('id, teacher_id'),
+    db.from('meeting_students').select('meeting_id, student_id'),
+    db.from('students').select('id, full_name, email_or_phone, grade'),
+  ]);
 
   if (error) {
     console.error('[getAllTeachers]', error.message);
     return [];
   }
 
-  // Enrich with auth emails in one batch
-  const { data: authList } = await db.auth.admin.listUsers({ perPage: 1000 });
-  const emailMap = new Map<string, string>(
-    (authList?.users ?? []).map((u) => [u.id, u.email ?? ''])
-  );
+  const profileRows = (profiles ?? []) as unknown as Array<{
+    id: string;
+    full_name: string | null;
+    email?: string | null;
+    created_at: string | null;
+  }>;
 
-  // Count sessions assigned per teacher
-  const { data: meetings } = await db
-    .from('meetings')
-    .select('id, teacher_id');
+  let emailMap = new Map<string, string>();
+  if (profileRows.some((p) => !p.email) && profileRows.length > 0) {
+    const { data: authList } = await db.auth.admin.listUsers({ perPage: 1000 });
+    emailMap = new Map<string, string>(
+      (authList?.users ?? []).map((u) => [u.id, u.email ?? ''])
+    );
+  }
+
+  const studentLookup = new Map<string, { full_name: string; email_or_phone: string; grade: string | null }>(
+    (students ?? []).map((s: { id: string; full_name: string; email_or_phone: string; grade: string | null }) => [
+      s.id,
+      { full_name: s.full_name, email_or_phone: s.email_or_phone, grade: s.grade },
+    ])
+  );
 
   const sessionMap = new Map<string, number>();
   const teacherMeetingIds = new Map<string, number[]>();
@@ -194,32 +266,140 @@ export async function getAllTeachers(): Promise<TeacherRecord[]> {
     }
   });
 
-  // Count unique students per teacher via meeting_students
-  const { data: mStudents } = await db
-    .from('meeting_students')
-    .select('meeting_id, student_id');
-
-  const studentCountMap = new Map<string, Set<string>>();
+  // Map teacher_id -> Map<student_id, session_count>
+  const teacherStudentsMap = new Map<string, Map<string, number>>();
   (mStudents ?? []).forEach((ms) => {
     const row = ms as { meeting_id: number; student_id: string };
     for (const [tid, mids] of teacherMeetingIds) {
       if (mids.includes(row.meeting_id)) {
-        const s = studentCountMap.get(tid) ?? new Set<string>();
-        s.add(row.student_id);
-        studentCountMap.set(tid, s);
+        if (!teacherStudentsMap.has(tid)) {
+          teacherStudentsMap.set(tid, new Map());
+        }
+        const sMap = teacherStudentsMap.get(tid)!;
+        sMap.set(row.student_id, (sMap.get(row.student_id) ?? 0) + 1);
       }
     }
   });
 
-  return (profiles ?? []).map((p: unknown) => {
-    const row = p as { id: string; full_name: string | null; created_at: string | null };
+  return profileRows.map((row) => {
+    const sMap = teacherStudentsMap.get(row.id);
+    const enrolled_students: EnrolledStudent[] = sMap
+      ? Array.from(sMap.entries()).map(([sid, count]) => {
+          const sInfo = studentLookup.get(sid);
+          return {
+            id:             sid,
+            full_name:      sInfo?.full_name ?? 'Siswa',
+            email_or_phone: sInfo?.email_or_phone ?? '',
+            grade:          sInfo?.grade ?? null,
+            session_count:  count,
+          };
+        })
+      : [];
+
     return {
-      id:            row.id,
-      full_name:     row.full_name,
-      email:         emailMap.get(row.id) ?? null,
-      created_at:    row.created_at,
-      session_count: sessionMap.get(row.id) ?? 0,
-      student_count: studentCountMap.get(row.id)?.size ?? 0,
+      id:                row.id,
+      full_name:         row.full_name,
+      email:             row.email ?? emailMap.get(row.id) ?? null,
+      created_at:        row.created_at,
+      session_count:     sessionMap.get(row.id) ?? 0,
+      student_count:     enrolled_students.length,
+      enrolled_students,
+    };
+  });
+}
+
+export interface TeacherStudentCardData {
+  id: string;
+  full_name: string;
+  email_or_phone: string;
+  grade: string | null;
+  total_xp: number;
+  coins: number;
+  session_count: number;
+  active_module: string | null;
+}
+
+/** Fetches enriched student profiles enrolled to a specific teacher. */
+export async function getStudentsForTeacher(teacherId: string): Promise<TeacherStudentCardData[]> {
+  const db = createSupabaseAdminClient();
+
+  // 1. Fetch meeting IDs for this teacher
+  const { data: teacherMeetings } = await (db
+    .from('meetings')
+    .select('id')
+    .eq('teacher_id', teacherId) as unknown as Promise<{ data: Array<{ id: number }> | null }>);
+
+  const mIds = (teacherMeetings ?? []).map((m) => m.id);
+
+  // 2. Query meeting_students and teacher_students in parallel
+  const [{ data: mStudents }, { data: directTS }] = await Promise.all([
+    mIds.length > 0
+      ? (db
+          .from('meeting_students')
+          .select('student_id, has_joined')
+          .in('meeting_id', mIds) as unknown as Promise<{
+            data: Array<{ student_id: string; has_joined: boolean }> | null;
+          }>)
+      : Promise.resolve({ data: [] }),
+    db
+      .from('teacher_students')
+      .select('student_id')
+      .eq('teacher_id', teacherId) as unknown as Promise<{
+        data: Array<{ student_id: string }> | null;
+      }>,
+  ]);
+
+  const studentSessionCount = new Map<string, number>();
+  const studentIds = new Set<string>();
+
+  (mStudents ?? []).forEach((ms) => {
+    studentIds.add(ms.student_id);
+    studentSessionCount.set(ms.student_id, (studentSessionCount.get(ms.student_id) ?? 0) + 1);
+  });
+
+  (directTS ?? []).forEach((ts) => {
+    studentIds.add(ts.student_id);
+  });
+
+  if (studentIds.size === 0) return [];
+
+  const targetIds = Array.from(studentIds);
+
+  const { data: studentRows } = await (db
+    .from('students')
+    .select(`
+      id, full_name, email_or_phone, grade, total_xp, coins,
+      student_modules (
+        status,
+        modules ( title )
+      )
+    `)
+    .in('id', targetIds) as unknown as Promise<{
+      data: Array<{
+        id: string;
+        full_name: string;
+        email_or_phone: string;
+        grade: string | null;
+        total_xp: number | null;
+        coins: number | null;
+        student_modules: Array<{
+          status: string;
+          modules: { title: string } | null;
+        }>;
+      }> | null;
+    }>);
+
+  return (studentRows ?? []).map((s) => {
+    const activeMod = s.student_modules?.find((sm) => sm.status === 'active')?.modules?.title ?? null;
+    return {
+      id: s.id,
+      full_name: s.full_name,
+      email_or_phone: s.email_or_phone,
+      grade: s.grade,
+      total_xp: s.total_xp ?? 0,
+      coins: s.coins ?? 0,
+      session_count: studentSessionCount.get(s.id) ?? 0,
+      active_module: activeMod,
     };
   });
 }

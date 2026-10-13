@@ -1,4 +1,4 @@
-﻿// src/features/sessions/components/TeacherCompleteAction.tsx
+// src/features/sessions/components/TeacherCompleteAction.tsx
 // Teacher action: "Tandai Selesai" button + progress report modal with AI draft.
 "use client";
 

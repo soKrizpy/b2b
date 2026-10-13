@@ -145,8 +145,8 @@ function BreakdownCard({
   const handleExplain = () => {
     setAiPending(true);
     const fd = new FormData();
-    fd.append('question',    b.question);
-    fd.append('wrong_answer', b.isCorrect ? '' : (b.question)); // won't be called if correct
+    fd.append('question',     b.question);
+    fd.append('wrong_answer', b.isCorrect ? '' : (['A','B','C','D'][b.chosenIndex] ?? b.question));
     fd.append('right_answer', ['A','B','C','D'][b.correctIndex] ?? '');
     fd.append('explanation',  b.explanation);
     fd.append('topic_title',  topicTitle);

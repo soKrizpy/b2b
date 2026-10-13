@@ -3,12 +3,11 @@
 // All Gemini Server Actions for the LMS:
 //   1. generateCurriculum   — admin: generate full topic JSON from title+level
 //   2. explainQuizAnswer    — student: deeper explanation for a wrong quiz answer
-//   3. draftProgressReport  — teacher: draft session progress report
+//   3. draftProgressReport  — teacher/admin: draft session progress report
 //   4. chatWithTutor        — student: topic-aware AI tutor message
 
-import { geminiFlash, geminiPro } from '@/features/ai/gemini';
-import { requireAdmin } from '@/lib/auth';
-import { getAuthUser } from '@/lib/auth';
+import { ai, GEMINI_FLASH_MODEL, hasGeminiApiKey } from '@/features/ai/gemini';
+import { requireAdmin, getAuthUser } from '@/lib/auth';
 
 export type AiResult<T = string> =
   | { success: true;  data: T }
@@ -24,11 +23,14 @@ export async function generateCurriculum(
 ): Promise<AiResult> {
   const auth = await requireAdmin();
   if (!auth.ok) return { success: false, error: auth.message };
+  if (!hasGeminiApiKey()) {
+    return { success: false, error: 'Fitur AI belum dikonfigurasi (GEMINI_API_KEY belum tersedia).' };
+  }
 
-  const topicTitle = (formData.get('topic_title') as string | null)?.trim();
-  const level      = (formData.get('level')       as string | null)?.trim() ?? 'beginner';
+  const topicTitle  = (formData.get('topic_title')  as string | null)?.trim();
+  const level       = (formData.get('level')        as string | null)?.trim() ?? 'beginner';
   const moduleTitle = (formData.get('module_title') as string | null)?.trim() ?? 'Modul';
-  const lang       = 'Bahasa Indonesia';
+  const lang        = 'Bahasa Indonesia';
 
   if (!topicTitle) return { success: false, error: 'Judul topik wajib diisi.' };
 
@@ -100,39 +102,27 @@ Return ONLY valid JSON matching this exact schema (no markdown, no code block):
       ],
       "quiz": [
         {
-          "question": "<quiz question 1>",
-          "options": ["A","B","C","D"],
+          "question": "<question 1 in ${lang}>",
+          "options": ["A", "B", "C", "D"],
           "answer_index": 0,
-          "explanation": "<why this answer is correct, in ${lang}>"
+          "explanation": "<why option A is correct, in ${lang}>"
         },
         {
-          "question": "<quiz question 2>",
-          "options": ["A","B","C","D"],
+          "question": "<question 2 in ${lang}>",
+          "options": ["A", "B", "C", "D"],
           "answer_index": 1,
-          "explanation": "<explanation>"
+          "explanation": "<why option B is correct, in ${lang}>"
         },
         {
-          "question": "<quiz question 3>",
-          "options": ["A","B","C","D"],
+          "question": "<question 3 in ${lang}>",
+          "options": ["A", "B", "C", "D"],
           "answer_index": 2,
-          "explanation": "<explanation>"
-        },
-        {
-          "question": "<quiz question 4>",
-          "options": ["A","B","C","D"],
-          "answer_index": 0,
-          "explanation": "<explanation>"
-        },
-        {
-          "question": "<quiz question 5>",
-          "options": ["A","B","C","D"],
-          "answer_index": 3,
-          "explanation": "<explanation>"
+          "explanation": "<why option C is correct, in ${lang}>"
         }
       ],
       "challenge": {
-        "title": "${topicTitle} Challenge",
-        "instructions": "<practical hands-on task, 2-3 steps>",
+        "title": "Mini Project: <project name>",
+        "instructions": "<project description and acceptance criteria in ${lang}>",
         "submission_type": "link",
         "xp": 30
       }
@@ -146,8 +136,15 @@ Return ONLY the JSON object, nothing else.
 `.trim();
 
   try {
-    const result = await geminiFlash.generateContent(prompt);
-    const text   = result.response.text().trim();
+    const response = await ai.models.generateContent({
+      model: GEMINI_FLASH_MODEL,
+      contents: prompt,
+      config: {
+        temperature: 0.7,
+        topP: 0.9,
+      },
+    });
+    const text = (response.text ?? '').trim();
 
     // Strip any markdown code block wrapping if present
     const clean = text
@@ -175,6 +172,9 @@ export async function explainQuizAnswer(
 ): Promise<AiResult> {
   const auth = await getAuthUser();
   if (!auth.ok) return { success: false, error: 'Tidak terautentikasi.' };
+  if (!hasGeminiApiKey()) {
+    return { success: false, error: 'Fitur AI belum dikonfigurasi (GEMINI_API_KEY belum tersedia).' };
+  }
 
   const question    = (formData.get('question')     as string | null)?.trim();
   const wrongAnswer = (formData.get('wrong_answer') as string | null)?.trim();
@@ -205,8 +205,15 @@ Tolong berikan penjelasan yang lebih panjang dan mudah dipahami dalam Bahasa Ind
 `.trim();
 
   try {
-    const result = await geminiPro.generateContent(prompt);
-    return { success: true, data: result.response.text().trim() };
+    const response = await ai.models.generateContent({
+      model: GEMINI_FLASH_MODEL,
+      contents: prompt,
+      config: {
+        temperature: 0.9,
+        topP: 0.95,
+      },
+    });
+    return { success: true, data: (response.text ?? '').trim() };
   } catch (err) {
     console.error('[explainQuizAnswer]', err);
     return { success: false, error: 'Gagal mendapatkan penjelasan.' };
@@ -214,7 +221,7 @@ Tolong berikan penjelasan yang lebih panjang dan mudah dipahami dalam Bahasa Ind
 }
 
 // ── 3. draftProgressReport ────────────────────────────────────────────────────
-// Drafts a progress report for a teacher to edit before submitting.
+// Drafts a progress report for a teacher or admin to edit before submitting.
 
 export async function draftProgressReport(
   _prev: AiResult | null,
@@ -225,10 +232,13 @@ export async function draftProgressReport(
   if (auth.role !== 'teacher' && auth.role !== 'admin') {
     return { success: false, error: 'Akses ditolak.' };
   }
+  if (!hasGeminiApiKey()) {
+    return { success: false, error: 'Fitur AI belum dikonfigurasi (GEMINI_API_KEY belum tersedia).' };
+  }
 
-  const sessionTitle  = (formData.get('session_title') as string | null)?.trim() ?? 'sesi ini';
-  const studentNames  = (formData.get('student_names') as string | null)?.trim() ?? 'siswa';
-  const topicHint     = (formData.get('topic_hint')    as string | null)?.trim() ?? '';
+  const sessionTitle = (formData.get('session_title') as string | null)?.trim() ?? 'sesi ini';
+  const studentNames = (formData.get('student_names') as string | null)?.trim() ?? 'siswa';
+  const topicHint    = (formData.get('topic_hint')    as string | null)?.trim() ?? '';
 
   const prompt = `
 Kamu adalah asisten guru yang membantu menulis laporan perkembangan belajar siswa.
@@ -251,8 +261,15 @@ Tulis laporan saja, tanpa judul atau header tambahan.
 `.trim();
 
   try {
-    const result = await geminiPro.generateContent(prompt);
-    return { success: true, data: result.response.text().trim() };
+    const response = await ai.models.generateContent({
+      model: GEMINI_FLASH_MODEL,
+      contents: prompt,
+      config: {
+        temperature: 0.9,
+        topP: 0.95,
+      },
+    });
+    return { success: true, data: (response.text ?? '').trim() };
   } catch (err) {
     console.error('[draftProgressReport]', err);
     return { success: false, error: 'Gagal membuat draf laporan.' };
@@ -280,6 +297,9 @@ export async function chatWithTutor(
   const historyRaw   = (formData.get('history')       as string | null) ?? '[]';
 
   if (!userMessage) return { success: false, error: 'Pesan kosong.' };
+  if (!hasGeminiApiKey()) {
+    return { success: false, error: 'Byte sedang tidak tersedia (GEMINI_API_KEY belum tersedia).' };
+  }
 
   let history: ChatMessage[] = [];
   try { history = JSON.parse(historyRaw); } catch { history = []; }
@@ -298,21 +318,26 @@ Aturan:
 - Gunakan emoji sesekali untuk semangat 🚀
 `.trim();
 
-  // Build conversation history for multi-turn
-  const chat = geminiPro.startChat({
-    history: [
-      { role: 'user',  parts: [{ text: systemPrompt }] },
-      { role: 'model', parts: [{ text: 'Halo! Aku Byte, tutor AI kamu. Aku siap bantu belajar tentang ' + topicTitle + '! Ada yang ingin kamu tanyakan? 🚀' }] },
-      ...history.map((m) => ({
-        role:  m.role as 'user' | 'model',
-        parts: [{ text: m.content }],
-      })),
-    ],
-  });
-
   try {
-    const result = await chat.sendMessage(userMessage);
-    return { success: true, data: result.response.text().trim() };
+    const chat = ai.chats.create({
+      model: GEMINI_FLASH_MODEL,
+      config: {
+        systemInstruction: systemPrompt,
+        temperature: 0.9,
+        topP: 0.95,
+      },
+      history: [
+        { role: 'user',  parts: [{ text: 'Halo Byte!' }] },
+        { role: 'model', parts: [{ text: 'Halo! Aku Byte, tutor AI kamu. Aku siap bantu belajar tentang ' + topicTitle + '! Ada yang ingin kamu tanyakan? 🚀' }] },
+        ...history.map((m) => ({
+          role:  m.role as 'user' | 'model',
+          parts: [{ text: m.content }],
+        })),
+      ],
+    });
+
+    const result = await chat.sendMessage({ message: userMessage });
+    return { success: true, data: (result.text ?? '').trim() };
   } catch (err) {
     console.error('[chatWithTutor]', err);
     return { success: false, error: 'Byte sedang tidak tersedia. Coba lagi sebentar.' };

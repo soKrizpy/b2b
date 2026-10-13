@@ -3,18 +3,22 @@
 // Renders the Town Square (default landing) directly — no tab toggle.
 // "Riwayat" (session history) has moved to the Parent Hub page.
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { TownSquarePod } from '@/features/dashboard/student/TownSquarePod';
 import { CyberPetWidget } from '@/features/pet/components/CyberPetWidget';
 import { CertificateBadge } from '@/features/certificates/components/CertificateBadge';
 import { BillingNoticeModal } from '@/features/invoices/components/BillingNoticeModal';
 import { AnnouncementBanner } from '@/features/announcements/components/AnnouncementBanner';
+import { StudentAchievementBadges } from '@/features/dashboard/student/StudentAchievementBadges';
+import { StudentModuleProgressChart } from '@/features/dashboard/student/StudentModuleProgressChart';
 import { calculateLevel } from '@/features/pet/lib/levelCalc';
 import { isLive, formatDate, formatTime } from '@/lib/formatDate';
 import type { TownSquareMeeting } from '@/features/sessions/queries';
 import type { StudentGamificationData } from '@/features/pet/lib/petQueries';
 import type { CertificateWithModule } from '@/features/certificates/queries';
 import type { InvoiceRow } from '@/types/database';
+import type { TopicProgressSummary, ModuleWithTopics } from '@/features/curriculum/queries';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -39,6 +43,8 @@ interface Props {
   past:               SessionItem[];
   /** Topics with NEEDS_QUIZ status — drives the mission banner */
   needsQuizTopics:    Array<{ id: number; title: string }>;
+  completedTopics?:   TopicProgressSummary[];
+  allModules?:        ModuleWithTopics[];
 }
 
 // ── Section header ────────────────────────────────────────────────────────────
@@ -128,7 +134,14 @@ export function StudentDashboardShell({
   upcoming,
   past,
   needsQuizTopics,
+  completedTopics = [],
+  allModules = [],
 }: Props) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const next    = upcoming[0] ?? null;
   const hasLive = upcoming.some((m) => isLive(m.meeting_date));
   const lvl     = gamData ? calculateLevel(gamData.totalXp) : null;
@@ -181,9 +194,13 @@ export function StudentDashboardShell({
               <p className="text-xs text-slate-300 mt-1 font-medium flex items-center gap-1.5">
                 <i className="fa-solid fa-calendar-day text-purple-400" />
                 {hasLive ? 'Sedang berlangsung:' : 'Kelas berikutmu:'}{' '}
-                <strong className="text-white">{formatDate(next.meeting_date)}</strong>
+                <strong className="text-white" suppressHydrationWarning>
+                  {mounted ? formatDate(next.meeting_date) : 'Memuat jadwal...'}
+                </strong>
                 {' pukul '}
-                <strong className="text-white">{formatTime(next.meeting_date)}</strong>
+                <strong className="text-white" suppressHydrationWarning>
+                  {mounted ? formatTime(next.meeting_date) : '--:--'}
+                </strong>
               </p>
             )}
           </div>
@@ -268,6 +285,13 @@ export function StudentDashboardShell({
         </div>
       </div>
 
+      {/* ── Student Achievement Badges (Gamification Progression) ── */}
+      <StudentAchievementBadges
+        gamData={gamData}
+        certificates={certificates}
+        completedCount={completedTopics.length}
+      />
+
       {/* ── Certificate badges ── */}
       {certificates.length > 0 && (
         <section className="space-y-4">
@@ -279,6 +303,12 @@ export function StudentDashboardShell({
           </div>
         </section>
       )}
+
+      {/* ── Student Module & Topic Progress Chart (Recharts) ── */}
+      <StudentModuleProgressChart
+        completedTopics={completedTopics}
+        allModules={allModules}
+      />
 
       {/* ── Upcoming sessions (2nd–5th, max 4) ── */}
       {nextFour.length > 0 && (
@@ -317,10 +347,10 @@ export function StudentDashboardShell({
                   <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl
                     bg-purple-500/10 border border-purple-500/30 text-purple-700 dark:text-cyan-300 font-extrabold text-xs">
                     <i className="fa-solid fa-clock text-purple-500 dark:text-cyan-400 text-[11px]" />
-                    <span>{formatDate(m.meeting_date)}</span>
+                    <span suppressHydrationWarning>{mounted ? formatDate(m.meeting_date) : '...'}</span>
                   </div>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 font-bold pl-0.5">
-                    Pukul {formatTime(m.meeting_date)}
+                  <p className="text-xs text-slate-500 dark:text-slate-400 font-bold pl-0.5" suppressHydrationWarning>
+                    Pukul {mounted ? formatTime(m.meeting_date) : '--:--'}
                   </p>
                 </div>
               </div>

@@ -3,19 +3,26 @@
 // and delegates rendering to DashboardAppShell with sidebar & mobile bottom bar.
 
 import { headers } from "next/headers";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { getAuthUser } from "@/lib/auth";
+import { ROLE_DASHBOARD_MAP } from "@/lib/constants";
 import { redirect } from "next/navigation";
 import { DashboardAppShell } from "@/components/DashboardAppShell";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
-  const supabase = await createSupabaseServerClient();
-  const { data: { user }, error } = await supabase.auth.getUser();
+  const [auth, headersList] = await Promise.all([
+    getAuthUser(),
+    headers(),
+  ]);
 
-  if (error || !user) {
+  if (!auth.ok) {
     redirect("/login");
   }
 
-  const headersList = await headers();
+  if (auth.role !== "admin") {
+    redirect(ROLE_DASHBOARD_MAP[auth.role]);
+  }
+
+  const { user } = auth;
   const pathname = headersList.get("x-pathname") ?? "";
   const fullName: string | null = user.user_metadata?.full_name ?? user.email ?? null;
 

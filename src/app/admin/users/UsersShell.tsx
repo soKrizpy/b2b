@@ -431,6 +431,16 @@ export function UsersShell({ students, teachers, allModules }: Props) {
   const [detailStudent, setDetail]  = useState<StudentRecord | null>(null);
   const [detailTeacher, setDetailTeacher] = useState<TeacherRecord | null>(null);
 
+  const currentDetailStudent = useMemo(() => {
+    if (!detailStudent) return null;
+    return students.find((s) => s.id === detailStudent.id) ?? detailStudent;
+  }, [students, detailStudent]);
+
+  const currentDetailTeacher = useMemo(() => {
+    if (!detailTeacher) return null;
+    return teachers.find((t) => t.id === detailTeacher.id) ?? detailTeacher;
+  }, [teachers, detailTeacher]);
+
   // ─ Filter
   const filteredStudents = useMemo(() => {
     const q = search.toLowerCase().trim();
@@ -626,18 +636,20 @@ export function UsersShell({ students, teachers, allModules }: Props) {
       />
 
       {/* ── Student detail modal ── */}
-      {detailStudent && (
+      {currentDetailStudent && (
         <StudentDetailModal
-          student={detailStudent}
+          student={currentDetailStudent}
           allModules={allModules}
+          allTeachers={teachers}
           onClose={() => setDetail(null)}
         />
       )}
 
       {/* ── Teacher detail modal ── */}
-      {detailTeacher && (
+      {currentDetailTeacher && (
         <TeacherDetailModal
-          teacher={detailTeacher}
+          teacher={currentDetailTeacher}
+          allStudents={students}
           onClose={() => setDetailTeacher(null)}
         />
       )}

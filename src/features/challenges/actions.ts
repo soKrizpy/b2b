@@ -1,8 +1,8 @@
-﻿// src/features/challenges/actions.ts
+// src/features/challenges/actions.ts
 // Server Actions: challenge CRUD (admin), student submit, teacher review.
 'use server';
 
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, revalidateTag } from 'next/cache';
 import { z } from 'zod';
 import { requireAdmin, requireRole, getAuthUser } from '@/lib/auth';
 import { awardRewardEvent } from '@/features/pet/lib/rewardActions';
@@ -12,7 +12,7 @@ export type ChallengeActionResult =
   | { success: true; id?: number; message: string }
   | { success: false; error: string; fields?: Record<string, string> };
 
-// â”€â”€ Schemas â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Schemas ───────────────────────────────────────────────────────────────────
 
 const challengeSchema = z.object({
   topic_id:           z.coerce.number().int().positive('topic_id wajib diisi'),
@@ -34,7 +34,7 @@ const reviewSchema = z.object({
   review_note:   z.string().max(1000).optional(),
 });
 
-// â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 function fromFD(fd: FormData, keys: string[]): Record<string, unknown> {
   const obj: Record<string, unknown> = {};
@@ -51,6 +51,7 @@ function flatErr(err: z.ZodError): Record<string, string> {
 }
 
 function revalidateAll(topicId?: number, moduleId?: number) {
+  revalidateTag('curriculum');
   revalidatePath('/admin/curriculum', 'layout');
   revalidatePath('/teacher/submissions', 'layout');
   if (topicId) revalidatePath(`/student/lessons/topic/${topicId}`, 'layout');
@@ -240,6 +241,65 @@ export async function reviewSubmission(
     message: status === 'approved'
       ? 'Submission disetujui! Siswa mendapat +30 XP dan +10 koin 🎉'
       : 'Feedback telah dikirim ke siswa.',
+  };
+}
+
+// ── Teacher: bulk approve submissions ─────────────────────────────────────────
+
+export async function bulkApproveSubmissions(
+  submissionIds: number[]
+): Promise<ChallengeActionResult> {
+  const auth = await requireRole('teacher');
+  if (!auth.ok) return { success: false, error: auth.message };
+
+  if (!submissionIds || submissionIds.length === 0) {
+    return { success: false, error: 'Pilih minimal satu submission untuk disetujui.' };
+  }
+
+  const db = createSupabaseAdminClient();
+
+  // Fetch submissions before update to extract student_id and verify existence
+  const { data: subs, error: fetchErr } = await (db
+    .from('challenge_submissions')
+    .select('id, student_id, status')
+    .in('id', submissionIds) as unknown as Promise<{
+      data: Array<{ id: number; student_id: string; status: string }> | null;
+      error: { message: string } | null;
+    }>);
+
+  if (fetchErr) return { success: false, error: fetchErr.message };
+  if (!subs || subs.length === 0) {
+    return { success: false, error: 'Submission tidak ditemukan.' };
+  }
+
+  const validIds = subs.map((s) => s.id);
+
+  const { error } = await (db
+    .from('challenge_submissions')
+    .update({
+      status: 'approved',
+      reviewed_by: auth.user.id,
+      reviewed_at: new Date().toISOString(),
+    } as never)
+    .in('id', validIds) as unknown as Promise<{ error: { message: string } | null }>);
+
+  if (error) return { success: false, error: error.message };
+
+  // Award rewards for students whose submissions were previously pending
+  for (const s of subs) {
+    if (s.student_id && s.status !== 'approved') {
+      awardRewardEvent(s.student_id, 'CHALLENGE_APPROVED').catch((err) => {
+        console.error('[bulkApproveSubmissions] reward error:', err);
+      });
+    }
+  }
+
+  revalidatePath('/teacher/submissions', 'layout');
+  revalidatePath('/student/lessons', 'layout');
+
+  return {
+    success: true,
+    message: `${validIds.length} submission berhasil disetujui!`,
   };
 }
 

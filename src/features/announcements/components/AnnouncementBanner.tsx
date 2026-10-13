@@ -7,6 +7,7 @@ import { Info, AlertTriangle, AlertCircle, X, Sparkles } from 'lucide-react';
 import type { Announcement } from '../types';
 import {
   getStoredAnnouncements,
+  fetchServerAnnouncements,
   getDismissedIds,
   dismissAnnouncementId,
 } from '../announcementStore';
@@ -18,27 +19,32 @@ interface AnnouncementBannerProps {
 export function AnnouncementBanner({ role }: AnnouncementBannerProps) {
   const [activeAnnouncements, setActiveAnnouncements] = useState<Announcement[]>([]);
 
-  const loadAnnouncements = useCallback(() => {
-    const list = getStoredAnnouncements();
+  const filterValid = useCallback((list: Announcement[]) => {
     const dismissed = getDismissedIds();
     const todayStr = new Date().toISOString().split('T')[0];
 
-    const valid = list.filter((ann) => {
+    return list.filter((ann) => {
       if (!ann.is_active) return false;
       if (dismissed.includes(ann.id)) return false;
       if (ann.target !== 'all' && ann.target !== role) return false;
       if (ann.expires_at && ann.expires_at < todayStr) return false;
       return true;
     });
-
-    setActiveAnnouncements(valid);
   }, [role]);
+
+  const loadAnnouncements = useCallback(() => {
+    const list = getStoredAnnouncements();
+    setActiveAnnouncements(filterValid(list));
+  }, [filterValid]);
 
   useEffect(() => {
     loadAnnouncements();
+    void fetchServerAnnouncements().then((serverList) => {
+      setActiveAnnouncements(filterValid(serverList));
+    });
     window.addEventListener('announcements_updated', loadAnnouncements);
     return () => window.removeEventListener('announcements_updated', loadAnnouncements);
-  }, [loadAnnouncements]);
+  }, [loadAnnouncements, filterValid]);
 
   const handleDismiss = (id: string) => {
     dismissAnnouncementId(id);

@@ -1,9 +1,11 @@
 // src/app/teacher/dashboard/page.tsx
 // Teacher dashboard — shows their assigned upcoming sessions with Join and Complete actions.
 import type { Metadata } from "next";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { getSessionUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { getSessionsForTeacher } from "@/features/sessions/queries";
+import { getStudentsForTeacher } from "@/features/users/queries";
+import { TeacherStudentsWidget } from "@/features/dashboard/teacher/TeacherStudentsWidget";
 import { isUpcoming, isLive, formatDateTime, formatDate, formatTime } from "@/lib/formatDate";
 import { TeacherCompleteAction } from "@/features/sessions/components/TeacherCompleteAction";
 import { Badge } from "@/components/ui/Badge";
@@ -13,11 +15,13 @@ export const metadata: Metadata = { title: "Dasbor Guru — Bits2Bytes" };
 export const dynamic = "force-dynamic";
 
 export default async function TeacherDashboardPage() {
-  const supabase = await createSupabaseServerClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getSessionUser();
   if (!user) redirect("/login");
 
-  const meetings = await getSessionsForTeacher(user.id);
+  const [meetings, mentoredStudents] = await Promise.all([
+    getSessionsForTeacher(user.id),
+    getStudentsForTeacher(user.id),
+  ]);
 
   const upcoming = meetings.filter(
     (m) => !m.is_completed && isUpcoming(m.meeting_date)
@@ -66,6 +70,10 @@ export default async function TeacherDashboardPage() {
 
           <div className="mt-4 flex items-center gap-3 flex-wrap">
             <div className="flex items-center gap-2 bg-white/15 backdrop-blur-md rounded-2xl px-4 py-2 text-xs font-bold ring-1 ring-white/20">
+              <i className="fa-solid fa-user-graduate text-violet-300" />
+              <span>{mentoredStudents.length} Siswa Bimbingan</span>
+            </div>
+            <div className="flex items-center gap-2 bg-white/15 backdrop-blur-md rounded-2xl px-4 py-2 text-xs font-bold ring-1 ring-white/20">
               <i className="fa-solid fa-calendar-day text-sky-300" />
               <span>{upcoming.length} Kelas Mendatang</span>
             </div>
@@ -78,6 +86,9 @@ export default async function TeacherDashboardPage() {
           </div>
         </div>
       </div>
+
+      {/* ── Mentored Students Widget ────────────────────────── */}
+      <TeacherStudentsWidget students={mentoredStudents} />
 
       {/* ── Upcoming sessions ──────────────────────────────── */}
       <section>

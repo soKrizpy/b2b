@@ -1,4 +1,4 @@
-﻿// src/features/pet/lib/rewardActions.ts
+// src/features/pet/lib/rewardActions.ts
 // Server-side reward helpers. All writes use the admin client (bypasses RLS)
 // and perform atomic increments to prevent race conditions under concurrent requests.
 'use server';
@@ -61,7 +61,7 @@ export async function awardStudentReward(
 
   const { error: updateErr } = await (db
     .from('students')
-    .update({ total_xp: newXp, coins: newCoins } as never)
+    .update({ total_xp: newXp, coins: newCoins, edu_coins: newCoins } as never)
     .eq('id', studentId) as unknown as Promise<{ error: { message: string } | null }>);
 
   if (updateErr) {

@@ -3,7 +3,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { getSessionUser } from '@/lib/auth';
 import { getTopicById } from '@/features/curriculum/queries';
 import { getChallengesWithSubmissions } from '@/features/challenges/queries';
 import { getTopicQuizState } from '@/features/quiz/queries';
@@ -33,8 +33,7 @@ export default async function TopicPage({ params }: Props) {
   const id = Number(topicId);
   if (!id) notFound();
 
-  const supabase = await createSupabaseServerClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getSessionUser();
   if (!user) redirect('/login');
 
   const [topic, challenges, quizState] = await Promise.all([

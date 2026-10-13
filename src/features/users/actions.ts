@@ -9,7 +9,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
-import { requireAdmin } from '@/lib/auth';
+import { requireAdmin, requireAdminOrTeacher } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 
 // ── Return type ───────────────────────────────────────────────────────────────
@@ -102,11 +102,17 @@ export async function createStudent(
   // 2. Insert public.profiles
   const { error: profileErr } = await (db
     .from('profiles')
-    .insert({ id: userId, role: 'student', full_name } as never) as unknown as Promise<{ error: { message: string } | null }>);
+    .insert({ id: userId, role: 'student', full_name, email } as never) as unknown as Promise<{ error: { message: string } | null }>);
 
   if (profileErr) {
-    await db.auth.admin.deleteUser(userId);
-    return { success: false, error: `Profile error: ${profileErr.message}` };
+    // Fallback if email column hasn't been migrated yet
+    const { error: fallbackErr } = await (db
+      .from('profiles')
+      .insert({ id: userId, role: 'student', full_name } as never) as unknown as Promise<{ error: { message: string } | null }>);
+    if (fallbackErr) {
+      await db.auth.admin.deleteUser(userId);
+      return { success: false, error: `Profile error: ${fallbackErr.message}` };
+    }
   }
 
   // 3. Insert public.students
@@ -174,11 +180,16 @@ export async function createTeacher(
   // 2. Insert public.profiles (teachers only need profiles — no teachers table)
   const { error: profileErr } = await (db
     .from('profiles')
-    .insert({ id: userId, role: 'teacher', full_name } as never) as unknown as Promise<{ error: { message: string } | null }>);
+    .insert({ id: userId, role: 'teacher', full_name, email } as never) as unknown as Promise<{ error: { message: string } | null }>);
 
   if (profileErr) {
-    await db.auth.admin.deleteUser(userId);
-    return { success: false, error: `Profile error: ${profileErr.message}` };
+    const { error: fallbackErr } = await (db
+      .from('profiles')
+      .insert({ id: userId, role: 'teacher', full_name } as never) as unknown as Promise<{ error: { message: string } | null }>);
+    if (fallbackErr) {
+      await db.auth.admin.deleteUser(userId);
+      return { success: false, error: `Profile error: ${fallbackErr.message}` };
+    }
   }
 
   revalidateAll();
@@ -291,3 +302,208 @@ export async function resetTeacherPassword(
 
   return { success: true, message: 'Password berhasil diperbarui.' };
 }
+
+// ── Teacher-Student Enrollment Actions ─────────────────────────────────────────
+
+export type EnrollActionResult =
+  | { success: true;  message: string }
+  | { success: false; error: string };
+
+/**
+ * Enrolls a teacher to a student.
+ * Links all existing meetings of the student to the teacher.
+ * If no meeting exists, creates a dedicated mentorship class meeting.
+ */
+export async function enrollTeacherToStudent(
+  studentId: string,
+  teacherId: string
+): Promise<EnrollActionResult> {
+  const auth = await requireAdminOrTeacher();
+  if (!auth.ok) return { success: false, error: auth.message };
+
+  if (auth.role === 'teacher' && auth.user.id !== teacherId) {
+    return { success: false, error: 'Guru hanya dapat mendaftarkan siswa ke kelasnya sendiri.' };
+  }
+
+  const sId = studentId?.trim();
+  const tId = teacherId?.trim();
+  if (!sId || !tId) return { success: false, error: 'Siswa dan guru wajib dipilih.' };
+
+  const db = createSupabaseAdminClient();
+
+  const [{ data: student }, { data: teacherProfile }] = await Promise.all([
+    db.from('students').select('id, full_name').eq('id', sId).maybeSingle() as unknown as Promise<{
+      data: { id: string; full_name: string } | null;
+    }>,
+    db.from('profiles').select('id, full_name, role').eq('id', tId).eq('role', 'teacher').maybeSingle() as unknown as Promise<{
+      data: { id: string; full_name: string | null; role: string } | null;
+    }>,
+  ]);
+
+  if (!student) return { success: false, error: 'Data siswa tidak ditemukan.' };
+  if (!teacherProfile) return { success: false, error: 'Data guru tidak ditemukan.' };
+
+  const teacherName = teacherProfile.full_name ?? 'Guru';
+
+  // 0. Direct mentorship record in teacher_students table
+  try {
+    await (db
+      .from('teacher_students')
+      .upsert(
+        { teacher_id: tId, student_id: sId } as never,
+        { onConflict: 'teacher_id,student_id' }
+      ) as unknown as Promise<unknown>);
+  } catch {
+    // Non-fatal if table not migrated yet
+  }
+
+  // 1. Fetch meeting IDs where student is a member
+  const { data: studentMeetings } = await (db
+    .from('meeting_students')
+    .select('meeting_id')
+    .eq('student_id', sId) as unknown as Promise<{
+      data: Array<{ meeting_id: number }> | null;
+    }>);
+
+  const meetingIds = (studentMeetings ?? []).map((m) => m.meeting_id);
+
+  if (meetingIds.length > 0) {
+    // Assign teacher to all student meetings
+    await (db
+      .from('meetings')
+      .update({ teacher_id: tId } as never)
+      .in('id', meetingIds) as unknown as Promise<unknown>);
+  }
+
+  // 2. Ensure at least one active meeting exists linking teacher and student
+  const { data: directMeetings } = await (db
+    .from('meetings')
+    .select('id, meeting_students!inner(student_id)')
+    .eq('teacher_id', tId)
+    .eq('meeting_students.student_id', sId)
+    .limit(1) as unknown as Promise<{ data: unknown[] | null }>);
+
+  if (!directMeetings || directMeetings.length === 0) {
+    const meetingDate = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+    const { data: newMeeting } = await (db
+      .from('meetings')
+      .insert({
+        title: `Kelas Bimbingan: ${teacherName} - ${student.full_name}`,
+        teacher_id: tId,
+        meeting_date: meetingDate,
+        link_url: 'https://meet.google.com',
+        session_count: 1,
+        session_number: 1,
+        is_completed: false,
+      } as never)
+      .select('id')
+      .single() as unknown as Promise<{ data: { id: number } | null }>);
+
+    if (newMeeting) {
+      await (db.from('meeting_students').insert({
+        meeting_id: newMeeting.id,
+        student_id: sId,
+        has_joined: false,
+      } as never) as unknown as Promise<unknown>);
+    }
+  }
+
+  revalidateAll();
+  revalidatePath('/admin/sessions', 'layout');
+  revalidatePath('/teacher/dashboard', 'layout');
+  revalidatePath('/student/dashboard', 'layout');
+
+  return {
+    success: true,
+    message: `Berhasil mendaftarkan guru ${teacherName} ke siswa ${student.full_name}! 🎉`,
+  };
+}
+
+/**
+ * Unenrolls a teacher from a student by unlinking meetings where teacher_id matches.
+ */
+export async function unenrollTeacherFromStudent(
+  studentId: string,
+  teacherId: string
+): Promise<EnrollActionResult> {
+  const auth = await requireAdminOrTeacher();
+  if (!auth.ok) return { success: false, error: auth.message };
+
+  if (auth.role === 'teacher' && auth.user.id !== teacherId) {
+    return { success: false, error: 'Guru hanya dapat membatalkan siswa dari kelasnya sendiri.' };
+  }
+
+  const sId = studentId?.trim();
+  const tId = teacherId?.trim();
+  if (!sId || !tId) return { success: false, error: 'Siswa dan guru wajib ditentukan.' };
+
+  const db = createSupabaseAdminClient();
+
+  // 0. Remove from teacher_students table
+  try {
+    await (db
+      .from('teacher_students')
+      .delete()
+      .eq('teacher_id', tId)
+      .eq('student_id', sId) as unknown as Promise<unknown>);
+  } catch {
+    // Non-fatal if table not migrated yet
+  }
+
+  const { data: studentMeetings } = await (db
+    .from('meeting_students')
+    .select('meeting_id')
+    .eq('student_id', sId) as unknown as Promise<{
+      data: Array<{ meeting_id: number }> | null;
+    }>);
+
+  const meetingIds = (studentMeetings ?? []).map((m) => m.meeting_id);
+  if (meetingIds.length > 0) {
+    await (db
+      .from('meetings')
+      .update({ teacher_id: null } as never)
+      .in('id', meetingIds)
+      .eq('teacher_id', tId) as unknown as Promise<unknown>);
+  }
+
+  revalidateAll();
+  revalidatePath('/admin/sessions', 'layout');
+  revalidatePath('/teacher/dashboard', 'layout');
+  revalidatePath('/student/dashboard', 'layout');
+
+  return {
+    success: true,
+    message: 'Berhasil membatalkan enroll guru dari siswa.',
+  };
+}
+
+/**
+ * Bulk enrolls multiple students to a teacher.
+ */
+export async function enrollStudentsToTeacher(
+  teacherId: string,
+  studentIds: string[]
+): Promise<EnrollActionResult> {
+  const auth = await requireAdminOrTeacher();
+  if (!auth.ok) return { success: false, error: auth.message };
+
+  if (auth.role === 'teacher' && auth.user.id !== teacherId) {
+    return { success: false, error: 'Guru hanya dapat mendaftarkan siswa ke kelasnya sendiri.' };
+  }
+
+  const tId = teacherId?.trim();
+  if (!tId) return { success: false, error: 'Guru wajib dipilih.' };
+  if (!studentIds || studentIds.length === 0) {
+    return { success: false, error: 'Pilih minimal satu siswa untuk di-enroll.' };
+  }
+
+  for (const sId of studentIds) {
+    await enrollTeacherToStudent(sId, tId);
+  }
+
+  return {
+    success: true,
+    message: `Berhasil mendaftarkan ${studentIds.length} siswa ke guru terpilih! 🎉`,
+  };
+}
+

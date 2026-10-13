@@ -1,10 +1,109 @@
-﻿// src/features/sessions/queries.ts
+// src/features/sessions/queries.ts
 // Typed data query helpers for fetching meetings, teachers, and students.
 // All helpers that need to bypass RLS use the admin client (server-only).
 
-import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
+import { sanitizeEnvVal, isValidSupabaseKey } from '@/lib/supabase/mock';
 import type { MeetingRow, StudentRow } from '@/types/database';
+
+// ── Runtime Supabase Environment Diagnostics ─────────────────────────────────
+
+export interface SupabaseEnvDiagnosticReport {
+  urlPresent: boolean;
+  urlProjectRef: string | null;
+  anonKey: {
+    present: boolean;
+    validFormat: boolean;
+    rawLength: number;
+    sanitizedLength: number;
+    wasAutoRepaired: boolean;
+    jwtRef: string | null;
+    jwtRole: string | null;
+    matchesUrlRef: boolean;
+  };
+  serviceRoleKey: {
+    present: boolean;
+    validFormat: boolean;
+    rawLength: number;
+    sanitizedLength: number;
+    wasAutoRepaired: boolean;
+    jwtRef: string | null;
+    jwtRole: string | null;
+    matchesUrlRef: boolean;
+  };
+  hasKeyMismatch: boolean;
+}
+
+function decodeJwtPayload(token: string): { ref?: string; role?: string; exp?: number } | null {
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return null;
+    const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    const json = Buffer.from(base64, 'base64').toString('utf8');
+    return JSON.parse(json) as { ref?: string; role?: string; exp?: number };
+  } catch {
+    return null;
+  }
+}
+
+export function verifySupabaseEnvDiagnostics(): SupabaseEnvDiagnosticReport {
+  const rawUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
+  const rawAnon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '';
+  const rawService = process.env.SUPABASE_SERVICE_ROLE_KEY ?? '';
+
+  const cleanUrl = sanitizeEnvVal(rawUrl);
+  const cleanAnon = sanitizeEnvVal(rawAnon);
+  const cleanService = sanitizeEnvVal(rawService);
+
+  let urlProjectRef: string | null = null;
+  try {
+    if (cleanUrl) {
+      const host = new URL(cleanUrl).hostname; // e.g. enfqoofluceqrlcjemfu.supabase.co
+      urlProjectRef = host.split('.')[0] ?? null;
+    }
+  } catch {
+    urlProjectRef = null;
+  }
+
+  const anonPayload = decodeJwtPayload(cleanAnon);
+  const servicePayload = decodeJwtPayload(cleanService);
+
+  const anonMatches = Boolean(urlProjectRef && anonPayload?.ref === urlProjectRef);
+  const serviceMatches = Boolean(urlProjectRef && servicePayload?.ref === urlProjectRef);
+
+  const report: SupabaseEnvDiagnosticReport = {
+    urlPresent: Boolean(cleanUrl),
+    urlProjectRef,
+    anonKey: {
+      present: Boolean(rawAnon),
+      validFormat: isValidSupabaseKey(cleanAnon),
+      rawLength: rawAnon.trim().length,
+      sanitizedLength: cleanAnon.length,
+      wasAutoRepaired: rawAnon.trim() !== cleanAnon,
+      jwtRef: anonPayload?.ref ?? null,
+      jwtRole: anonPayload?.role ?? null,
+      matchesUrlRef: anonMatches,
+    },
+    serviceRoleKey: {
+      present: Boolean(rawService),
+      validFormat: isValidSupabaseKey(cleanService),
+      rawLength: rawService.trim().length,
+      sanitizedLength: cleanService.length,
+      wasAutoRepaired: rawService.trim() !== cleanService,
+      jwtRef: servicePayload?.ref ?? null,
+      jwtRole: servicePayload?.role ?? null,
+      matchesUrlRef: serviceMatches,
+    },
+    hasKeyMismatch:
+      !anonMatches ||
+      !serviceMatches ||
+      anonPayload?.role !== 'anon' ||
+      servicePayload?.role !== 'service_role',
+  };
+
+  console.info('[SupabaseEnvDiagnostics]', JSON.stringify(report));
+  return report;
+}
 
 // ── Result shapes ─────────────────────────────────────────────────────────────
 
@@ -101,7 +200,7 @@ export async function getSessionsForTeacher(
 export async function getSessionsForStudent(
   studentId: string
 ): Promise<MeetingWithStudents[]> {
-  const db = await createSupabaseServerClient();
+  const db = createSupabaseAdminClient();
   const { data, error } = await db
     .from('meetings')
     .select(MEETING_SELECT_INNER)
@@ -139,14 +238,15 @@ export async function getSessionById(
 
 /**
  * All teachers as { id, full_name, email } — for admin select dropdowns.
- * Reads profiles table for full_name, enriches with email from auth.admin.
+ * Reads profiles table directly (including email column if present), and only
+ * calls auth.admin.listUsers if any teacher row is missing an email.
  */
 export async function getTeacherOptions(): Promise<TeacherOption[]> {
   const db = createSupabaseAdminClient();
 
   const { data: profiles, error } = await db
     .from('profiles')
-    .select('id, full_name')
+    .select('*')
     .eq('role', 'teacher')
     .order('full_name', { ascending: true });
 
@@ -155,21 +255,27 @@ export async function getTeacherOptions(): Promise<TeacherOption[]> {
     return [];
   }
 
-  // Enrich with emails from auth.users — one batch call
-  const { data: authList } = await db.auth.admin.listUsers({ perPage: 1000 });
-  const emailMap = new Map<string, string>(
-    (authList?.users ?? []).map((u) => [u.id, u.email ?? ''])
-  );
+  const rows = (profiles ?? []) as unknown as Array<{
+    id: string;
+    full_name: string | null;
+    email?: string | null;
+  }>;
 
-  return (profiles ?? []).map((p) => {
-    // Cast each profile row explicitly to avoid the Database generic inferring 'never'
-    const row = p as unknown as { id: string; full_name: string | null };
-    return {
-      id:         row.id,
-      full_name:  row.full_name,
-      email:      emailMap.get(row.id) ?? null,
-    };
-  });
+  const needsAuthLookup = rows.some((r) => !r.email);
+  let emailMap = new Map<string, string>();
+
+  if (needsAuthLookup && rows.length > 0) {
+    const { data: authList } = await db.auth.admin.listUsers({ perPage: 1000 });
+    emailMap = new Map<string, string>(
+      (authList?.users ?? []).map((u) => [u.id, u.email ?? ''])
+    );
+  }
+
+  return rows.map((row) => ({
+    id:        row.id,
+    full_name: row.full_name,
+    email:     row.email ?? emailMap.get(row.id) ?? null,
+  }));
 }
 
 // ── Students ─────────────────────────────────────────────────────────────────
@@ -178,6 +284,7 @@ export async function getTeacherOptions(): Promise<TeacherOption[]> {
  * All students as { id, full_name, email_or_phone, grade } — for admin dropdowns.
  */
 export async function getStudentOptions(): Promise<StudentOption[]> {
+  verifySupabaseEnvDiagnostics();
   const db = createSupabaseAdminClient();
 
   const { data, error } = await db
@@ -261,71 +368,71 @@ export async function getUpcomingMeetingForStudent(
   const db  = createSupabaseAdminClient();
   const now = new Date().toISOString();
 
-  // 1. Find the next upcoming meeting where this student is enrolled
-  const { data: meetings, error: meetErr } = await (db
-    .from('meetings')
-    .select(`
-      id, title, meeting_date, link_url, notes,
-      session_count, session_number, teacher_id,
-      meeting_students!inner (
-        student_id,
-        students ( id, full_name, avatar_id )
-      )
-    `)
-    .eq('is_completed', false)
-    .eq('meeting_students.student_id', studentId)
-    .gt('meeting_date', now)
-    .order('meeting_date', { ascending: true })
-    .limit(1) as unknown as Promise<{
-      data: Array<{
-        id: number;
-        title: string;
-        meeting_date: string;
-        link_url: string | null;
-        notes: string | null;
-        session_count: number;
-        session_number: number;
-        teacher_id: string | null;
-        meeting_students: Array<{
-          student_id: string;
-          students: { id: string; full_name: string; avatar_id: string | null } | null;
-        }>;
-      }> | null;
-      error: { message: string } | null;
-    }>);
-
-  // Also check for live meetings (meeting_date <= now, not completed)
-  const { data: liveMeetings, error: liveErr } = await (db
-    .from('meetings')
-    .select(`
-      id, title, meeting_date, link_url, notes,
-      session_count, session_number, teacher_id,
-      meeting_students!inner (
-        student_id,
-        students ( id, full_name, avatar_id )
-      )
-    `)
-    .eq('is_completed', false)
-    .eq('meeting_students.student_id', studentId)
-    .lte('meeting_date', now)
-    .order('meeting_date', { ascending: false })
-    .limit(1) as unknown as Promise<{
-      data: Array<{
-        id: number;
-        title: string;
-        meeting_date: string;
-        link_url: string | null;
-        notes: string | null;
-        session_count: number;
-        session_number: number;
-        teacher_id: string | null;
-        meeting_students: Array<{
-          student_id: string;
-          students: { id: string; full_name: string; avatar_id: string | null } | null;
-        }>;
-      }> | null;
-      error: { message: string } | null;
-    }>);
+  // 1. Find live and next upcoming meetings in parallel
+  const [{ data: meetings, error: meetErr }, { data: liveMeetings, error: liveErr }] = await Promise.all([
+    db
+      .from('meetings')
+      .select(`
+        id, title, meeting_date, link_url, notes,
+        session_count, session_number, teacher_id,
+        meeting_students!inner (
+          student_id,
+          students ( id, full_name, avatar_id )
+        )
+      `)
+      .eq('is_completed', false)
+      .eq('meeting_students.student_id', studentId)
+      .gt('meeting_date', now)
+      .order('meeting_date', { ascending: true })
+      .limit(1) as unknown as Promise<{
+        data: Array<{
+          id: number;
+          title: string;
+          meeting_date: string;
+          link_url: string | null;
+          notes: string | null;
+          session_count: number;
+          session_number: number;
+          teacher_id: string | null;
+          meeting_students: Array<{
+            student_id: string;
+            students: { id: string; full_name: string; avatar_id: string | null } | null;
+          }>;
+        }> | null;
+        error: { message: string } | null;
+      }>,
+    db
+      .from('meetings')
+      .select(`
+        id, title, meeting_date, link_url, notes,
+        session_count, session_number, teacher_id,
+        meeting_students!inner (
+          student_id,
+          students ( id, full_name, avatar_id )
+        )
+      `)
+      .eq('is_completed', false)
+      .eq('meeting_students.student_id', studentId)
+      .lte('meeting_date', now)
+      .order('meeting_date', { ascending: false })
+      .limit(1) as unknown as Promise<{
+        data: Array<{
+          id: number;
+          title: string;
+          meeting_date: string;
+          link_url: string | null;
+          notes: string | null;
+          session_count: number;
+          session_number: number;
+          teacher_id: string | null;
+          meeting_students: Array<{
+            student_id: string;
+            students: { id: string; full_name: string; avatar_id: string | null } | null;
+          }>;
+        }> | null;
+        error: { message: string } | null;
+      }>,
+  ]);
 
   if (meetErr)  console.error('[getUpcomingMeetingForStudent] meetings:', meetErr.message);
   if (liveErr)  console.error('[getUpcomingMeetingForStudent] live:', liveErr.message);
@@ -334,37 +441,37 @@ export async function getUpcomingMeetingForStudent(
   const raw = (liveMeetings?.[0]) ?? (meetings?.[0]) ?? null;
   if (!raw) return null;
 
-  // 2. Fetch all enrolled students for THIS meeting (not just inner-joined on current student)
-  const { data: allSeats } = await (db
-    .from('meeting_students')
-    .select('student_id, students ( id, full_name, avatar_id, equipped_hat_id, total_xp )')
-    .eq('meeting_id', raw.id) as unknown as Promise<{
-      data: Array<{
-        student_id: string;
-        students: {
-          id: string;
-          full_name: string;
-          avatar_id:       string | null;
-          equipped_hat_id: string | null;
-          total_xp:        number;
-        } | null;
-      }> | null;
-      error: unknown;
-    }>);
-
-  // 3. Fetch teacher name from profiles (if teacher_id set)
-  let teacherName: string | null = null;
-  if (raw.teacher_id) {
-    const { data: profile } = await (db
-      .from('profiles')
-      .select('full_name')
-      .eq('id', raw.teacher_id)
-      .maybeSingle() as unknown as Promise<{
-        data: { full_name: string | null } | null;
+  // 2 & 3. Fetch all enrolled students and teacher name in parallel
+  const [{ data: allSeats }, teacherProfileRes] = await Promise.all([
+    db
+      .from('meeting_students')
+      .select('student_id, students ( id, full_name, avatar_id, equipped_hat_id, total_xp )')
+      .eq('meeting_id', raw.id) as unknown as Promise<{
+        data: Array<{
+          student_id: string;
+          students: {
+            id: string;
+            full_name: string;
+            avatar_id:       string | null;
+            equipped_hat_id: string | null;
+            total_xp:        number;
+          } | null;
+        }> | null;
         error: unknown;
-      }>);
-    teacherName = profile?.full_name ?? null;
-  }
+      }>,
+    raw.teacher_id
+      ? (db
+          .from('profiles')
+          .select('full_name')
+          .eq('id', raw.teacher_id)
+          .maybeSingle() as unknown as Promise<{
+            data: { full_name: string | null } | null;
+            error: unknown;
+          }>)
+      : Promise.resolve({ data: null, error: null }),
+  ]);
+
+  const teacherName: string | null = teacherProfileRes.data?.full_name ?? null;
 
   // 4. Build seats array (max 4)
   const seats: TownSquareSeat[] = (allSeats ?? [])

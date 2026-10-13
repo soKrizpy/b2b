@@ -45,10 +45,10 @@ export function ModuleAccordion({ module: mod }: Props) {
   const displayDesc = hasFinalAssessment ? null : mod.description;
 
   return (
-    <div className={`bg-white dark:bg-[var(--surface)] rounded-2xl ring-1 shadow-sm
-      transition-all duration-200 overflow-hidden
+    <div className={`relative bg-white dark:bg-[var(--surface)] rounded-2xl ring-1 shadow-sm
+      transition-all duration-300 ease-in-out hover:scale-105 hover:shadow-md hover:z-10 overflow-hidden
       ${pendingDel ? 'opacity-50 pointer-events-none' : ''}
-      ${showEdit ? 'ring-indigo-300 dark:ring-indigo-600/50' : 'ring-slate-200 dark:ring-white/10'}`}>
+      ${showEdit ? 'ring-indigo-300 dark:ring-indigo-600/50' : 'ring-slate-200 dark:ring-white/10 hover:ring-slate-300 dark:hover:ring-white/20'}`}>
 
       {/* ── Card header ──────────────────────────────────────────────────── */}
       <div className="px-5 py-4 flex items-start gap-3">

@@ -1,10 +1,10 @@
-﻿// src/features/curriculum/actions.ts
+// src/features/curriculum/actions.ts
 // Admin Server Actions: JSON bulk import/export + delete (module/topic).
 // 'use server' files may ONLY export async functions — all schemas and types
 // live in ./validation.ts.
 'use server';
 
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, revalidateTag } from 'next/cache';
 import { requireAdmin } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { getAllModulesWithTopics } from './queries';
@@ -52,6 +52,7 @@ function nodeToLearningNode(n: NodeImport) {
 
 const REVALIDATE_PATHS = ['/admin/curriculum', '/admin/dashboard', '/student/lessons'];
 function revalidateAll() {
+  revalidateTag('curriculum');
   REVALIDATE_PATHS.forEach((p) => revalidatePath(p, 'layout'));
 }
 
@@ -445,26 +446,11 @@ export async function importCurriculumJsonForModule(
     (existingTopics ?? []).map((t) => [t.title.toLowerCase().trim(), t.id])
   );
 
-  const { nodeToLearningNode: n2ln } = await import('./actions').then(async () => {
-    // Re-use the private helper by inlining it here
-    const typeMap: Record<string, string> = {
-      theory: 'lesson', quiz: 'quiz', challenge: 'challenge', code: 'code', practice: 'practice', lesson: 'lesson',
-    };
-    return {
-      nodeToLearningNode: (n: import('./validation').NodeImport) => ({
-        id: n.node_id, type: typeMap[n.type] ?? n.type, title: n.title, xp: n.xp,
-        explanation: n.content, instructions: n.instructions, options: n.options,
-        correctOption: n.correct_option, content: n.content,
-        ...(n.code_content && { code: { language: n.code_language ?? 'text', content: n.code_content } }),
-      }),
-    };
-  });
-
   for (const topic of mod.topics) {
     const topicTitle    = topic.topic_title.trim();
     const hasNodes      = topic.nodes.length > 0;
     const lessonContent = (hasNodes || topic.quiz?.length)
-      ? { learningPath: topic.nodes.map(n2ln), ...(topic.quiz?.length && { quiz: topic.quiz }) }
+      ? { learningPath: topic.nodes.map(nodeToLearningNode), ...(topic.quiz?.length && { quiz: topic.quiz }) }
       : null;
 
     const existingId = topicTitleMap.get(topicTitle.toLowerCase());

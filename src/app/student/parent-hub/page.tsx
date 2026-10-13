@@ -8,15 +8,16 @@
 //   5. Portofolio Challenge
 //   6. Sertifikat
 import type { Metadata } from 'next';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { getSessionUser } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import {
-  getStudentHubData,
-  getMonthlySnapshots,
+  getStudentHubBundle,
 } from '@/features/parent-report/queries.student';
 import { TIER_CONFIG } from '@/features/certificates/queries';
+import { PrintCertificateButton } from '@/features/certificates/components/PrintCertificateButton';
 import { RiwayatAccordion } from '@/features/parent-report/components/RiwayatAccordion';
 import { MonthlyReportCard } from '@/features/parent-report/components/MonthlyReportCard';
+import { MonthlyQuizChart } from '@/features/parent-report/components/MonthlyQuizChart';
 import { formatDate } from '@/lib/formatDate';
 import type { PortfolioItem } from '@/features/parent-report/queries.student';
 import type { CertificateWithModule } from '@/features/certificates/queries';
@@ -154,18 +155,7 @@ function CertificateCards({ certs }: { certs: CertificateWithModule[] }) {
             </div>
 
             <div className="mt-5 pt-3 border-t border-amber-100 flex items-center justify-end">
-              <button
-                type="button"
-                onClick={() => window.print()}
-                aria-label={`Unduh sertifikat ${cfg.label}`}
-                className="inline-flex items-center justify-center px-4 py-2.5 rounded-xl
-                  text-xs font-extrabold text-white
-                  bg-gradient-to-r from-purple-600 to-indigo-600
-                  shadow-lg shadow-purple-500/20 hover:shadow-xl hover:scale-[1.02]
-                  active:scale-95 transition-all duration-150"
-              >
-                <i className="fa-solid fa-download mr-2 text-xs" /> Unduh Sertifikat PDF
-              </button>
+              <PrintCertificateButton label={cfg.label} />
             </div>
           </div>
         );
@@ -177,15 +167,11 @@ function CertificateCards({ certs }: { certs: CertificateWithModule[] }) {
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default async function ParentHubPage() {
-  const supabase = await createSupabaseServerClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getSessionUser();
   if (!user) redirect('/login');
 
-  // Fetch both in parallel
-  const [hub, snapshots] = await Promise.all([
-    getStudentHubData(user.id),
-    getMonthlySnapshots(user.id),
-  ]);
+  // Fetch unified bundle in 2 parallel batches instead of 18+ sequential round-trips
+  const { hubData: hub, snapshots } = await getStudentHubBundle(user.id);
 
   const { studentName, monthly, portfolio, certificates, riwayat } = hub;
   const totalCompletedSessions = riwayat.reduce((s, m) => s + m.sessions.length, 0);
@@ -224,6 +210,14 @@ export default async function ParentHubPage() {
             moduleStatus={monthly.moduleStatus}
             certCount={certificates.length}
           >
+            {/* ── Grafik Perbandingan Kuis Bulanan ── */}
+            <section>
+              <SectionDivider icon="fa-solid fa-chart-column" label="Grafik Kuis Bulanan" />
+              <div className="mt-4">
+                <MonthlyQuizChart snapshots={snapshots} />
+              </div>
+            </section>
+
             {/* ── Riwayat Kelas — injected before archive ── */}
             <section>
               <SectionDivider icon="fa-solid fa-clock-rotate-left" label="Riwayat Kelas" />

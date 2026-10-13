@@ -1,4 +1,4 @@
-﻿// src/types/database.ts
+// src/types/database.ts
 // Hand-authored types that mirror the existing production Supabase schema.
 // Covers every table that the rebuild reads or writes.
 // NEVER destructively alter the corresponding production tables.
@@ -14,6 +14,7 @@ export interface ProfileRow {
   id: string;           // uuid — matches auth.users.id
   role: 'admin' | 'teacher' | 'student';
   full_name: string | null;
+  email?: string | null;
   created_at: string | null;
 }
 
@@ -46,6 +47,7 @@ export interface ModuleRow {
   description: string | null;
   level: string | null;
   gamification_type: string | null;
+  final_assessment?: Json | null;
   is_active: boolean | null;
   created_at: string | null;
 }
@@ -197,9 +199,14 @@ export type ParentLinkInsert = Omit<ParentLinkRow, 'created_at'>;
 
 // public.announcements
 export interface AnnouncementRow {
-  id: number;
+  id: string;
+  title: string;
   content: string;
-  expires_at: string;
+  image_url: string | null;
+  target: 'all' | 'students' | 'teachers';
+  urgency: 'info' | 'warning' | 'urgent';
+  expires_at: string | null;
+  is_active: boolean;
   created_at: string | null;
 }
 
@@ -324,6 +331,19 @@ export type SubmissionInsert = Omit<SubmissionRow,
 > & { status?: SubmissionStatus };
 export type SubmissionUpdate = Partial<Omit<SubmissionRow, 'id' | 'student_id' | 'challenge_id' | 'created_at'>>;
 
+// public.teacher_students
+export interface TeacherStudentRow {
+  id: number;
+  teacher_id: string;
+  student_id: string;
+  assigned_at: string;
+  notes: string | null;
+}
+export type TeacherStudentInsert = Omit<TeacherStudentRow, 'id' | 'assigned_at'> & {
+  assigned_at?: string;
+};
+export type TeacherStudentUpdate = Partial<Omit<TeacherStudentRow, 'id' | 'teacher_id' | 'student_id'>>;
+
 // ── Supabase Database generic type ───────────────────────────────────────────
 // Used to parameterise the Supabase client — enables typed .from() calls.
 
@@ -402,8 +422,13 @@ export interface Database {
       };
       announcements: {
         Row: AnnouncementRow;
-        Insert: Omit<AnnouncementRow, 'id' | 'created_at'>;
+        Insert: Omit<AnnouncementRow, 'created_at'> & { created_at?: string | null };
         Update: Partial<Omit<AnnouncementRow, 'id' | 'created_at'>>;
+      };
+      invoices: {
+        Row: InvoiceRow;
+        Insert: Omit<InvoiceRow, 'id' | 'created_at'> & { id?: string; created_at?: string | null };
+        Update: Partial<Omit<InvoiceRow, 'id' | 'created_at'>>;
       };
       module_assessments: {
         Row: ModuleAssessmentRow;
@@ -439,6 +464,11 @@ export interface Database {
         Row: SubmissionRow;
         Insert: SubmissionInsert;
         Update: SubmissionUpdate;
+      };
+      teacher_students: {
+        Row: TeacherStudentRow;
+        Insert: TeacherStudentInsert;
+        Update: TeacherStudentUpdate;
       };
     };
     Views: Record<string, never>;

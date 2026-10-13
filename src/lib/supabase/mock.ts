@@ -13,6 +13,22 @@ export interface MockUser {
   };
 }
 
+export interface PreviewFallbackSession {
+  user: {
+    id: string;
+    email?: string;
+    user_metadata: {
+      full_name?: string;
+      role?: 'admin' | 'teacher' | 'student';
+      [key: string]: unknown;
+    };
+  };
+  role: 'admin' | 'teacher' | 'student';
+  accessToken?: string | null;
+  isMock?: boolean;
+  updatedAt: number;
+}
+
 type MockRow = Record<string, unknown>;
 
 interface MockStore {
@@ -43,7 +59,93 @@ interface MockStore {
   [table: string]: unknown[];
 }
 
-const globalForMock = globalThis as unknown as { __b2bMockStore?: MockStore };
+const globalForMock = globalThis as unknown as {
+  __b2bMockStore?: MockStore;
+  __b2bInvalidKeys?: Set<string>;
+  __b2bPreviewSession?: PreviewFallbackSession | null;
+};
+
+export function setPreviewFallbackSession(session: Omit<PreviewFallbackSession, 'updatedAt'>): void {
+  globalForMock.__b2bPreviewSession = {
+    ...session,
+    updatedAt: Date.now(),
+  };
+}
+
+export function getPreviewFallbackSession(): PreviewFallbackSession | null {
+  const s = globalForMock.__b2bPreviewSession;
+  if (!s) return null;
+  // Valid for 7 days
+  if (Date.now() - s.updatedAt > 7 * 24 * 60 * 60 * 1000) {
+    globalForMock.__b2bPreviewSession = null;
+    return null;
+  }
+  return s;
+}
+
+export function clearPreviewFallbackSession(): void {
+  globalForMock.__b2bPreviewSession = null;
+}
+
+export function markSupabaseKeyInvalid(key: string | undefined): void {
+  if (!key) return;
+  if (!globalForMock.__b2bInvalidKeys) {
+    globalForMock.__b2bInvalidKeys = new Set<string>();
+  }
+  globalForMock.__b2bInvalidKeys.add(sanitizeEnvVal(key));
+}
+
+const DEFAULT_SUPABASE_URL = 'https://enfqoofluceqrlcjemfu.supabase.co';
+const DEFAULT_SUPABASE_ANON_KEY =
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVuZnFvb2ZsdWNlcXJsY2plbWZ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ2MjI3ODgsImV4cCI6MjEwMDE5ODc4OH0.N0PZY2kmT-5t8gsUKBLCaPH9i4mP9OzcIxt_uGXfpLE';
+const DEFAULT_SUPABASE_SERVICE_ROLE_KEY = '';
+
+export function sanitizeEnvVal(raw: string | undefined): string {
+  if (!raw) return '';
+  let clean = raw.trim().replace(/^["']+|["']+$/g, '').trim();
+  // Auto-heal common copy-paste truncation where leading 'e' of 'eyJhbGci...' was cut off
+  if (clean.startsWith('yJhbGci')) {
+    clean = 'e' + clean;
+  } else if (clean.startsWith('JhbGci')) {
+    clean = 'ey' + clean;
+  }
+  return clean;
+}
+
+export function isValidSupabaseKey(raw: string | undefined): boolean {
+  const k = sanitizeEnvVal(raw);
+  if (!k) return false;
+  if (globalForMock.__b2bInvalidKeys?.has(k)) return false;
+  // Standard Supabase JWT key (3 base64url segments starting with eyJ)
+  if (k.startsWith('eyJ') && k.split('.').length === 3 && k.length > 80) return true;
+  // New Supabase API keys (sb_publishable_... / sb_secret_...)
+  if ((k.startsWith('sb_publishable_') || k.startsWith('sb_secret_')) && k.length > 20) return true;
+  return false;
+}
+
+export function getSupabaseUrl(): string {
+  const envUrl = sanitizeEnvVal(process.env.NEXT_PUBLIC_SUPABASE_URL);
+  if (envUrl.startsWith('http://') || envUrl.startsWith('https://')) {
+    return envUrl;
+  }
+  return DEFAULT_SUPABASE_URL;
+}
+
+export function getSupabaseAnonKey(): string {
+  const envAnon = sanitizeEnvVal(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+  if (isValidSupabaseKey(envAnon)) {
+    return envAnon;
+  }
+  return DEFAULT_SUPABASE_ANON_KEY;
+}
+
+export function getSupabaseServiceRoleKey(): string {
+  const envService = sanitizeEnvVal(process.env.SUPABASE_SERVICE_ROLE_KEY);
+  if (isValidSupabaseKey(envService)) {
+    return envService;
+  }
+  return DEFAULT_SUPABASE_SERVICE_ROLE_KEY;
+}
 
 function createInitialMockStore(): MockStore {
   const now = new Date();
@@ -82,10 +184,10 @@ function createInitialMockStore(): MockStore {
       },
     ],
     profiles: [
-      { id: 'admin-demo-1', role: 'admin', full_name: 'Admin Bits2Bytes', created_at: yesterday },
-      { id: 'teacher-demo-1', role: 'teacher', full_name: 'Kak Budi Santoso', created_at: yesterday },
-      { id: 'student-demo-1', role: 'student', full_name: 'Raka Pratama', created_at: yesterday },
-      { id: 'student-demo-2', role: 'student', full_name: 'Nadia Putri', created_at: yesterday },
+      { id: 'admin-demo-1', role: 'admin', full_name: 'Admin Bits2Bytes', email: 'admin@b2b.id', created_at: yesterday },
+      { id: 'teacher-demo-1', role: 'teacher', full_name: 'Kak Budi Santoso', email: 'guru@b2b.id', created_at: yesterday },
+      { id: 'student-demo-1', role: 'student', full_name: 'Raka Pratama', email: '08123456789@student.mylms.app', created_at: yesterday },
+      { id: 'student-demo-2', role: 'student', full_name: 'Nadia Putri', email: '08987654321@student.mylms.app', created_at: yesterday },
     ],
     students: [
       {
@@ -318,7 +420,30 @@ function createInitialMockStore(): MockStore {
         created_at: yesterday,
       },
     ],
-    announcements: [],
+    announcements: [
+      {
+        id: 'ann-1',
+        title: '🚀 Pembaruan Platform Bits2Bytes',
+        content: 'Selamat datang di antarmuka baru Bits2Bytes! Nikmati navigasi cepat, jadwal kelas otomatis, dan pemantauan invoice transparan.',
+        target: 'all',
+        urgency: 'info',
+        image_url: null,
+        expires_at: null,
+        created_at: yesterday,
+        is_active: true,
+      },
+      {
+        id: 'ann-2',
+        title: '⚠️ Pengingat Jadwal Kelas & Presensi',
+        content: 'Untuk para Guru dan Siswa, harap pastikan hadir tepat waktu sesuai jam sesi dan melakukan check-in presensi.',
+        target: 'all',
+        urgency: 'warning',
+        image_url: null,
+        expires_at: null,
+        created_at: yesterday,
+        is_active: true,
+      },
+    ],
     module_assessments: [],
     module_assessment_questions: [],
     module_assessment_attempts: [],
@@ -400,15 +525,37 @@ export function getMockStore(): MockStore {
 }
 
 export function isSupabaseConfigured(): boolean {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  return Boolean(url && anon && url.startsWith('http'));
+  const url = getSupabaseUrl();
+  const anon = getSupabaseAnonKey();
+  return Boolean(url.startsWith('http') && isValidSupabaseKey(anon));
+}
+
+export function isValidServiceRoleJwt(raw?: string): boolean {
+  const k = sanitizeEnvVal(raw ?? getSupabaseServiceRoleKey());
+  if (!k) return false;
+  if (globalForMock.__b2bInvalidKeys?.has(k)) return false;
+  return (
+    (k.startsWith('eyJ') && k.split('.').length === 3 && k.length > 80) ||
+    (k.startsWith('sb_secret_') && k.length > 20)
+  );
 }
 
 export function isSupabaseAdminConfigured(): boolean {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  return Boolean(url && serviceKey && url.startsWith('http'));
+  const url = getSupabaseUrl();
+  return Boolean(url.startsWith('http') && isValidServiceRoleJwt());
+}
+
+export function matchMockUserCredentials(email: string, password?: string): MockUser | null {
+  const store = getMockStore();
+  const lower = email.toLowerCase().trim();
+  const normalizedEmail =
+    lower === '081234567890@student.mylms.app' ? '08123456789@student.mylms.app' : lower;
+  const user = store.users.find((u) => u.email.toLowerCase() === normalizedEmail);
+  if (!user) return null;
+  if (user.password && password === user.password) return user;
+  if (normalizedEmail === 'admin@b2b.id' && (password === 'password123' || password === 'admin123')) return user;
+  if (normalizedEmail === 'guru@b2b.id' && (password === 'password123' || password === 'guru123')) return user;
+  return null;
 }
 
 function enrichRow(table: string, row: MockRow, selectStr: string, store: MockStore): MockRow {
@@ -770,6 +917,18 @@ export function createMockSupabaseClient(options?: {
       async signOut() {
         options?.deleteCookie?.(MOCK_SESSION_COOKIE);
         return { error: null };
+      },
+      async updateUser(attrs: { data?: Record<string, unknown>; password?: string }) {
+        const userId = options?.getCookie?.(MOCK_SESSION_COOKIE);
+        const user = store.users.find((u) => u.id === userId) ?? null;
+        if (!user) return { data: { user: null }, error: { message: 'User not found' } };
+        if (attrs.data) {
+          user.user_metadata = { ...user.user_metadata, ...attrs.data };
+        }
+        if (attrs.password) {
+          user.password = attrs.password;
+        }
+        return { data: { user }, error: null };
       },
       async exchangeCodeForSession() {
         return { data: { session: null }, error: null };

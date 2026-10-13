@@ -1,14 +1,16 @@
 'use client';
 // src/components/DashboardAppShell.tsx
 // Responsive global layout for Admin, Teacher, and Student Dashboards:
-//   - Desktop: Fixed Left Sidebar (w-64 expanded / w-20 collapsed) with smooth hover-scale & neon glow
-//   - Desktop Header: Simplified top bar with Brand/Title, Theme Toggle, Profile & Logout
-//   - Mobile: Fixed Bottom Navigation Bar with centered Icon-Only glassmorphism design
-//   - Main Content: Dynamic margin-left & bottom padding (pb-24) for zero UI overlap
+//   - Desktop: Fixed Left Sidebar (w-64 expanded / w-20 collapsed) with spring layoutId active tab transitions
+//   - Desktop Header: Simplified top bar with animated Brand/Title breadcrumb, Theme Toggle, Profile & Logout
+//   - Mobile: Fixed Bottom Navigation Bar with spring layoutId active tab indicator
+//   - Main Content: Smooth AnimatePresence page transition on tab/route changes
 
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { usePathname } from 'next/navigation';
+import { motion, AnimatePresence } from 'motion/react';
 import {
   LayoutDashboard,
   Calendar,
@@ -21,8 +23,6 @@ import {
   HeartHandshake,
   ChevronLeft,
   ChevronRight,
-  LogOut,
-  User,
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { SignOutButton } from '@/features/auth/components/SignOutButton';
@@ -54,7 +54,7 @@ const ROLE_NAV: Record<
     { href: '/admin/invoices',   label: 'Invoice',   icon: Receipt },
   ],
   teacher: [
-    { href: '/teacher/dashboard',   label: 'Dasbor',     icon: LayoutDashboard },
+    { href: '/teacher/dashboard',   label: 'Dasbor',      icon: LayoutDashboard },
     { href: '/teacher/submissions', label: 'Submissions', icon: FileCheck2 },
   ],
   student: [
@@ -62,6 +62,13 @@ const ROLE_NAV: Record<
     { href: '/student/lessons',    label: 'Quest Map',   icon: Map },
     { href: '/student/parent-hub', label: 'Parent Hub',  icon: HeartHandshake },
   ],
+};
+
+const SPRING_TRANSITION = {
+  type: 'spring' as const,
+  stiffness: 380,
+  damping: 32,
+  mass: 0.8,
 };
 
 interface DashboardAppShellProps {
@@ -80,13 +87,16 @@ export function DashboardAppShell({
   maxWidthClass = 'max-w-7xl',
 }: DashboardAppShellProps) {
   const [collapsed, setCollapsed] = useState(false);
+  const clientPathname = usePathname();
+  const activePath = clientPathname || currentPath;
+
   const navItems = ROLE_NAV[role];
   const pillClass = ROLE_PILL_CLASS[role];
 
   // Derive active item label for header display
   const activeItem = useMemo(() => {
-    return navItems.find((item) => currentPath.startsWith(item.href)) ?? navItems[0];
-  }, [navItems, currentPath]);
+    return navItems.find((item) => activePath.startsWith(item.href)) ?? navItems[0];
+  }, [navItems, activePath]);
 
   return (
     <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)] transition-colors duration-300 flex">
@@ -120,23 +130,31 @@ export function DashboardAppShell({
               className="hidden dark:block rounded-lg flex-shrink-0"
               priority
             />
-            {!collapsed && (
-              <div className="flex flex-col min-w-0">
-                <span className="text-sm font-black tracking-tight leading-none text-slate-900 dark:text-purple-50">
-                  bits<span className="text-[#7cc62f]">2</span>bytes
-                </span>
-                <span className={`text-[9px] font-extrabold tracking-widest uppercase mt-1 px-1.5 py-0.5 rounded-full border self-start ${pillClass}`}>
-                  {ROLE_LABEL[role]}
-                </span>
-              </div>
-            )}
+            <AnimatePresence initial={false}>
+              {!collapsed && (
+                <motion.div
+                  initial={{ opacity: 0, x: -8 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -8 }}
+                  transition={{ duration: 0.18 }}
+                  className="flex flex-col min-w-0"
+                >
+                  <span className="text-sm font-black tracking-tight leading-none text-slate-900 dark:text-purple-50">
+                    bits<span className="text-[#7cc62f]">2</span>bytes
+                  </span>
+                  <span className={`text-[9px] font-extrabold tracking-widest uppercase mt-1 px-1.5 py-0.5 rounded-full border self-start ${pillClass}`}>
+                    {ROLE_LABEL[role]}
+                  </span>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </Link>
         </div>
 
         {/* Sidebar Nav Items */}
         <nav className="flex-1 p-3 flex flex-col gap-1.5 overflow-y-auto">
           {navItems.map((item) => {
-            const active = currentPath.startsWith(item.href);
+            const active = activePath.startsWith(item.href);
             const Icon = item.icon;
 
             return (
@@ -145,18 +163,29 @@ export function DashboardAppShell({
                 href={item.href}
                 title={collapsed ? item.label : undefined}
                 className={`relative flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-xs font-extrabold
-                  transition-all duration-200 ease-out cursor-pointer group hover:scale-[1.02] hover:-translate-y-0.5
+                  transition-colors duration-200 cursor-pointer group
                   ${active
-                    ? 'bg-blue-500/10 text-blue-700 border border-blue-400/60 shadow-neon-blue dark:bg-purple-500/20 dark:text-purple-300 dark:border-purple-500/60 dark:shadow-neon-purple'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-purple-100 hover:bg-blue-50/50 dark:hover:bg-purple-950/40 border border-transparent'
+                    ? 'text-blue-700 dark:text-purple-300'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-purple-100 hover:bg-blue-50/50 dark:hover:bg-purple-950/40'
                   } ${collapsed ? 'justify-center px-0' : ''}`}
               >
-                <Icon className={`w-5 h-5 flex-shrink-0 transition-transform duration-200 group-hover:scale-110 ${active ? 'text-blue-600 dark:text-purple-300' : ''}`} />
+                {active && (
+                  <motion.span
+                    layoutId={`sidebar-active-pill-${role}`}
+                    transition={SPRING_TRANSITION}
+                    className="absolute inset-0 rounded-2xl bg-blue-500/10 border border-blue-400/60 shadow-neon-blue dark:bg-purple-500/20 dark:border-purple-500/60 dark:shadow-neon-purple"
+                  />
+                )}
+                <Icon className={`relative z-10 w-5 h-5 flex-shrink-0 transition-transform duration-200 group-hover:scale-110 ${active ? 'text-blue-600 dark:text-purple-300' : ''}`} />
                 {!collapsed && (
-                  <span className="truncate">{item.label}</span>
+                  <span className="relative z-10 truncate">{item.label}</span>
                 )}
                 {active && !collapsed && (
-                  <span className="ml-auto w-1.5 h-1.5 rounded-full bg-[#7cc62f] shadow-sm shadow-[#7cc62f]" />
+                  <motion.span
+                    layoutId={`sidebar-active-dot-${role}`}
+                    transition={SPRING_TRANSITION}
+                    className="relative z-10 ml-auto w-1.5 h-1.5 rounded-full bg-[#7cc62f] shadow-sm shadow-[#7cc62f]"
+                  />
                 )}
               </Link>
             );
@@ -218,15 +247,24 @@ export function DashboardAppShell({
                   priority
                 />
               </Link>
-              {/* Active Section Title */}
-              <div className="flex items-center gap-2">
+              {/* Active Section Title with smooth vertical slide */}
+              <div className="flex items-center gap-2 overflow-hidden">
                 <span className="text-xs font-extrabold uppercase tracking-wider text-slate-500 dark:text-purple-300/80">
                   {ROLE_LABEL[role]}
                 </span>
                 <span className="text-xs text-slate-300 dark:text-slate-700">/</span>
-                <span className="text-sm font-extrabold text-slate-900 dark:text-purple-50">
-                  {activeItem.label}
-                </span>
+                <AnimatePresence mode="wait" initial={false}>
+                  <motion.span
+                    key={activeItem.href}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -8 }}
+                    transition={{ duration: 0.18, ease: 'easeOut' }}
+                    className="text-sm font-extrabold text-slate-900 dark:text-purple-50 inline-block"
+                  >
+                    {activeItem.label}
+                  </motion.span>
+                </AnimatePresence>
               </div>
             </div>
 
@@ -252,11 +290,21 @@ export function DashboardAppShell({
           </div>
         </header>
 
-        {/* Main Content Area */}
+        {/* Main Content Area with Tab Transition */}
         <main
           className={`flex-1 mx-auto w-full ${maxWidthClass} px-4 sm:px-6 lg:px-8 pt-6 pb-24 md:pb-12 text-[var(--foreground)]`}
         >
-          {children}
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.div
+              key={activePath}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
+              transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+            >
+              {children}
+            </motion.div>
+          </AnimatePresence>
         </main>
       </div>
 
@@ -271,7 +319,7 @@ export function DashboardAppShell({
         aria-label="Mobile navigation bar"
       >
         {navItems.map((item) => {
-          const active = currentPath.startsWith(item.href);
+          const active = activePath.startsWith(item.href);
           const Icon = item.icon;
 
           return (
@@ -281,16 +329,27 @@ export function DashboardAppShell({
               aria-label={item.label}
               title={item.label}
               className={`relative flex items-center justify-center p-2.5 rounded-2xl
-                transition-all duration-200 active:scale-95 ${
+                transition-colors duration-200 active:scale-95 ${
                   active
-                    ? 'bg-blue-500/10 text-blue-600 border border-blue-400/50 shadow-neon-blue dark:bg-purple-500/20 dark:text-purple-300 dark:border-purple-500/50 dark:shadow-neon-purple scale-105'
+                    ? 'text-blue-600 dark:text-purple-300'
                     : 'text-slate-400 dark:text-slate-500 hover:text-slate-800 dark:hover:text-purple-100'
                 }`}
             >
               {active && (
-                <span className="absolute -top-2.5 w-6 h-1 rounded-full bg-[#7cc62f] shadow-sm shadow-[#7cc62f]" />
+                <>
+                  <motion.span
+                    layoutId={`mobile-active-pill-${role}`}
+                    transition={SPRING_TRANSITION}
+                    className="absolute inset-0 rounded-2xl bg-blue-500/10 border border-blue-400/50 shadow-neon-blue dark:bg-purple-500/20 dark:border-purple-500/50 dark:shadow-neon-purple"
+                  />
+                  <motion.span
+                    layoutId={`mobile-active-bar-${role}`}
+                    transition={SPRING_TRANSITION}
+                    className="absolute -top-2.5 w-6 h-1 rounded-full bg-[#7cc62f] shadow-sm shadow-[#7cc62f]"
+                  />
+                </>
               )}
-              <Icon className="w-5 h-5" />
+              <Icon className="relative z-10 w-5 h-5" />
             </Link>
           );
         })}

@@ -111,29 +111,29 @@ export async function getPendingSubmissions(): Promise<SubmissionWithDetails[]> 
   const rawSubs = (subs ?? []) as unknown as SubmissionRow[];
   if (!rawSubs.length) return [];
 
-  // Enrich with challenge data
+  // Enrich with challenge and student data in parallel
   const challengeIds = [...new Set(rawSubs.map((s) => s.challenge_id))];
-  const { data: challenges } = await db
-    .from('challenges')
-    .select('id, topic_id, title')
-    .in('id', challengeIds) as unknown as {
-      data: Array<Pick<ChallengeRow, 'id' | 'topic_id' | 'title'>>;
-      error: unknown;
-    };
+  const studentIds   = [...new Set(rawSubs.map((s) => s.student_id))];
+
+  const [{ data: challenges }, { data: students }] = await Promise.all([
+    db
+      .from('challenges')
+      .select('id, topic_id, title')
+      .in('id', challengeIds) as unknown as Promise<{
+        data: Array<Pick<ChallengeRow, 'id' | 'topic_id' | 'title'>>;
+        error: unknown;
+      }>,
+    db
+      .from('students')
+      .select('id, full_name, email_or_phone')
+      .in('id', studentIds) as unknown as Promise<{
+        data: Array<{ id: string; full_name: string; email_or_phone: string }>;
+        error: unknown;
+      }>,
+  ]);
 
   const challengeMap = new Map((challenges ?? []).map((c) => [c.id, c]));
-
-  // Enrich with student names from public.students
-  const studentIds = [...new Set(rawSubs.map((s) => s.student_id))];
-  const { data: students } = await db
-    .from('students')
-    .select('id, full_name, email_or_phone')
-    .in('id', studentIds) as unknown as {
-      data: Array<{ id: string; full_name: string; email_or_phone: string }>;
-      error: unknown;
-    };
-
-  const studentMap = new Map((students ?? []).map((s) => [s.id, s]));
+  const studentMap   = new Map((students ?? []).map((s) => [s.id, s]));
 
   return rawSubs.map((sub) => ({
     ...sub,
@@ -190,26 +190,27 @@ export async function getAllSubmissions(): Promise<SubmissionWithDetails[]> {
   if (!rawSubs.length) return [];
 
   const challengeIds = [...new Set(rawSubs.map((s) => s.challenge_id))];
-  const { data: challenges } = await db
-    .from('challenges')
-    .select('id, topic_id, title')
-    .in('id', challengeIds) as unknown as {
-      data: Array<Pick<ChallengeRow, 'id' | 'topic_id' | 'title'>>;
-      error: unknown;
-    };
+  const studentIds   = [...new Set(rawSubs.map((s) => s.student_id))];
+
+  const [{ data: challenges }, { data: students }] = await Promise.all([
+    db
+      .from('challenges')
+      .select('id, topic_id, title')
+      .in('id', challengeIds) as unknown as Promise<{
+        data: Array<Pick<ChallengeRow, 'id' | 'topic_id' | 'title'>>;
+        error: unknown;
+      }>,
+    db
+      .from('students')
+      .select('id, full_name, email_or_phone')
+      .in('id', studentIds) as unknown as Promise<{
+        data: Array<{ id: string; full_name: string; email_or_phone: string }>;
+        error: unknown;
+      }>,
+  ]);
 
   const challengeMap = new Map((challenges ?? []).map((c) => [c.id, c]));
-
-  const studentIds = [...new Set(rawSubs.map((s) => s.student_id))];
-  const { data: students } = await db
-    .from('students')
-    .select('id, full_name, email_or_phone')
-    .in('id', studentIds) as unknown as {
-      data: Array<{ id: string; full_name: string; email_or_phone: string }>;
-      error: unknown;
-    };
-
-  const studentMap = new Map((students ?? []).map((s) => [s.id, s]));
+  const studentMap   = new Map((students ?? []).map((s) => [s.id, s]));
 
   return rawSubs.map((sub) => ({
     ...sub,

@@ -23,12 +23,14 @@ import type { Announcement, AnnouncementTarget, AnnouncementUrgency } from '../t
 import {
   getStoredAnnouncements,
   saveStoredAnnouncements,
+  fetchServerAnnouncements,
 } from '../announcementStore';
 
 export function AnnouncementManager() {
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   // Form State
   const [title, setTitle] = useState('');
@@ -44,6 +46,9 @@ export function AnnouncementManager() {
 
   useEffect(() => {
     loadAnnouncements();
+    void fetchServerAnnouncements().then((serverList) => {
+      setAnnouncements(serverList);
+    });
     window.addEventListener('announcements_updated', loadAnnouncements);
     return () => window.removeEventListener('announcements_updated', loadAnnouncements);
   }, [loadAnnouncements]);
@@ -76,20 +81,23 @@ export function AnnouncementManager() {
 
     const list = getStoredAnnouncements();
     if (editingId) {
+      const updatedFields = {
+        title: title.trim(),
+        content: content.trim(),
+        image_url: imageUrl.trim() || null,
+        target,
+        urgency,
+        expires_at: expiresAt || null,
+      };
       const next = list.map((a) =>
-        a.id === editingId
-          ? {
-              ...a,
-              title: title.trim(),
-              content: content.trim(),
-              image_url: imageUrl.trim() || null,
-              target,
-              urgency,
-              expires_at: expiresAt || null,
-            }
-          : a
+        a.id === editingId ? { ...a, ...updatedFields } : a
       );
       saveStoredAnnouncements(next);
+      void fetch('/api/announcements', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: editingId, ...updatedFields }),
+      });
     } else {
       const newAnn: Announcement = {
         id: `ann-${Date.now()}`,
@@ -103,21 +111,36 @@ export function AnnouncementManager() {
         is_active: true,
       };
       saveStoredAnnouncements([newAnn, ...list]);
+      void fetch('/api/announcements', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newAnn),
+      });
     }
     resetForm();
   };
 
   const handleToggleActive = (id: string) => {
     const list = getStoredAnnouncements();
-    const next = list.map((a) => (a.id === id ? { ...a, is_active: !a.is_active } : a));
+    const targetAnn = list.find((a) => a.id === id);
+    const nextActive = targetAnn ? !targetAnn.is_active : true;
+    const next = list.map((a) => (a.id === id ? { ...a, is_active: nextActive } : a));
     saveStoredAnnouncements(next);
+    void fetch('/api/announcements', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, is_active: nextActive }),
+    });
   };
 
   const handleDelete = (id: string) => {
-    if (!confirm('Apakah Anda yakin ingin menghapus pengumuman ini?')) return;
     const list = getStoredAnnouncements();
     const next = list.filter((a) => a.id !== id);
     saveStoredAnnouncements(next);
+    setConfirmDeleteId(null);
+    void fetch(`/api/announcements?id=${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+    });
   };
 
   const urgencyConfig = {
@@ -367,14 +390,35 @@ export function AnnouncementManager() {
                     >
                       <Edit2 className="w-4 h-4" />
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => handleDelete(ann.id)}
-                      className="p-1.5 rounded-lg text-xs font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors"
-                      title="Hapus"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    {confirmDeleteId === ann.id ? (
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => handleDelete(ann.id)}
+                          className="px-2 py-1 rounded-lg text-[10px] font-extrabold bg-rose-600 text-white hover:bg-rose-700 transition-colors"
+                          title="Konfirmasi Hapus"
+                        >
+                          Hapus
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setConfirmDeleteId(null)}
+                          className="px-2 py-1 rounded-lg text-[10px] font-bold bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-300"
+                          title="Batal"
+                        >
+                          Batal
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setConfirmDeleteId(ann.id)}
+                        className="p-1.5 rounded-lg text-xs font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors"
+                        title="Hapus"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
                   </div>
                 </div>
               );

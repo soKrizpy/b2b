@@ -2,7 +2,7 @@
 // 🗺️ Quest Map — 4-state node progression with inline quiz trigger.
 // Node states: COMPLETED | NEEDS_QUIZ | ACTIVE_NEXT | LOCKED | FINAL_BOSS
 import type { Metadata } from 'next';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { getSessionUser } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { getStudentModulesWithTopics } from '@/features/curriculum/queries';
 import { getStudentCertificates, TIER_CONFIG } from '@/features/certificates/queries';
@@ -13,8 +13,7 @@ export const metadata: Metadata = { title: '🗺️ Quest Map — Bits2Bytes' };
 export const dynamic = 'force-dynamic';
 
 export default async function QuestMapPage() {
-  const supabase = await createSupabaseServerClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getSessionUser();
   if (!user) redirect('/login');
 
   const [allModules, certificates] = await Promise.all([

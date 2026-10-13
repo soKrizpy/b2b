@@ -1,4 +1,4 @@
-﻿// src/features/auth/validation.ts
+// src/features/auth/validation.ts
 import { z } from 'zod';
 
 // ── Phone number helpers ──────────────────────────────────────────────────────
@@ -10,7 +10,7 @@ import { z } from 'zod';
 //   {phone}@student.mylms.app
 // We normalise all formats to the bare number before building that email.
 
-const PHONE_REGEX = /^(\+?62|0)8\d{7,12}$/;
+const PHONE_REGEX = /^(\+?62|0)?8\d{7,12}$/;
 
 export function isPhoneNumber(value: string): boolean {
   return PHONE_REGEX.test(value.replace(/\s/g, ''));

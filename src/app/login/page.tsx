@@ -2,7 +2,8 @@
 // Public sign-in page. Unauthenticated users are redirected here by middleware.
 // Next.js 15: searchParams is a Promise.
 import type { Metadata } from "next";
-import { SignInForm } from "@/features/auth/components/SignInForm";
+import Image from "next/image";
+import { SignInForm as SignInFormBase } from "@/features/auth/components/SignInForm";
 
 export const metadata: Metadata = { title: "Masuk — Bits2Bytes LMS" };
 
@@ -11,7 +12,7 @@ type Props = { searchParams: Promise<{ redirectTo?: string }> };
 export default async function LoginPage({ searchParams }: Props) {
   const { redirectTo } = await searchParams;
   return (
-    <main className="min-h-screen flex items-center justify-center relative overflow-hidden
+    <main className="min-h-screen py-[20px] flex items-center justify-center relative overflow-hidden
       bg-gradient-to-br from-slate-900 via-indigo-950 to-violet-950">
 
       {/* ── Decorative background orbs ──────────────────────── */}
@@ -34,29 +35,23 @@ export default async function LoginPage({ searchParams }: Props) {
       {/* ── Login card ──────────────────────────────────────── */}
       <div className="relative z-10 w-full max-w-md px-4 animate-fade-in-up">
 
-        {/* Top badge */}
-        <div className="flex justify-center mb-6">
-          <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm
-            text-white/80 text-xs font-semibold px-4 py-2 rounded-full
-            ring-1 ring-white/20 shadow-lg">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse-dot" />
-            Platform Belajar Coding #1 untuk Anak
-          </div>
-        </div>
-
         {/* Branding */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-20 h-20 rounded-3xl
             bg-gradient-to-br from-indigo-500 to-violet-600
-            shadow-2xl shadow-indigo-500/40 mb-5 animate-float ring-2 ring-white/20">
-            <span className="text-4xl">🎮</span>
+            shadow-2xl shadow-indigo-500/40 mb-5 animate-float ring-2 ring-white/20 overflow-hidden p-2">
+            <Image
+              src="/logo-b2b-dark.svg"
+              alt="Bits2Bytes Logo"
+              width={64}
+              height={64}
+              className="w-full h-full object-contain rounded-2xl"
+              priority
+            />
           </div>
           <h1 className="text-3xl font-extrabold text-white tracking-tight">
-            Bits<span className="text-indigo-300">2</span>Bytes
+            Bits<span className="text-[#7cc62f]">2</span>Bytes
           </h1>
-          <p className="mt-2 text-sm text-indigo-200/80 font-medium">
-            Belajar coding seru bersama instruktur terbaik!
-          </p>
         </div>
 
         {/* Form card */}
@@ -76,21 +71,6 @@ export default async function LoginPage({ searchParams }: Props) {
           Belum punya akun?{" "}
           <span className="text-indigo-300 font-semibold">Hubungi administrator.</span>
         </p>
-
-        {/* Role info pills */}
-        <div className="mt-6 flex items-center justify-center gap-3 flex-wrap">
-          {[
-            { icon: "⚙️", label: "Admin", color: "bg-violet-500/20 text-violet-300" },
-            { icon: "📚", label: "Guru",  color: "bg-sky-500/20    text-sky-300" },
-            { icon: "🎮", label: "Siswa", color: "bg-indigo-500/20 text-indigo-300" },
-          ].map(({ icon, label, color }) => (
-            <div key={label}
-              className={`flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full ${color}
-                ring-1 ring-white/10`}>
-              <span>{icon}</span> {label}
-            </div>
-          ))}
-        </div>
       </div>
     </main>
   );
@@ -99,7 +79,6 @@ export default async function LoginPage({ searchParams }: Props) {
 // ── Dark-themed wrapper for SignInForm ──────────────────────────
 // We wrap SignInForm here to apply dark-themed input overrides via className
 // without touching the form actions or bindings.
-import { SignInForm as SignInFormBase } from "@/features/auth/components/SignInForm";
 
 function SignInFormDark({ redirectTo }: { redirectTo?: string }) {
   return (
@@ -108,6 +87,7 @@ function SignInFormDark({ redirectTo }: { redirectTo?: string }) {
       [&_input]:placeholder:text-white/60 [&_input]:focus:ring-2 [&_input]:focus:ring-indigo-400
       [&_input]:focus:border-indigo-300 [&_input]:focus:shadow-[0_0_20px_rgba(129,140,248,0.35)]
       [&_input]:rounded-xl [&_input]:backdrop-blur-md [&_input]:hover:border-white/40
+      [&_button[type=button]]:text-white/70 [&_button[type=button]]:hover:text-white
       [&_button[type=submit]]:bg-gradient-to-r [&_button[type=submit]]:from-indigo-500
       [&_button[type=submit]]:to-violet-600 [&_button[type=submit]]:hover:from-indigo-600
       [&_button[type=submit]]:hover:to-violet-700 [&_button[type=submit]]:shadow-lg

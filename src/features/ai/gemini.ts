@@ -1,32 +1,40 @@
 // src/features/ai/gemini.ts
 // Shared Google Gemini client — server-only.
 // Import this only from Server Actions or Route Handlers, never from 'use client' files.
-import 'server-only';
-import { GoogleGenerativeAI } from '@google/generative-ai';
 
-if (!process.env.GEMINI_API_KEY) {
-  // Warn loudly at startup — won't crash build but AI features will return errors.
-  console.warn('[gemini] GEMINI_API_KEY is not set — AI features will be disabled.');
+import 'server-only';
+import { GoogleGenAI } from '@google/genai';
+
+let _aiInstance: GoogleGenAI | null = null;
+
+export function hasGeminiApiKey(): boolean {
+  return Boolean(process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY.trim().length > 0);
 }
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY ?? '');
+export function getAiClient(): GoogleGenAI {
+  const apiKey = process.env.GEMINI_API_KEY?.trim();
+  if (!apiKey) {
+    throw new Error('GEMINI_API_KEY is not configured on the server.');
+  }
+  if (!_aiInstance) {
+    _aiInstance = new GoogleGenAI({
+      apiKey,
+      httpOptions: {
+        headers: {
+          'User-Agent': 'aistudio-build',
+        },
+      },
+    });
+  }
+  return _aiInstance;
+}
 
-/** Default model — gemini-2.0-flash is fast & cheap for structured JSON output */
-export const geminiFlash = genAI.getGenerativeModel({
-  model: 'gemini-2.0-flash',
-  generationConfig: {
-    temperature:      0.7,
-    topP:             0.9,
-    maxOutputTokens:  8192,
+export const ai = new Proxy({} as GoogleGenAI, {
+  get(_target, prop, receiver) {
+    const client = getAiClient();
+    const value = Reflect.get(client, prop, receiver);
+    return typeof value === 'function' ? value.bind(client) : value;
   },
 });
 
-/** Pro model for richer explanations (chatbot, report drafts) */
-export const geminiPro = genAI.getGenerativeModel({
-  model: 'gemini-2.0-flash',
-  generationConfig: {
-    temperature:      0.9,
-    topP:             0.95,
-    maxOutputTokens:  4096,
-  },
-});
+export const GEMINI_FLASH_MODEL = 'gemini-3.8-flash';

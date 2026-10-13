@@ -1,4 +1,4 @@
-﻿// src/__tests__/auth-login.test.ts
+// src/__tests__/auth-login.test.ts
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import React from 'react';
@@ -255,14 +255,14 @@ describe('signIn action', () => {
     setupSupabaseAuth({ id: 'u1', user_metadata: {} }, null);
     (resolveUserRole as ReturnType<typeof vi.fn>).mockResolvedValue('admin');
     await expect(signIn(null, fd({ identifier: 'admin@b2b.id', password: 'adminpw1' })))
-      .rejects.toThrow('REDIRECT:/admin/dashboard');
+      .resolves.toEqual({ success: true, redirectTo: '/admin/dashboard' });
   });
 
   it('redirects teacher to /teacher/dashboard on successful email login', async () => {
     setupSupabaseAuth({ id: 'u2', user_metadata: {} }, null);
     (resolveUserRole as ReturnType<typeof vi.fn>).mockResolvedValue('teacher');
     await expect(signIn(null, fd({ identifier: 'teacher@b2b.id', password: 'teachpw1' })))
-      .rejects.toThrow('REDIRECT:/teacher/dashboard');
+      .resolves.toEqual({ success: true, redirectTo: '/teacher/dashboard' });
   });
 
   // ── Phone + PIN login (the new student flow) ───────────────────────────────
@@ -272,7 +272,7 @@ describe('signIn action', () => {
     (createSupabaseServerClient as ReturnType<typeof vi.fn>).mockResolvedValue({
       auth: {
         signInWithPassword: vi.fn().mockImplementation(async ({ email }: { email: string }) => {
-          capturedEmail = email;
+          capturedEmail ??= email;
           return { data: { user: null }, error: { message: 'Invalid login credentials' } };
         }),
         signOut: vi.fn().mockResolvedValue({}),
@@ -288,7 +288,7 @@ describe('signIn action', () => {
     (createSupabaseServerClient as ReturnType<typeof vi.fn>).mockResolvedValue({
       auth: {
         signInWithPassword: vi.fn().mockImplementation(async ({ email }: { email: string }) => {
-          capturedEmail = email;
+          capturedEmail ??= email;
           return { data: { user: null }, error: { message: 'Invalid' } };
         }),
         signOut: vi.fn().mockResolvedValue({}),
@@ -303,7 +303,7 @@ describe('signIn action', () => {
     setupSupabaseAuth({ id: 'u3', user_metadata: {} }, null);
     (resolveUserRole as ReturnType<typeof vi.fn>).mockResolvedValue('student');
     await expect(signIn(null, fd({ identifier: '081234567890', password: '123456' })))
-      .rejects.toThrow('REDIRECT:/student/dashboard');
+      .resolves.toEqual({ success: true, redirectTo: '/student/dashboard' });
   });
 
   it('returns generic error when phone+PIN credentials are wrong', async () => {
@@ -319,21 +319,21 @@ describe('signIn action', () => {
     setupSupabaseAuth({ id: 'u1', user_metadata: {} }, null);
     (resolveUserRole as ReturnType<typeof vi.fn>).mockResolvedValue('admin');
     await expect(signIn(null, fd({ identifier: 'a@b.com', password: 'adminpw1', redirectTo: '/admin/sessions' })))
-      .rejects.toThrow('REDIRECT:/admin/sessions');
+      .resolves.toEqual({ success: true, redirectTo: '/admin/sessions' });
   });
 
   it('falls back to role dashboard when redirectTo=/ (the blink-loop bug)', async () => {
     setupSupabaseAuth({ id: 'u1', user_metadata: {} }, null);
     (resolveUserRole as ReturnType<typeof vi.fn>).mockResolvedValue('admin');
     await expect(signIn(null, fd({ identifier: 'a@b.com', password: 'adminpw1', redirectTo: '/' })))
-      .rejects.toThrow('REDIRECT:/admin/dashboard');
+      .resolves.toEqual({ success: true, redirectTo: '/admin/dashboard' });
   });
 
   it('falls back to role dashboard when redirectTo targets a different role', async () => {
     setupSupabaseAuth({ id: 'u3', user_metadata: {} }, null);
     (resolveUserRole as ReturnType<typeof vi.fn>).mockResolvedValue('student');
     await expect(signIn(null, fd({ identifier: '081234567890', password: '123456', redirectTo: '/admin/dashboard' })))
-      .rejects.toThrow('REDIRECT:/student/dashboard');
+      .resolves.toEqual({ success: true, redirectTo: '/student/dashboard' });
   });
 });
 

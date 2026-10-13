@@ -1,12 +1,12 @@
-﻿// src/features/curriculum/queries.ts
+// src/features/curriculum/queries.ts
 // Read-side query helpers for modules and topics.
 // All queries use the admin client (bypasses RLS) â€” called only from
 // Server Components, Server Actions, and Route Handlers.
 
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
-import type { ModuleRow, TopicRow, StudentModuleRow } from '@/types/database';
+import type { ModuleRow, TopicRow } from '@/types/database';
 
-// â”€â”€ Result shapes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Result shapes ─────────────────────────────────────────────────────────────
 
 export interface TopicWithChallengeCount extends TopicRow {
   challenge_count: number;
@@ -16,7 +16,7 @@ export interface ModuleWithTopics extends ModuleRow {
   topics: TopicWithChallengeCount[];
 }
 
-// â”€â”€ Modules â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Modules ───────────────────────────────────────────────────────────────────
 
 /** All modules, ordered newest-first. Admin use. */
 export async function getAllModules(): Promise<ModuleRow[]> {
@@ -64,42 +64,40 @@ export async function getStudentModulesWithTopics(studentId: string): Promise<Mo
 
   const moduleIds = enrollments.map((e) => e.module_id);
 
-  // 2. Modules
-  const { data: modules, error: modErr } = await db
-    .from('modules')
-    .select('id, title, description, level, gamification_type, is_active, created_at')
-    .in('id', moduleIds)
-    .order('created_at', { ascending: false });
+  // 2 & 3. Fetch Modules and Published Topics in parallel
+  const [{ data: modules, error: modErr }, { data: topics, error: topErr }] = await Promise.all([
+    db
+      .from('modules')
+      .select('id, title, description, level, gamification_type, is_active, created_at')
+      .in('id', moduleIds)
+      .order('created_at', { ascending: false }),
+    db
+      .from('topics')
+      .select('id, module_id, title, order_index, description, project_link, topic_link, engine_topic_id, lesson_content, status, published_at, created_at')
+      .in('module_id', moduleIds)
+      .eq('status', 'published')
+      .order('order_index', { ascending: true }),
+  ]);
 
   if (modErr || !modules?.length) return [];
-
-  // 3. Published topics for those modules
-  const { data: topics, error: topErr } = await db
-    .from('topics')
-    .select('id, module_id, title, order_index, description, project_link, topic_link, engine_topic_id, lesson_content, status, published_at, created_at')
-    .in('module_id', moduleIds)
-    .eq('status', 'published')
-    .order('order_index', { ascending: true });
-
   if (topErr) { console.error('[getStudentModulesWithTopics] topics', topErr.message); }
 
   const topicList = (topics ?? []) as unknown as TopicRow[];
   const topicIds  = topicList.map((t) => t.id);
 
-  // 4. Challenge counts per topic
+  // 4. Challenge counts per topic (filtered by topicIds in SQL)
   const challengeCountMap = new Map<number, number>();
   if (topicIds.length > 0) {
     const { data: challenges } = await db
       .from('challenges')
-      .select('topic_id') as unknown as {
+      .select('topic_id')
+      .in('topic_id', topicIds) as unknown as {
         data: Array<{ topic_id: number }>;
         error: unknown;
       };
 
     (challenges ?? []).forEach((c) => {
-      if (topicIds.includes(c.topic_id)) {
-        challengeCountMap.set(c.topic_id, (challengeCountMap.get(c.topic_id) ?? 0) + 1);
-      }
+      challengeCountMap.set(c.topic_id, (challengeCountMap.get(c.topic_id) ?? 0) + 1);
     });
   }
 
@@ -111,9 +109,9 @@ export async function getStudentModulesWithTopics(studentId: string): Promise<Mo
   }));
 }
 
-// â”€â”€ Topics â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Topics ────────────────────────────────────────────────────────────────────
 
-/** All topics for a module (admin â€” all statuses). */
+/** All topics for a module (admin — all statuses). */
 export async function getTopicsByModuleId(moduleId: number): Promise<TopicRow[]> {
   const db = createSupabaseAdminClient();
   const { data, error } = await db
@@ -139,8 +137,8 @@ export async function getTopicById(topicId: number): Promise<TopicRow | null> {
   return data as unknown as TopicRow | null;
 }
 
-/** All modules with their topics and challenge counts. Admin curriculum view. */
-export async function getAllModulesWithTopics(): Promise<ModuleWithTopics[]> {
+/** Internal uncached fetch for all modules + topics + challenge counts */
+async function fetchAllModulesWithTopics(): Promise<ModuleWithTopics[]> {
   const db = createSupabaseAdminClient();
 
   const { data: modules, error: modErr } = await db
@@ -167,7 +165,8 @@ export async function getAllModulesWithTopics(): Promise<ModuleWithTopics[]> {
   if (topicIds.length > 0) {
     const { data: challenges } = await db
       .from('challenges')
-      .select('topic_id') as unknown as {
+      .select('topic_id')
+      .in('topic_id', topicIds) as unknown as {
         data: Array<{ topic_id: number }>;
         error: unknown;
       };
@@ -183,6 +182,11 @@ export async function getAllModulesWithTopics(): Promise<ModuleWithTopics[]> {
       .filter((t) => t.module_id === mod.id)
       .map((t) => ({ ...t, challenge_count: challengeCountMap.get(t.id) ?? 0 })),
   }));
+}
+
+/** All modules with their topics and challenge counts. Admin curriculum view. */
+export async function getAllModulesWithTopics(): Promise<ModuleWithTopics[]> {
+  return fetchAllModulesWithTopics();
 }
 
 
@@ -286,3 +290,28 @@ export async function getStudentModuleProgress(
   });
 }
 
+export interface TopicProgressSummary {
+  topic_id: number;
+  engine_topic_id: string;
+  xp_earned: number;
+  best_quiz_score: number;
+  completed_at: string;
+}
+
+/**
+ * Returns completed topics for a student from topic_progress.
+ */
+export async function getStudentCompletedTopics(studentId: string): Promise<TopicProgressSummary[]> {
+  const db = createSupabaseAdminClient();
+  const { data, error } = await db
+    .from('topic_progress')
+    .select('topic_id, engine_topic_id, xp_earned, best_quiz_score, completed_at')
+    .eq('student_id', studentId)
+    .order('completed_at', { ascending: false });
+
+  if (error) {
+    console.error('[getStudentCompletedTopics]', error.message);
+    return [];
+  }
+  return (data ?? []) as TopicProgressSummary[];
+}

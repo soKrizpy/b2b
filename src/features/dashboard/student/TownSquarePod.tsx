@@ -497,8 +497,8 @@ export function TownSquarePod({ meeting, nextMeeting, forceState, gamData, curre
       <PetWardrobeModal
         studentName={gamData.fullName}
         coins={gamData.coins}
-        inventory={[]}
-        equippedHatId={null}
+        inventory={gamData.inventory ?? []}
+        equippedHatId={gamData.equippedHatId ?? null}
         onClose={() => setWardrobeOpen(false)}
       />
     )}

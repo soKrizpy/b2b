@@ -1,4 +1,4 @@
-﻿// src/features/curriculum/validation.ts
+// src/features/curriculum/validation.ts
 // Zod schemas and inferred types for the curriculum JSON import/export format.
 // Safe to import from both 'use server' actions and client components.
 // Contains NO server-only imports.
@@ -131,7 +131,14 @@ export function extractTopicQuiz(lessonContent: unknown): QuizQuestion[] {
  * module's `description` field encoded as JSON prefixed with "FINAL_ASSESSMENT:".
  * This keeps the schema additive without a new column.
  */
-export function extractFinalAssessment(rawDescription: string | null): FinalAssessment | null {
+export function extractFinalAssessment(
+  rawDescription: string | null,
+  structuredAssessment?: unknown
+): FinalAssessment | null {
+  if (structuredAssessment) {
+    const parsed = finalAssessmentSchema.safeParse(structuredAssessment);
+    if (parsed.success) return parsed.data;
+  }
   if (!rawDescription) return null;
   const PREFIX = 'FINAL_ASSESSMENT:';
   if (!rawDescription.startsWith(PREFIX)) return null;

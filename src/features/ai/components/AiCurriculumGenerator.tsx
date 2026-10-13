@@ -3,7 +3,7 @@
 // Admin tool: generate curriculum JSON from a topic title using Gemini.
 // Renders a floating panel that outputs into the parent's import textarea.
 
-import { useState, useActionState } from 'react';
+import { useState, useActionState, useEffect, useRef } from 'react';
 import { generateCurriculum, type AiResult } from '@/features/ai/actions';
 
 interface Props {
@@ -16,12 +16,16 @@ export function AiCurriculumGenerator({ moduleTitle, onGenerated }: Props) {
   const [state,  dispatch,  pending] = useActionState<AiResult | null, FormData>(
     generateCurriculum, null
   );
+  const onGeneratedRef = useRef(onGenerated);
+  onGeneratedRef.current = onGenerated;
+  const generatedData = state?.success ? state.data : null;
 
   // Auto-fill parent when successful
-  if (state?.success && state.data) {
-    onGenerated(state.data);
-    // reset after wiring — do this via effect-like pattern with a consumed flag
-  }
+  useEffect(() => {
+    if (generatedData) {
+      onGeneratedRef.current(generatedData);
+    }
+  }, [generatedData]);
 
   return (
     <>

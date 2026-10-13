@@ -1,5 +1,5 @@
 // src/features/announcements/announcementStore.ts
-// Client-side announcement state & localStorage persistence store.
+// Server-synced announcement store with localStorage cache & per-device dismissal persistence.
 
 import type { Announcement } from './types';
 
@@ -45,10 +45,28 @@ export function saveStoredAnnouncements(list: Announcement[]): void {
   if (typeof window === 'undefined') return;
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
-    // Trigger custom event so other components on same page re-render
     window.dispatchEvent(new Event('announcements_updated'));
   } catch (err) {
     console.error('Failed to save announcements:', err);
+  }
+}
+
+/**
+ * Fetches announcements from `/api/announcements` and updates the local cache.
+ */
+export async function fetchServerAnnouncements(): Promise<Announcement[]> {
+  if (typeof window === 'undefined') return INITIAL_ANNOUNCEMENTS;
+  try {
+    const res = await fetch('/api/announcements', { cache: 'no-store' });
+    if (!res.ok) return getStoredAnnouncements();
+    const data = (await res.json()) as { announcements?: Announcement[] };
+    if (Array.isArray(data.announcements) && data.announcements.length > 0) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data.announcements));
+      return data.announcements;
+    }
+    return getStoredAnnouncements();
+  } catch {
+    return getStoredAnnouncements();
   }
 }
 

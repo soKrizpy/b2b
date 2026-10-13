@@ -42,19 +42,35 @@ export async function getQuestMapData(
   const db       = createSupabaseAdminClient();
   const topicIds = mod.topics.map((t) => t.id);
 
-  // ── 1. Batch: all quiz attempts for this student × these topics ──────────
-  const { data: attempts } = await (db
-    .from('topic_quiz_attempts')
-    .select('topic_id, attempt_num, score, submitted_at')
-    .eq('student_id', studentId)
-    .in('topic_id', topicIds) as unknown as Promise<{
-      data: Array<{ topic_id: number; attempt_num: number; score: number; submitted_at: string }> | null;
-      error: unknown;
-    }>);
+  // ── 1 & 2. Parallel batch: quiz attempts + session attendance unlock ────────
+  const [attemptsRes, joinRowsRes] = await Promise.all([
+    topicIds.length > 0
+      ? (db
+          .from('topic_quiz_attempts')
+          .select('topic_id, attempt_num, score, submitted_at')
+          .eq('student_id', studentId)
+          .in('topic_id', topicIds) as unknown as Promise<{
+            data: Array<{ topic_id: number; attempt_num: number; score: number; submitted_at: string }> | null;
+            error: unknown;
+          }>)
+      : Promise.resolve({ data: [], error: null }),
+    db
+      .from('meeting_students')
+      .select('meeting_id, has_joined, meetings!inner(is_completed)')
+      .eq('student_id', studentId)
+      .eq('has_joined', true) as unknown as Promise<{
+        data: Array<{
+          meeting_id: number;
+          has_joined: boolean;
+          meetings: { is_completed: boolean };
+        }> | null;
+        error: unknown;
+      }>,
+  ]);
 
   // Best score + count per topic
   const attemptsMap = new Map<number, { count: number; bestScore: number }>();
-  for (const a of attempts ?? []) {
+  for (const a of attemptsRes.data ?? []) {
     const prev = attemptsMap.get(a.topic_id) ?? { count: 0, bestScore: 0 };
     attemptsMap.set(a.topic_id, {
       count:     prev.count + 1,
@@ -62,22 +78,7 @@ export async function getQuestMapData(
     });
   }
 
-  // ── 2. Batch: has the student attended a completed session? ──────────────
-  // isUnlocked = any (has_joined=true, meeting.is_completed=true)
-  const { data: joinRows } = await (db
-    .from('meeting_students')
-    .select('meeting_id, has_joined, meetings!inner(is_completed)')
-    .eq('student_id', studentId)
-    .eq('has_joined', true) as unknown as Promise<{
-      data: Array<{
-        meeting_id: number;
-        has_joined: boolean;
-        meetings: { is_completed: boolean };
-      }> | null;
-      error: unknown;
-    }>);
-
-  const sessionUnlocked = (joinRows ?? []).some(
+  const sessionUnlocked = (joinRowsRes.data ?? []).some(
     (r) => r.has_joined && r.meetings?.is_completed === true
   );
 

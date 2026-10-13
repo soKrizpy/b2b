@@ -1,4 +1,4 @@
-﻿// src/features/parent-report/queries.ts
+// src/features/parent-report/queries.ts
 // Data access for the public parent report page.
 // All reads use the admin client (server-only) — the page is token-gated,
 // not session-gated, so we bypass RLS deliberately.
@@ -86,32 +86,61 @@ export async function getParentReportData(
 
   const studentId = link.student_id;
 
-  // ── 2. Student name ────────────────────────────────────────────────────────
-  const { data: student } = await (db
-    .from('students')
-    .select('full_name')
-    .eq('id', studentId)
-    .maybeSingle() as unknown as Promise<{
-      data: { full_name: string } | null;
-      error: unknown;
-    }>);
+  // ── 2–6. Fetch student, attendance, topic progress, invoice, and certificates in parallel ──
+  const [
+    { data: student },
+    { data: msRows },
+    { data: topicRows },
+    invoiceResult,
+    certificates,
+  ] = await Promise.all([
+    db
+      .from('students')
+      .select('full_name')
+      .eq('id', studentId)
+      .maybeSingle() as unknown as Promise<{
+        data: { full_name: string } | null;
+        error: unknown;
+      }>,
+    db
+      .from('meeting_students')
+      .select('meeting_id, has_joined')
+      .eq('student_id', studentId) as unknown as Promise<{
+        data: Array<{ meeting_id: number; has_joined: boolean }>;
+        error: unknown;
+      }>,
+    db
+      .from('topic_progress')
+      .select('engine_topic_id, xp_earned, best_quiz_score, completed_at, topics(title)')
+      .eq('student_id', studentId)
+      .order('completed_at', { ascending: false }) as unknown as Promise<{
+        data: Array<{
+          engine_topic_id: string;
+          xp_earned: number;
+          best_quiz_score: number;
+          completed_at: string;
+          topics: { title: string } | null;
+        }>;
+        error: unknown;
+      }>,
+    link.invoice_id
+      ? (db
+          .from('invoices')
+          .select(
+            'month_year, total_meetings, attended_meetings, price_per_meeting, total_amount, bank_account, status'
+          )
+          .eq('id', link.invoice_id)
+          .maybeSingle() as unknown as Promise<{
+            data: InvoiceSummary | null;
+            error: unknown;
+          }>)
+      : Promise.resolve({ data: null, error: null }),
+    getStudentCertificates(studentId),
+  ]);
 
   const studentName = student?.full_name ?? 'Siswa';
-
-  // ── 3. All meetings for this student with attendance status ────────────────
-  // We fetch via meeting_students so we get has_joined per session.
-  // is_completed filters to teacher-confirmed finished sessions for display;
-  // has_joined drives the attendance count for billing.
-  const { data: msRows } = await (db
-    .from('meeting_students')
-    .select('meeting_id, has_joined')
-    .eq('student_id', studentId) as unknown as Promise<{
-      data: Array<{ meeting_id: number; has_joined: boolean }>;
-      error: unknown;
-    }>);
-
-  const allRows  = msRows ?? [];
-  const meetingIds = allRows.map((ms) => ms.meeting_id);
+  const allRows     = msRows ?? [];
+  const meetingIds  = allRows.map((ms) => ms.meeting_id);
 
   // Build a quick lookup: meetingId → has_joined
   const hasJoinedMap = new Map<number, boolean>(
@@ -121,7 +150,7 @@ export async function getParentReportData(
   // Attended count (used for billing verification — mirrors production logic)
   const attendedCount = allRows.filter((ms) => ms.has_joined).length;
 
-  // ── 4. Completed sessions (display list) ──────────────────────────────────
+  // Completed sessions (display list)
   let completedSessions: SessionItem[] = [];
 
   if (meetingIds.length > 0) {
@@ -147,22 +176,6 @@ export async function getParentReportData(
     }));
   }
 
-  // ── 5. Engine topic progress ───────────────────────────────────────────────
-  const { data: topicRows } = await (db
-    .from('topic_progress')
-    .select('engine_topic_id, xp_earned, best_quiz_score, completed_at, topics(title)')
-    .eq('student_id', studentId)
-    .order('completed_at', { ascending: false }) as unknown as Promise<{
-      data: Array<{
-        engine_topic_id: string;
-        xp_earned: number;
-        best_quiz_score: number;
-        completed_at: string;
-        topics: { title: string } | null;
-      }>;
-      error: unknown;
-    }>);
-
   const completedTopics: CompletedTopic[] = (topicRows ?? []).map((t) => ({
     engine_topic_id: t.engine_topic_id,
     topic_title:     t.topics?.title ?? t.engine_topic_id,
@@ -172,26 +185,7 @@ export async function getParentReportData(
   }));
 
   const totalXp = completedTopics.reduce((sum, t) => sum + t.xp_earned, 0);
-
-  // ── 6. Invoice (if the admin linked one to this report) ────────────────────
-  let invoice: InvoiceSummary | null = null;
-
-  if (link.invoice_id) {
-    const { data: inv } = await (db
-      .from('invoices')
-      .select(
-        'month_year, total_meetings, attended_meetings, price_per_meeting, total_amount, bank_account, status'
-      )
-      .eq('id', link.invoice_id)
-      .maybeSingle() as unknown as Promise<{
-        data: InvoiceSummary | null;
-        error: unknown;
-      }>);
-
-    invoice = inv ?? null;
-  }
-
-  const certificates = await getStudentCertificates(studentId);
+  const invoice: InvoiceSummary | null = invoiceResult.data ?? null;
 
   return {
     studentName,

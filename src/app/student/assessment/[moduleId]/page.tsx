@@ -3,7 +3,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { getSessionUser } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { extractFinalAssessment } from '@/features/curriculum/validation';
 import { getCertificateByModuleAndStudent, TIER_CONFIG } from '@/features/certificates/queries';
@@ -19,19 +19,21 @@ export default async function AssessmentPage({ params }: Props) {
   const id = Number(moduleId);
   if (!id) notFound();
 
-  const supabase = await createSupabaseServerClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getSessionUser();
   if (!user) redirect('/login');
 
   const db = createSupabaseAdminClient();
-  const { data: moduleRow } = await (db
-    .from('modules')
-    .select('id, title, description')
-    .eq('id', id)
-    .maybeSingle() as unknown as Promise<{
-      data: { id: number; title: string | null; description: string | null } | null;
-      error: unknown;
-    }>);
+  const [{ data: moduleRow }, existingCert] = await Promise.all([
+    db
+      .from('modules')
+      .select('id, title, description')
+      .eq('id', id)
+      .maybeSingle() as unknown as Promise<{
+        data: { id: number; title: string | null; description: string | null } | null;
+        error: unknown;
+      }>,
+    getCertificateByModuleAndStudent(user.id, id),
+  ]);
 
   if (!moduleRow) notFound();
 
@@ -52,7 +54,6 @@ export default async function AssessmentPage({ params }: Props) {
   }
 
   // If already certified, show existing certificate
-  const existingCert = await getCertificateByModuleAndStudent(user.id, id);
   if (existingCert) {
     const cfg = TIER_CONFIG[existingCert.tier as keyof typeof TIER_CONFIG];
     return (
