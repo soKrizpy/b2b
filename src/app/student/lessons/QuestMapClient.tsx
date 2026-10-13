@@ -16,6 +16,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { QuizModal } from '@/features/quiz/components/QuizModal';
+import { LevelUpCelebrationModal } from '@/features/dashboard/student/LevelUpCelebrationModal';
 import { TIER_CONFIG } from '@/features/certificates/queries';
 import type { QuestMapData, QuestTopicNode, NodeStatus } from '@/features/quiz/questMapQueries';
 import type { TopicQuizAttemptRow } from '@/types/database';
@@ -112,13 +113,13 @@ function NodeCircle({
   const getClasses = () => {
     switch (status as NodeStatus) {
       case 'COMPLETED':
-        return 'bg-gradient-to-br from-emerald-500 to-teal-600 text-white border-2 border-emerald-300 shadow-emerald-500/30 ring-1 ring-emerald-400/40 hover:scale-110 cursor-pointer';
+        return 'bg-gradient-to-br from-emerald-500 via-teal-600 to-emerald-700 text-white border-2 border-emerald-300 shadow-[0_0_20px_rgba(16,185,129,0.45)] ring-2 ring-emerald-400/40 hover:scale-110 cursor-pointer';
       case 'NEEDS_QUIZ':
-        return 'bg-gradient-to-br from-amber-400 to-orange-500 text-black border-2 border-yellow-200 ring-4 ring-amber-400/50 shadow-amber-500/30 animate-pulse hover:scale-110 cursor-pointer';
+        return 'bg-gradient-to-br from-amber-400 via-orange-500 to-amber-600 text-black border-2 border-yellow-200 ring-4 ring-amber-400/60 shadow-[0_0_25px_rgba(245,158,11,0.6)] animate-pulse hover:scale-110 cursor-pointer';
       case 'ACTIVE_NEXT':
-        return 'bg-zinc-800 text-cyan-300 border-2 border-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.35)] hover:scale-110 cursor-pointer';
+        return 'bg-zinc-900 text-cyan-300 border-2 border-cyan-400 shadow-[0_0_20px_rgba(6,182,212,0.4)] ring-2 ring-cyan-400/30 hover:scale-110 cursor-pointer';
       default:
-        return 'bg-zinc-800/50 text-zinc-600 border border-zinc-700/40 opacity-60 cursor-default';
+        return 'bg-zinc-900/60 text-zinc-600 border border-zinc-700/40 opacity-55 cursor-default';
     }
   };
 
@@ -357,11 +358,14 @@ export function QuestMapClient({ questData, cert }: Props) {
     new Map(nodes.map((n) => [n.topic.id, n])).values()
   );
 
+  const [showCelebration, setShowCelebration] = useState(false);
+
   const rows = chunk(uniqueNodes, chunkSize);
 
   const handleQuizComplete = useCallback(() => {
     setQuizNode(null);
     setPopover(null);
+    setShowCelebration(true);
     router.refresh();
   }, [router]);
 
@@ -383,6 +387,29 @@ export function QuestMapClient({ questData, cert }: Props) {
 
   return (
     <div className="w-full max-w-2xl mx-auto px-4 py-8 flex flex-col gap-8 md:gap-10">
+
+      {/* ── RPG Map Legend (Zero-Pill Discipline) ── */}
+      <div className="flex items-center justify-center gap-3 sm:gap-4 text-xs text-zinc-400 flex-wrap pb-2 border-b border-zinc-800/60 select-none">
+        <span className="flex items-center gap-1.5">
+          <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.6)]" />
+          <span>Waypoint Tuntas</span>
+        </span>
+        <span aria-hidden="true" className="text-zinc-600">·</span>
+        <span className="flex items-center gap-1.5">
+          <span className="w-2.5 h-2.5 rounded-full bg-amber-500 shadow-[0_0_6px_rgba(245,158,11,0.6)] animate-pulse" />
+          <span>Ujian Rune</span>
+        </span>
+        <span aria-hidden="true" className="text-zinc-600">·</span>
+        <span className="flex items-center gap-1.5">
+          <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 shadow-[0_0_6px_rgba(6,182,212,0.6)]" />
+          <span>Siap Dipelajari</span>
+        </span>
+        <span aria-hidden="true" className="text-zinc-600">·</span>
+        <span className="flex items-center gap-1.5">
+          <span className="w-2.5 h-2.5 rounded-full bg-zinc-600" />
+          <span>Terkunci</span>
+        </span>
+      </div>
 
       {rows.map((row, rowIdx) => {
         const isReverse = rowIdx % 2 === 1;
@@ -412,7 +439,9 @@ export function QuestMapClient({ questData, cert }: Props) {
                   hConnActive = nextDisplayNode.status === 'COMPLETED';
                 }
               }
-              const hConnLine = hConnActive ? 'bg-emerald-500/60' : 'bg-zinc-800';
+              const hConnLine = hConnActive
+                ? 'bg-gradient-to-r from-emerald-400 via-teal-400 to-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]'
+                : 'bg-zinc-800';
 
               return (
                 <div key={node.topic.id} className="flex items-center flex-1 min-w-0">
@@ -436,8 +465,10 @@ export function QuestMapClient({ questData, cert }: Props) {
                     {/* Straight vertical drop connector */}
                     {hasVerticalDrop && (
                       <div
-                        className={`absolute top-full left-1/2 -translate-x-1/2 w-1 h-8 md:h-10 z-0 pointer-events-none transition-colors ${
-                          dropActive ? 'bg-emerald-500/60' : 'bg-zinc-800'
+                        className={`absolute top-full left-1/2 -translate-x-1/2 w-1.5 h-8 md:h-10 z-0 pointer-events-none transition-colors rounded-full ${
+                          dropActive
+                            ? 'bg-gradient-to-b from-emerald-400 to-teal-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]'
+                            : 'bg-zinc-800'
                         }`}
                       />
                     )}
@@ -457,7 +488,7 @@ export function QuestMapClient({ questData, cert }: Props) {
 
                   {/* Horizontal connector strictly between adjacent display items */}
                   {!isLastInDisplay && (
-                    <div className={`h-1 flex-1 ${hConnLine} transition-colors`} />
+                    <div className={`h-1.5 flex-1 ${hConnLine} transition-colors rounded-full`} />
                   )}
                 </div>
               );
@@ -555,6 +586,16 @@ export function QuestMapClient({ questData, cert }: Props) {
           onComplete={handleQuizComplete}
         />
       )}
+
+      {/* ── Level-Up / Victory Celebration Modal ── */}
+      <LevelUpCelebrationModal
+        isOpen={showCelebration}
+        onClose={() => setShowCelebration(false)}
+        level={Math.max(2, Math.floor(uniqueNodes.filter((n) => n.status === 'COMPLETED').length / 2) + 1)}
+        totalXp={uniqueNodes.filter((n) => n.status === 'COMPLETED').length * 40}
+        coins={uniqueNodes.filter((n) => n.status === 'COMPLETED').length * 15}
+        studentName="Petualang Kode"
+      />
     </div>
   );
 }
