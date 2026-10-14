@@ -41,9 +41,10 @@ const ROLE_NAV: Record<UserRole, Array<{ href: string; label: string; icon: stri
     { href: "/teacher/submissions", label: "Submissions", icon: "📝" },
   ],
   student: [
-    { href: "/student/dashboard",  label: "Town Square", icon: "🏰" },
-    { href: "/student/lessons",    label: "Quest Map",   icon: "🗺️" },
-    { href: "/student/parent-hub", label: "Parent Hub",  icon: "👨‍👩‍👧" },
+    { href: "/student/dashboard",    label: "Town Square",      icon: "🏰" },
+    { href: "/student/lessons",      label: "Quest Map",        icon: "🗺️" },
+    { href: "/student/achievements", label: "Lencana & Target", icon: "🏆" },
+    { href: "/student/parent-hub",   label: "Parent Hub",       icon: "👨‍👩‍👧" },
   ],
 };
 

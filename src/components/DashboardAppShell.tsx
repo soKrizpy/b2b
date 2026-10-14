@@ -20,6 +20,7 @@ import {
   FileCheck2,
   Sparkles,
   Map,
+  Trophy,
   HeartHandshake,
   ChevronLeft,
   ChevronRight,
@@ -58,9 +59,10 @@ const ROLE_NAV: Record<
     { href: '/teacher/submissions', label: 'Submissions', icon: FileCheck2 },
   ],
   student: [
-    { href: '/student/dashboard',  label: 'Town Square', icon: Sparkles },
-    { href: '/student/lessons',    label: 'Quest Map',   icon: Map },
-    { href: '/student/parent-hub', label: 'Parent Hub',  icon: HeartHandshake },
+    { href: '/student/dashboard',    label: 'Town Square',      icon: Sparkles },
+    { href: '/student/lessons',      label: 'Quest Map',        icon: Map },
+    { href: '/student/achievements', label: 'Lencana & Target', icon: Trophy },
+    { href: '/student/parent-hub',   label: 'Parent Hub',       icon: HeartHandshake },
   ],
 };
 

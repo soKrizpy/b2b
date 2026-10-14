@@ -9,11 +9,8 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { TownSquarePod } from '@/features/dashboard/student/TownSquarePod';
 import { CyberPetWidget } from '@/features/pet/components/CyberPetWidget';
-import { CertificateBadge } from '@/features/certificates/components/CertificateBadge';
 import { BillingNoticeModal } from '@/features/invoices/components/BillingNoticeModal';
 import { AnnouncementBanner } from '@/features/announcements/components/AnnouncementBanner';
-import { StudentAchievementBadges } from '@/features/dashboard/student/StudentAchievementBadges';
-import { StudentModuleProgressChart } from '@/features/dashboard/student/StudentModuleProgressChart';
 import { LevelUpCelebrationModal, getAdventurerTitle } from '@/features/dashboard/student/LevelUpCelebrationModal';
 import { getFantasyLocationForTopic } from '@/features/quiz/fantasyIsland';
 import { calculateLevel } from '@/features/pet/lib/levelCalc';
@@ -633,6 +630,16 @@ export function StudentDashboardShell({
                 </span>
               </div>
             </div>
+
+            <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
+              <Link
+                href="/student/achievements"
+                className="text-[11px] font-bold text-cyan-600 dark:text-cyan-400 hover:underline flex items-center justify-between"
+              >
+                <span>Lihat Detail Target Modul</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
           </div>
 
           {/* Quick Certificates / Badge Highlight */}
@@ -667,6 +674,16 @@ export function StudentDashboardShell({
                   </div>
                 ))}
               </div>
+
+              <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
+                <Link
+                  href="/student/achievements"
+                  className="text-[11px] font-bold text-amber-600 dark:text-amber-400 hover:underline flex items-center justify-between"
+                >
+                  <span>Buka Semua Lencana</span>
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </Link>
+              </div>
             </div>
           )}
 
@@ -678,30 +695,44 @@ export function StudentDashboardShell({
           LOWER SECTIONS (Full Width): Full Badges, Progress Chart, Sesi
           ══════════════════════════════════════════════════════════════════════════ */}
 
-      {/* ── Student Achievement Badges (Gamification Progression) ── */}
-      <StudentAchievementBadges
-        gamData={gamData}
-        certificates={certificates}
-        completedCount={completedTopics.length}
-      />
-
-      {/* ── Certificate Badges Grid ── */}
-      {certificates.length > 0 && (
-        <section className="space-y-4">
-          <SectionHeader icon={<Award className="w-4 h-4" />} label="Sertifikatku" />
-          <div className="grid gap-4 sm:grid-cols-2">
-            {certificates.map((cert) => (
-              <CertificateBadge key={cert.id} cert={cert} variant="full" />
-            ))}
+      {/* ── Quick Teleport Banner: Lencana & Target Modul Tab ── */}
+      <section className="rounded-3xl bg-gradient-to-r from-purple-950/40 via-indigo-950/30 to-slate-900 border border-purple-500/30 p-5 sm:p-6 shadow-xl shadow-purple-950/30">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3.5">
+            <div className="w-12 h-12 rounded-2xl bg-purple-500/20 border border-purple-400/40 flex items-center justify-center text-2xl flex-shrink-0">
+              🏆
+            </div>
+            <div>
+              <div className="flex items-center gap-2 mb-0.5">
+                <span className="text-[10px] font-black uppercase tracking-wider text-purple-400 font-mono">
+                  Tab Baru Siswa
+                </span>
+                <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-mono">
+                  TERPISAH &amp; RAPI
+                </span>
+              </div>
+              <h3 className="text-sm sm:text-base font-extrabold text-white">
+                Lencana Pencapaian, Progres Belajar &amp; Target Modul
+              </h3>
+              <p className="text-xs text-slate-400 mt-0.5 max-w-xl">
+                Seluruh galeri lencana prestasi, sertifikat kelulusan modul, grafik progres belajar, dan target mingguan kini telah dipisahkan ke tab khusus antara Quest Map dan Parent Hub.
+              </p>
+            </div>
           </div>
-        </section>
-      )}
 
-      {/* ── Student Module & Topic Progress Chart (Recharts) ── */}
-      <StudentModuleProgressChart
-        completedTopics={completedTopics}
-        allModules={allModules}
-      />
+          <Link
+            href="/student/achievements"
+            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-2xl
+              text-xs font-black text-white self-start sm:self-center
+              bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-700
+              hover:from-purple-500 hover:to-indigo-500 shadow-md shadow-purple-600/30
+              hover:scale-[1.02] active:scale-95 transition-all flex-shrink-0 font-mono"
+          >
+            <span>Buka Lencana &amp; Target</span>
+            <ChevronRight className="w-4 h-4" />
+          </Link>
+        </div>
+      </section>
 
       {/* ── Upcoming Sessions (2nd–5th) ── */}
       {nextFour.length > 0 && (
