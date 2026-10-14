@@ -85,11 +85,29 @@ body {
   50%       { transform: scale(1.4); opacity: 0.7; }
 }
 
+/* ── Fog of War Keyframes ─────────────────────────────────── */
+@keyframes fogDriftSlow {
+  0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.6; }
+  50%      { transform: translate(-20px, 10px) scale(1.08); opacity: 0.85; }
+}
+@keyframes fogWispDrift {
+  0%   { transform: translateX(-25%) translateY(0); opacity: 0.3; }
+  50%  { transform: translateX(15%) translateY(-6px); opacity: 0.7; }
+  100% { transform: translateX(-25%) translateY(0); opacity: 0.3; }
+}
+@keyframes fogPulseGlow {
+  0%, 100% { opacity: 0.3; filter: blur(12px); }
+  50%      { opacity: 0.65; filter: blur(18px); }
+}
+
 /* ── Utility classes & Interactive Neon Utility System ────────── */
 .animate-fade-in-up { animation: fadeInUp 0.4s ease both; }
 .animate-fade-in    { animation: fadeIn   0.3s ease both; }
 .animate-float      { animation: floatY   3s   ease-in-out infinite; }
 .animate-pulse-dot  { animation: pulseDot 1.5s ease-in-out infinite; }
+.animate-fog-slow   { animation: fogDriftSlow 16s ease-in-out infinite; }
+.animate-fog-wisp   { animation: fogWispDrift 10s ease-in-out infinite; }
+.animate-fog-glow   { animation: fogPulseGlow 6s ease-in-out infinite; }
 
 .stagger > *:nth-child(1) { animation-delay: 0.05s; }
 .stagger > *:nth-child(2) { animation-delay: 0.10s; }
