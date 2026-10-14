@@ -15,6 +15,7 @@ import { AnnouncementBanner } from '@/features/announcements/components/Announce
 import { StudentAchievementBadges } from '@/features/dashboard/student/StudentAchievementBadges';
 import { StudentModuleProgressChart } from '@/features/dashboard/student/StudentModuleProgressChart';
 import { LevelUpCelebrationModal, getAdventurerTitle } from '@/features/dashboard/student/LevelUpCelebrationModal';
+import { getFantasyLocationForTopic } from '@/features/quiz/fantasyIsland';
 import { calculateLevel } from '@/features/pet/lib/levelCalc';
 import { isLive, formatDate, formatTime } from '@/lib/formatDate';
 import type { TownSquareMeeting } from '@/features/sessions/queries';
@@ -228,15 +229,20 @@ function ActiveExpeditionCard({
                   </div>
 
                   <div className="min-w-0">
-                    <p className="text-xs font-bold text-white truncate">
-                      {item.topic.title}
-                    </p>
-                    <p className="text-[10px] text-slate-400">
-                      {item.status === 'COMPLETED' && 'Waypoint Tuntas · Bintang Penuh'}
-                      {item.status === 'NEEDS_QUIZ' && 'Ujian Rune Siap Dikerjakan'}
-                      {item.status === 'ACTIVE_NEXT' && 'Siap Dipelajari Sekarang'}
-                      {item.status === 'LOCKED' && 'Terkunci dalam Kabut Petualangan'}
-                    </p>
+                    {(() => {
+                      const loc = getFantasyLocationForTopic(item.topic.title, nodes.indexOf(item));
+                      return (
+                        <>
+                          <p className="text-xs font-bold text-white truncate flex items-center gap-1.5">
+                            <span>{loc.emoji}</span>
+                            <span>{item.topic.title}</span>
+                          </p>
+                          <p className="text-[10px] text-slate-400 truncate">
+                            {loc.biomeName} · {item.status === 'COMPLETED' ? 'Lokasi Ditaklukkan' : item.status === 'NEEDS_QUIZ' ? 'Ujian Rune Terbuka!' : item.status === 'ACTIVE_NEXT' ? 'Siap Dijelajahi' : 'Terkunci'}
+                          </p>
+                        </>
+                      );
+                    })()}
                   </div>
                 </div>
 
