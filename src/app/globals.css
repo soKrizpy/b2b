@@ -100,14 +100,31 @@ body {
   50%      { opacity: 0.65; filter: blur(18px); }
 }
 
+/* ── Satisfying Progress Bar Keyframes ────────────────────── */
+@keyframes progressShimmer {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(250%); }
+}
+@keyframes progressSparkleTip {
+  0%, 100% { transform: scale(1) rotate(0deg); filter: drop-shadow(0 0 6px #22d3ee); }
+  50%      { transform: scale(1.3) rotate(90deg); filter: drop-shadow(0 0 14px #38bdf8); }
+}
+@keyframes progressNeonPulse {
+  0%, 100% { box-shadow: 0 0 10px rgba(34, 211, 238, 0.4), 0 0 20px rgba(168, 85, 247, 0.2); }
+  50%      { box-shadow: 0 0 20px rgba(34, 211, 238, 0.8), 0 0 35px rgba(16, 185, 129, 0.5); }
+}
+
 /* ── Utility classes & Interactive Neon Utility System ────────── */
-.animate-fade-in-up { animation: fadeInUp 0.4s ease both; }
-.animate-fade-in    { animation: fadeIn   0.3s ease both; }
-.animate-float      { animation: floatY   3s   ease-in-out infinite; }
-.animate-pulse-dot  { animation: pulseDot 1.5s ease-in-out infinite; }
-.animate-fog-slow   { animation: fogDriftSlow 16s ease-in-out infinite; }
-.animate-fog-wisp   { animation: fogWispDrift 10s ease-in-out infinite; }
-.animate-fog-glow   { animation: fogPulseGlow 6s ease-in-out infinite; }
+.animate-fade-in-up       { animation: fadeInUp 0.4s ease both; }
+.animate-fade-in          { animation: fadeIn   0.3s ease both; }
+.animate-float            { animation: floatY   3s   ease-in-out infinite; }
+.animate-pulse-dot        { animation: pulseDot 1.5s ease-in-out infinite; }
+.animate-fog-slow         { animation: fogDriftSlow 16s ease-in-out infinite; }
+.animate-fog-wisp         { animation: fogWispDrift 10s ease-in-out infinite; }
+.animate-fog-glow         { animation: fogPulseGlow 6s ease-in-out infinite; }
+.animate-progress-shimmer { animation: progressShimmer 2.2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+.animate-sparkle-tip      { animation: progressSparkleTip 2s ease-in-out infinite; }
+.animate-neon-pulse       { animation: progressNeonPulse 3s ease-in-out infinite; }
 
 .stagger > *:nth-child(1) { animation-delay: 0.05s; }
 .stagger > *:nth-child(2) { animation-delay: 0.10s; }

@@ -6,7 +6,6 @@ if (!process.env.VERCEL && !process.env.__NEXT_PRIVATE_ORIGIN) {
 }
 
 const nextConfig: NextConfig = {
-  output: process.env.VERCEL ? undefined : 'standalone',
   env: {
     NEXT_PUBLIC_SUPABASE_URL:
       process.env.NEXT_PUBLIC_SUPABASE_URL || "https://enfqoofluceqrlcjemfu.supabase.co",

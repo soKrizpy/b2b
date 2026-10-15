@@ -3,7 +3,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { getModuleById, getTopicsByModuleId, getAllModulesWithTopics } from '@/features/curriculum/queries';
+import { getModuleById, getTopicsByModuleId } from '@/features/curriculum/queries';
 import { ModuleBuilderClient } from './ModuleBuilderClient';
 import { extractFinalAssessment } from '@/features/curriculum/validation';
 import type { TopicWithChallengeCount, ModuleWithTopics } from '@/features/curriculum/queries';

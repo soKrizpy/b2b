@@ -8,6 +8,7 @@ import { getStudentModulesWithTopics } from '@/features/curriculum/queries';
 import { getStudentCertificates, TIER_CONFIG } from '@/features/certificates/queries';
 import { getQuestMapData } from '@/features/quiz/questMapQueries';
 import { QuestMapClient } from '@/app/student/lessons/QuestMapClient';
+import { QuestAnimatedProgressBar } from '@/features/quiz/components/QuestAnimatedProgressBar';
 
 export const metadata: Metadata = { title: '🗺️ Quest Map — Bits2Bytes' };
 export const dynamic = 'force-dynamic';
@@ -88,14 +89,12 @@ export default async function QuestMapPage() {
           </div>
         </div>
 
-        <div className="relative z-10 mt-5 h-2.5 rounded-full bg-white/15 overflow-hidden border border-white/10">
-          <div
-            className={`h-full rounded-full transition-all duration-700
-              ${questData.moduleComplete
-                ? 'bg-emerald-400 shadow-sm shadow-emerald-400'
-                : 'bg-gradient-to-r from-cyan-400 to-purple-400'
-              }`}
-            style={{ width: `${pct}%` }}
+        <div className="relative z-10 mt-6 pt-4 border-t border-white/10">
+          <QuestAnimatedProgressBar
+            completedCount={completedCount}
+            totalCount={totalCount}
+            isComplete={questData.moduleComplete}
+            moduleTitle={mod.title}
           />
         </div>
       </div>

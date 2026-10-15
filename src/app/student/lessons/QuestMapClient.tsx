@@ -10,6 +10,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { QuizModal } from '@/features/quiz/components/QuizModal';
 import { LevelUpCelebrationModal } from '@/features/dashboard/student/LevelUpCelebrationModal';
+import { QuestAnimatedProgressBar } from '@/features/quiz/components/QuestAnimatedProgressBar';
 import { TIER_CONFIG } from '@/features/certificates/queries';
 import { getFantasyLocationForTopic, type FantasyLocation } from '@/features/quiz/fantasyIsland';
 import type { QuestMapData, QuestTopicNode, NodeStatus } from '@/features/quiz/questMapQueries';
@@ -666,7 +667,7 @@ function LocationPopoverCard({
             hover:scale-[1.02] active:scale-95 transition-all"
         >
           <Compass className="w-3.5 h-3.5" />
-          <span>Jelajahi Lokasi &amp; Pelajari Materi</span>
+          <span>Jelajahi Lokasi & Pelajari Materi</span>
         </Link>
       )}
 
@@ -866,6 +867,16 @@ export function QuestMapClient({ questData, cert }: Props) {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* ── Animated Progress Bar for Quest Map ── */}
+      <div className="relative z-10 p-4 sm:p-5 rounded-2xl bg-slate-900/80 border border-cyan-500/30 backdrop-blur-md shadow-xl shadow-cyan-950/40">
+        <QuestAnimatedProgressBar
+          completedCount={completedCount}
+          totalCount={uniqueNodes.length}
+          isComplete={moduleComplete}
+          moduleTitle={mod.title}
+        />
       </div>
 
       {/* ── RPG Map Legend with Fog of War Indicators ── */}

@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 // src/features/curriculum/components/CurriculumImportModal.tsx
 // Accepts JSON via textarea paste OR .json file upload.
 // Validates client-side first (Zod), then calls importCurriculumJson server action.
@@ -70,6 +70,19 @@ export function CurriculumImportModal({ onClose }: Props) {
   const onTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setText(e.target.value);
     setVs({ status: 'idle' }); // reset until user clicks validate
+  };
+
+  const loadScratchTemplate = async () => {
+    try {
+      const res = await fetch('/curriculum/scratch-game-development.json');
+      if (res.ok) {
+        const jsonText = await res.text();
+        setText(jsonText);
+        validate(jsonText);
+      }
+    } catch {
+      // ignore
+    }
   };
 
   // â”€â”€ Submit â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -189,8 +202,16 @@ export function CurriculumImportModal({ onClose }: Props) {
               >
                 Pilih File
               </button>
+              <button
+                type="button"
+                onClick={loadScratchTemplate}
+                disabled={isImporting}
+                className="px-3.5 py-2 text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-lg transition-colors flex items-center gap-1.5 shadow-sm"
+              >
+                <span>🎮</span> Muat Template Scratch (10 Topik & Kuis)
+              </button>
               <span className="text-xs text-slate-400">
-                atau tempel JSON langsung di bawah
+                atau tempel JSON langsung
               </span>
             </div>
           </div>

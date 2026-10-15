@@ -16,6 +16,9 @@ import {
   getSupabaseServiceRoleKey,
   markSupabaseKeyInvalid,
   createMockSupabaseClient,
+  getPreviewFallbackSession,
+  MOCK_SESSION_COOKIE,
+  getMockStore,
 } from './mock';
 
 async function getRequestCookies(): Promise<Array<{ name: string; value: string }>> {
@@ -103,6 +106,22 @@ async function resolveExecutionTarget(): Promise<
     return { mode: 'mock' };
   }
 
+  let allCookies: Array<{ name: string; value: string }> = [];
+  try {
+    allCookies = await getRequestCookies();
+    const mockUserId = allCookies.find((c) => c.name === MOCK_SESSION_COOKIE)?.value;
+    if (mockUserId && getMockStore().users.some((u) => u.id === mockUserId)) {
+      return { mode: 'mock' };
+    }
+  } catch {
+    // Called outside request scope (e.g. build time or unstable_cache)
+  }
+
+  const fallback = getPreviewFallbackSession();
+  if (fallback?.isMock) {
+    return { mode: 'mock' };
+  }
+
   const serviceKey = getSupabaseServiceRoleKey();
   if (isValidServiceRoleJwt(serviceKey)) {
     return { mode: 'real', authToken: serviceKey };
@@ -110,10 +129,9 @@ async function resolveExecutionTarget(): Promise<
 
   let userAccessToken: string | null = null;
   try {
-    const allCookies = await getRequestCookies();
     userAccessToken = extractSupabaseSessionToken(allCookies);
   } catch {
-    // Called outside request scope (e.g. build time or unstable_cache)
+    // ignore
   }
 
   if (userAccessToken) {

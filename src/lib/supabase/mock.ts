@@ -2,6 +2,9 @@
 // In-memory mock Supabase store & query builder used when NEXT_PUBLIC_SUPABASE_URL
 // or SUPABASE_SERVICE_ROLE_KEY are not configured.
 
+import { scratchTopicsData, scratchFinalAssessment } from '@/features/curriculum/data/scratchModuleData';
+import { encodeFinalAssessment } from '@/features/curriculum/validation';
+
 export interface MockUser {
   id: string;
   email: string;
@@ -225,7 +228,7 @@ function createInitialMockStore(): MockStore {
       {
         id: 1,
         title: 'Scratch Game Development: Petualangan Luar Angkasa',
-        description: 'Pelajari logika pemrograman blok dengan membangun game luar angkasa interaktif.',
+        description: encodeFinalAssessment(scratchFinalAssessment),
         level: 'beginner',
         gamification_type: 'mimo',
         is_active: true,
@@ -241,145 +244,60 @@ function createInitialMockStore(): MockStore {
         created_at: yesterday,
       },
     ],
-    topics: [
-      {
-        id: 101,
-        module_id: 1,
-        title: 'Pengenalan Sprite & Koordinat X-Y',
-        order_index: 1,
-        description: 'Memahami cara menggerakkan karakter (Sprite) di panggung menggunakan sistem koordinat.',
-        project_link: 'https://scratch.mit.edu',
-        topic_link: null,
-        engine_topic_id: 'topic-101',
-        lesson_content: {
-          learningPath: [
-            {
-              id: 'node-1',
-              type: 'lesson',
-              title: 'Apa itu Panggung & Koordinat?',
-              xp: 15,
-              explanation: 'Di Scratch, posisi karakter ditentukan oleh nilai X (kiri-kanan) dan Y (atas-bawah). Titik tengah panggung adalah (0, 0).',
-            },
-            {
-              id: 'node-2',
-              type: 'quiz',
-              title: 'Cek Pemahaman Koordinat',
-              xp: 20,
-              explanation: 'Jika kita ingin menggerakkan pesawat ke kanan, nilai apa yang harus ditambah?',
-              options: ['Tambah nilai X', 'Kurangi nilai X', 'Tambah nilai Y', 'Ubah ukuran Sprite'],
-              correctOption: 'Tambah nilai X',
-            },
-          ],
-          quiz: [
-            {
-              question: 'Berapakah koordinat titik tengah panggung di Scratch?',
-              options: ['X: 0, Y: 0', 'X: 100, Y: 100', 'X: -240, Y: 180', 'X: 1, Y: 1'],
-              answer_index: 0,
-              explanation: 'Titik pusat panggung berada tepat di X: 0 dan Y: 0.',
-            },
-            {
-              question: 'Blok mana yang digunakan untuk menggerakkan sprite ke atas?',
-              options: ['change y by 10', 'change x by 10', 'move -10 steps', 'turn right 15 degrees'],
-              answer_index: 0,
-              explanation: 'Sumbu Y mengatur posisi vertikal (atas-bawah). Menambah nilai Y positif menggerakkan sprite ke atas.',
-            },
-          ],
-        },
-        status: 'published',
-        published_at: yesterday,
-        created_at: yesterday,
+    topics: scratchTopicsData.map((t, idx) => ({
+      id: 101 + idx,
+      module_id: 1,
+      title: t.topic_title,
+      order_index: t.topic_order,
+      description: t.description,
+      project_link: t.project_link,
+      topic_link: null,
+      engine_topic_id: `topic-${101 + idx}`,
+      lesson_content: {
+        learningPath: t.nodes.map((n) => ({
+          id: n.node_id,
+          type: n.type,
+          title: n.title,
+          xp: n.xp,
+          explanation: n.content,
+          instructions: n.instructions,
+          options: n.options,
+          correctOption: n.correct_option,
+          content: n.content,
+          ...(n.code_content && {
+            code: { language: n.code_language ?? 'scratch', content: n.code_content },
+          }),
+        })),
+        quiz: t.quiz,
       },
-      {
-        id: 102,
-        module_id: 1,
-        title: 'Looping & Animasi Kostum Roket',
-        order_index: 2,
-        description: 'Menggunakan blok Forever dan Repeat untuk membuat animasi api roket yang hidup.',
-        project_link: 'https://scratch.mit.edu',
-        topic_link: null,
-        engine_topic_id: 'topic-102',
-        lesson_content: {
-          learningPath: [
-            {
-              id: 'node-201',
-              type: 'lesson',
-              title: 'Mengenal Perulangan (Loop)',
-              xp: 15,
-              explanation: 'Blok Forever akan menjalankan kode di dalamnya terus-menerus selama game berjalan.',
-            },
-          ],
-          quiz: [
-            {
-              question: 'Blok apa yang membuat kode berjalan tanpa henti sampai tombol stop ditekan?',
-              options: ['Forever', 'Repeat 10', 'Wait 1 second', 'If then'],
-              answer_index: 0,
-              explanation: 'Blok Forever menjalankan instruksi secara berulang tanpa batas.',
-            },
-          ],
-        },
-        status: 'published',
-        published_at: yesterday,
-        created_at: yesterday,
-      },
-    ],
+      status: 'published',
+      published_at: yesterday,
+      created_at: yesterday,
+    })),
     student_modules: [
       { student_id: 'student-demo-1', module_id: 1, status: 'active' },
       { student_id: 'student-demo-2', module_id: 1, status: 'active' },
     ],
-    meetings: [
-      {
-        id: 1,
-        title: 'Sesi 1: Pengenalan Sprite & Koordinat X-Y',
-        meeting_date: yesterday,
-        link_url: 'https://zoom.us/j/123456789',
-        notes: 'Raka sangat antusias membuat pesawat ruang angkasa.',
-        session_count: 4,
-        session_number: 1,
-        series_id: 'series-demo-1',
-        teacher_id: 'teacher-demo-1',
-        is_completed: true,
-        completion_status: 'selesai',
-        progress_report: 'Raka sudah paham konsep sumbu X dan Y dengan sangat cepat!',
-        created_at: yesterday,
-      },
-      {
-        id: 2,
-        title: 'Sesi 2: Looping & Animasi Kostum Roket',
-        meeting_date: inTwoHours,
-        link_url: 'https://zoom.us/j/123456789',
-        notes: 'Persiapkan akun Scratch sebelum kelas dimulai.',
-        session_count: 4,
-        session_number: 2,
-        series_id: 'series-demo-1',
-        teacher_id: 'teacher-demo-1',
-        is_completed: false,
-        completion_status: null,
-        progress_report: null,
-        created_at: yesterday,
-      },
-      {
-        id: 3,
-        title: 'Sesi 3: Sensor Tabrakan & Skor Game',
-        meeting_date: nextWeek,
-        link_url: 'https://zoom.us/j/123456789',
-        notes: 'Membuat meteor dan variabel skor.',
-        session_count: 4,
-        session_number: 3,
-        series_id: 'series-demo-1',
-        teacher_id: 'teacher-demo-1',
-        is_completed: false,
-        completion_status: null,
-        progress_report: null,
-        created_at: yesterday,
-      },
-    ],
+    meetings: scratchTopicsData.map((t, idx) => ({
+      id: idx + 1,
+      title: `Sesi ${idx + 1}: ${t.topic_title}`,
+      meeting_date: idx === 0 ? yesterday : idx === 1 ? inTwoHours : nextWeek,
+      link_url: 'https://zoom.us/j/123456789',
+      notes: `Fokus materi: ${t.description.slice(0, 80)}...`,
+      session_count: scratchTopicsData.length,
+      session_number: idx + 1,
+      series_id: 'series-scratch-1',
+      teacher_id: 'teacher-demo-1',
+      is_completed: idx === 0,
+      completion_status: idx === 0 ? 'selesai' : null,
+      progress_report: idx === 0 ? 'Siswa berhasil menguasai materi koordinat panggung dan lulus kuis dengan nilai sempurna!' : null,
+      created_at: yesterday,
+    })),
     meeting_students: [
       { meeting_id: 1, student_id: 'student-demo-1', has_joined: true },
       { meeting_id: 1, student_id: 'student-demo-2', has_joined: true },
       { meeting_id: 2, student_id: 'student-demo-1', has_joined: true },
       { meeting_id: 2, student_id: 'student-demo-2', has_joined: true },
-      { meeting_id: 3, student_id: 'student-demo-1', has_joined: false },
-      { meeting_id: 3, student_id: 'student-demo-2', has_joined: false },
     ],
     quizzes: [],
     quiz_questions: [],
@@ -462,17 +380,15 @@ function createInitialMockStore(): MockStore {
       },
     ],
     certificates: [],
-    challenges: [
-      {
-        id: 1,
-        topic_id: 101,
-        title: 'Buat Roket Bergerak dengan Tombol Panah',
-        instructions: 'Buat project di Scratch di mana roket bisa bergerak ke 4 arah menggunakan tombol panah keyboard, lalu bagikan link project-mu!',
-        order_index: 1,
-        allows_file_upload: false,
-        created_at: yesterday,
-      },
-    ],
+    challenges: scratchTopicsData.map((t, idx) => ({
+      id: idx + 1,
+      topic_id: 101 + idx,
+      title: t.challenge.title,
+      instructions: t.challenge.instructions,
+      order_index: 1,
+      allows_file_upload: false,
+      created_at: yesterday,
+    })),
     challenge_submissions: [
       {
         id: 1,
@@ -833,8 +749,13 @@ class MockQueryBuilder {
       const field = this.orderByField;
       const dir = this.orderAsc ? 1 : -1;
       rows.sort((a, b) => {
-        const va = String(a[field] ?? '');
-        const vb = String(b[field] ?? '');
+        const rawA = a[field];
+        const rawB = b[field];
+        if (typeof rawA === 'number' && typeof rawB === 'number') {
+          return (rawA - rawB) * dir;
+        }
+        const va = String(rawA ?? '');
+        const vb = String(rawB ?? '');
         if (va < vb) return -1 * dir;
         if (va > vb) return 1 * dir;
         return 0;

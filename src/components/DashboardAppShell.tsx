@@ -6,7 +6,7 @@
 //   - Mobile: Fixed Bottom Navigation Bar with spring layoutId active tab indicator
 //   - Main Content: Smooth AnimatePresence page transition on tab/route changes
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
@@ -89,11 +89,19 @@ export function DashboardAppShell({
   maxWidthClass = 'max-w-7xl',
 }: DashboardAppShellProps) {
   const [collapsed, setCollapsed] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const clientPathname = usePathname();
-  const activePath = clientPathname || currentPath;
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const navItems = ROLE_NAV[role];
   const pillClass = ROLE_PILL_CLASS[role];
+
+  // During SSR / initial client hydration, align activePath with currentPath
+  // Once mounted, follow live clientPathname
+  const activePath = mounted ? (clientPathname || currentPath) : (currentPath || navItems[0].href);
 
   // Derive active item label for header display
   const activeItem = useMemo(() => {
@@ -262,6 +270,7 @@ export function DashboardAppShell({
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -8 }}
                     transition={{ duration: 0.18, ease: 'easeOut' }}
+                    suppressHydrationWarning
                     className="text-sm font-extrabold text-slate-900 dark:text-purple-50 inline-block"
                   >
                     {activeItem.label}
@@ -278,11 +287,11 @@ export function DashboardAppShell({
               <div className="hidden sm:flex items-center gap-2 rounded-xl px-3 py-1.5 border
                 bg-slate-50 border-slate-200 dark:bg-[#0B0F19] dark:border-purple-500/40 shadow-xs">
                 <div className="w-5 h-5 rounded-md bg-[#7cc62f] flex items-center justify-center flex-shrink-0">
-                  <span className="text-[10px] text-white font-black">
+                  <span suppressHydrationWarning className="text-[10px] text-white font-black">
                     {(fullName ?? '?')[0].toUpperCase()}
                   </span>
                 </div>
-                <span className="text-xs font-bold text-slate-700 dark:text-purple-100 max-w-[120px] truncate">
+                <span suppressHydrationWarning className="text-xs font-bold text-slate-700 dark:text-purple-100 max-w-[120px] truncate">
                   {fullName ?? '–'}
                 </span>
               </div>
