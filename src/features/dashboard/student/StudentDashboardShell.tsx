@@ -1,9 +1,8 @@
 'use client';
 // src/features/dashboard/student/StudentDashboardShell.tsx
-// RPG Fantasy Adventure Gamified LMS 3-Column Command Center for Students.
-// Col 1 (25%): Adventurer Profile & Daily Bounties
-// Col 2 (50%): Hero Realm Banner, Town Square Pod & Active Expedition Waypoint Map
-// Col 3 (25%): Cyber Pet Companion & Rune Badges Showcase
+// 2-Column Student Dashboard Shell.
+// Col Left  (2/3): Hero Realm Banner (with inline profile strip) + Town Square Pod
+// Col Right (1/3): Cyber Pet Companion · Misi Harian · Ringkasan Belajar · Koleksi Sertifikat
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
