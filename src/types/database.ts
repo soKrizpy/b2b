@@ -18,6 +18,17 @@ export interface ProfileRow {
   created_at: string | null;
 }
 
+export interface EquippedCosmetics {
+  archetype?: string;     // 'cyber-mage' | 'astral-knight' | 'shadow-glitcher' | 'chrono-alchemist'
+  skinTone?: string;      // 'default' | 'fair' | 'tan' | 'dark'
+  hatId?: string | null;
+  outfitId?: string | null;
+  auraId?: string | null;
+  petId?: string | null;   // 'cat' | 'fox' | 'dragon' | 'robot' | 'bunny' | 'owl' | 'dog'
+  petHatId?: string | null;
+  titleId?: string | null;
+}
+
 // public.students
 export interface StudentRow {
   id: string;                    // uuid — matches auth.users.id
@@ -31,6 +42,7 @@ export interface StudentRow {
   coins: number;
   total_xp: number;
   equipped_hat_id: string | null;
+  equipped_cosmetics?: EquippedCosmetics | Json | null;
   inventory: string[];
   created_at: string | null;
 }

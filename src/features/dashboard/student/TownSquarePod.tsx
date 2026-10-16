@@ -8,8 +8,9 @@
 import { useState, useEffect } from 'react';
 import type { TownSquareMeeting, TownSquareSeat } from '@/features/sessions/queries';
 import type { StudentGamificationData } from '@/features/pet/lib/petQueries';
-import { PetWardrobeModal } from '@/features/dashboard/student/modals/PetWardrobeModal';
+import { CosmeticShopModal } from '@/features/pet/components/CosmeticShopModal';
 import { PeerInspectModal } from '@/features/dashboard/student/modals/PeerInspectModal';
+import { CyberFantasyAvatar } from '@/components/avatar/CyberFantasyAvatar';
 import { LiveStatusIndicator } from '@/components/common/LiveStatusIndicator';
 
 export type ScheduleState = 'STATE_A' | 'STATE_B' | 'STATE_C' | 'STATE_D';
@@ -69,11 +70,6 @@ function formatCountdown(seconds: number): string {
 
 // ── Avatar circle ─────────────────────────────────────────────────────────────
 
-const PET_EMOJI: Record<string, string> = {
-  cat: '🐱', dog: '🐶', fox: '🦊', bunny: '🐰',
-  bear: '🐻', owl: '🦉', dragon: '🐲', robot: '🤖',
-};
-
 function AvatarCircle({
   seat,
   size = 'md',
@@ -81,27 +77,24 @@ function AvatarCircle({
   seat: TownSquareSeat;
   size?: 'sm' | 'md' | 'lg';
 }) {
-  const emoji = seat.avatar_id ? (PET_EMOJI[seat.avatar_id] ?? '👨‍astro') : '👨‍astro';
-  const dims  = size === 'lg' ? 'w-14 h-14 text-2xl' : size === 'md' ? 'w-11 h-11 text-xl' : 'w-8 h-8 text-base';
-  const ring  = seat.is_self
-    ? 'ring-2 ring-cyan-400 shadow-lg shadow-cyan-500/30 animate-pulse cursor-pointer hover:scale-105 transition-all'
-    : 'ring-1 ring-blue-100 dark:ring-zinc-800 group-hover:ring-blue-400/50 dark:group-hover:ring-purple-500/50 transition-all';
+  const cos = seat.equipped_cosmetics;
+  const avatarSize = size === 'lg' ? 'lg' : size === 'md' ? 'md' : 'sm';
+  const ring = seat.is_self
+    ? 'ring-2 ring-cyan-400 shadow-lg shadow-cyan-500/30'
+    : 'ring-1 ring-blue-100 dark:ring-zinc-800 group-hover:ring-blue-400/50 dark:group-hover:ring-purple-500/50';
 
   return (
-    <div className={`${dims} ${ring} rounded-2xl bg-gradient-to-br
-      from-blue-50 to-indigo-100 dark:from-zinc-900 dark:to-indigo-950/80
-      flex items-center justify-center select-none relative transition-transform hover:scale-105`}>
-      {seat.avatar_id ? emoji : <i className="fa-solid fa-user-astronaut text-blue-600 dark:text-cyan-400 text-lg" />}
-      
-      {/* Online indicator */}
-      <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-zinc-900" />
-      
-      {seat.is_self && (
-        <span className="absolute -top-1.5 -right-1.5 text-[8px] bg-cyan-500
-          text-slate-950 font-black px-1.5 py-0.5 rounded-full leading-none shadow-sm">
-          YOU
-        </span>
-      )}
+    <div className={`relative rounded-2xl ${ring} transition-all`}>
+      <CyberFantasyAvatar
+        archetype={cos?.archetype || 'cyber-mage'}
+        skinTone={cos?.skinTone || 'default'}
+        hatId={cos?.hatId !== undefined ? cos.hatId : seat.equipped_hat_id}
+        outfitId={cos?.outfitId || 'outfit-cyber-hoodie'}
+        auraId={cos?.auraId}
+        size={avatarSize}
+        isSelf={seat.is_self}
+        animateIdle
+      />
     </div>
   );
 }
@@ -165,7 +158,7 @@ function StudentSeat({
     <button
       type="button"
       onClick={onClick}
-      title={seat.is_self ? 'Buka Lemari Kostummu' : `Lihat Pet ${firstName}`}
+      title={seat.is_self ? 'Buka Toko & Lemari Kosmetik' : `Lihat Profil & Pet ${firstName}`}
       className={`flex flex-col items-center gap-1.5 group relative
         focus:outline-none focus:ring-2 focus:ring-blue-400 dark:focus:ring-purple-400 rounded-2xl p-0.5
         ${seat.is_self ? 'cursor-pointer hover:scale-105 transition-transform' : onClick ? 'cursor-pointer hover:scale-105 transition-transform' : 'cursor-default'}`}
@@ -176,7 +169,7 @@ function StudentSeat({
           <span className="absolute -bottom-2 left-1/2 -translate-x-1/2 text-[8px] font-black
             bg-blue-600/90 dark:bg-purple-600/90 text-white px-1.5 py-0.5 rounded-full whitespace-nowrap
             opacity-0 group-hover:opacity-100 transition-opacity duration-200 shadow-md z-10 pointer-events-none">
-            Lihat Pet
+            Lihat Profil
           </span>
         )}
       </div>
@@ -498,11 +491,12 @@ export function TownSquarePod({ meeting, nextMeeting, forceState, gamData, curre
 
     {/* ── Modals — rendered only after mount to avoid hydration mismatch ── */}
     {isMounted && wardrobeOpen && gamData && (
-      <PetWardrobeModal
+      <CosmeticShopModal
         studentName={gamData.fullName}
         coins={gamData.coins}
+        totalXp={gamData.totalXp}
         inventory={gamData.inventory ?? []}
-        equippedHatId={gamData.equippedHatId ?? null}
+        equippedCosmetics={gamData.equippedCosmetics}
         onClose={() => setWardrobeOpen(false)}
       />
     )}

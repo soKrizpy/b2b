@@ -336,12 +336,22 @@ export async function getStudentsWithModules(opts?: {
 // ── Town Square enriched meeting ─────────────────────────────────────────────
 
 export interface TownSquareSeat {
-  student_id:      string;
-  full_name:       string;
-  avatar_id:       string | null;
-  equipped_hat_id: string | null;
-  total_xp:        number;
-  is_self:         boolean;
+  student_id:          string;
+  full_name:           string;
+  avatar_id:           string | null;
+  equipped_hat_id:     string | null;
+  equipped_cosmetics?: {
+    archetype?: string;
+    skinTone?: string;
+    hatId?: string | null;
+    outfitId?: string | null;
+    auraId?: string | null;
+    petId?: string | null;
+    petHatId?: string | null;
+    titleId?: string | null;
+  } | null;
+  total_xp:            number;
+  is_self:             boolean;
 }
 
 export interface TownSquareMeeting {
@@ -445,7 +455,7 @@ export async function getUpcomingMeetingForStudent(
   const [{ data: allSeats }, teacherProfileRes] = await Promise.all([
     db
       .from('meeting_students')
-      .select('student_id, students ( id, full_name, avatar_id, equipped_hat_id, total_xp )')
+      .select('student_id, students ( id, full_name, avatar_id, equipped_hat_id, total_xp, equipped_cosmetics )')
       .eq('meeting_id', raw.id) as unknown as Promise<{
         data: Array<{
           student_id: string;
@@ -455,6 +465,16 @@ export async function getUpcomingMeetingForStudent(
             avatar_id:       string | null;
             equipped_hat_id: string | null;
             total_xp:        number;
+            equipped_cosmetics?: {
+              archetype?: string;
+              skinTone?: string;
+              hatId?: string | null;
+              outfitId?: string | null;
+              auraId?: string | null;
+              petId?: string | null;
+              petHatId?: string | null;
+              titleId?: string | null;
+            } | null;
           } | null;
         }> | null;
         error: unknown;
@@ -477,12 +497,13 @@ export async function getUpcomingMeetingForStudent(
   const seats: TownSquareSeat[] = (allSeats ?? [])
     .slice(0, 4)
     .map((ms) => ({
-      student_id:      ms.student_id,
-      full_name:       ms.students?.full_name       ?? 'Siswa',
-      avatar_id:       ms.students?.avatar_id       ?? null,
-      equipped_hat_id: ms.students?.equipped_hat_id ?? null,
-      total_xp:        ms.students?.total_xp        ?? 0,
-      is_self:         ms.student_id === studentId,
+      student_id:         ms.student_id,
+      full_name:          ms.students?.full_name          ?? 'Siswa',
+      avatar_id:          ms.students?.avatar_id          ?? null,
+      equipped_hat_id:    ms.students?.equipped_hat_id    ?? null,
+      equipped_cosmetics: ms.students?.equipped_cosmetics ?? null,
+      total_xp:           ms.students?.total_xp           ?? 0,
+      is_self:            ms.student_id === studentId,
     }));
 
   return {

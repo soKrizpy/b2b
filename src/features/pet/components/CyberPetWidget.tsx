@@ -1,75 +1,39 @@
 'use client';
 // src/features/pet/components/CyberPetWidget.tsx
-// Main-stage Cyber Pet widget for the Student Dashboard.
+// Main-stage Cyber Pet companion widget for the Student Dashboard.
 //
 // Animations (Anime.js v4 — named export `animate`):
 //   • Idle float  : continuous Y oscillation on the avatar
 //   • Shadow pulse: opacity/scale inversely synced to the float
 //   • Click/hover bounce: elastic scale + rotation burst on interaction
-//
-// All data-pet-* attributes preserved for Antigravity styling hooks.
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { animate } from 'animejs';
 import { calculateLevel, getPetStatus } from '../lib/levelCalc';
 import type { StudentGamificationData } from '../lib/petQueries';
-
-// ── Default SVG avatar ────────────────────────────────────────────────────────
-
-function DefaultPetSVG() {
-  return (
-    <svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg"
-      aria-hidden="true" className="w-full h-full">
-      <ellipse cx="40" cy="48" rx="22" ry="18" fill="#6366f1" />
-      <circle cx="40" cy="28" r="18" fill="#818cf8" />
-      <circle cx="33" cy="26" r="3.5" fill="white" />
-      <circle cx="47" cy="26" r="3.5" fill="white" />
-      <circle cx="34" cy="27" r="1.8" fill="#1e1b4b" />
-      <circle cx="48" cy="27" r="1.8" fill="#1e1b4b" />
-      <circle cx="35" cy="26" r="0.8" fill="white" />
-      <circle cx="49" cy="26" r="0.8" fill="white" />
-      <path d="M33 33 Q40 39 47 33" stroke="white" strokeWidth="2" strokeLinecap="round" fill="none" />
-      <path d="M25 16 L20 6 L30 12 Z" fill="#818cf8" />
-      <path d="M55 16 L60 6 L50 12 Z" fill="#818cf8" />
-      <path d="M62 52 Q72 44 68 38" stroke="#6366f1" strokeWidth="5" strokeLinecap="round" fill="none" />
-    </svg>
-  );
-}
-
-function PetAvatar({ avatarId }: { avatarId: string | null }) {
-  const [hasImageError, setHasImageError] = useState(false);
-  if (avatarId && !hasImageError) {
-    return (
-      <img
-        src={`/pets/${avatarId}.png`}
-        alt={`Pet avatar ${avatarId}`}
-        className="w-full h-full object-contain"
-        onError={() => setHasImageError(true)}
-      />
-    );
-  }
-  return <DefaultPetSVG />;
-}
-
-// ── Props ─────────────────────────────────────────────────────────────────────
+import { CyberPetRenderer } from '@/components/avatar/CyberPetRenderer';
+import { CosmeticShopModal } from '@/features/pet/components/CosmeticShopModal';
+import { ShoppingBag } from 'lucide-react';
 
 interface CyberPetWidgetProps extends StudentGamificationData {
   justLevelledUp?: boolean;
   compact?: boolean;
 }
 
-// ── Component ─────────────────────────────────────────────────────────────────
-
 export function CyberPetWidget({
   avatarId,
   fullName,
   totalXp,
   coins,
+  inventory,
+  equippedCosmetics,
   justLevelledUp = false,
   compact = false,
 }: CyberPetWidgetProps) {
   const level  = calculateLevel(totalXp);
   const status = getPetStatus(level.progressPercent, justLevelledUp);
+
+  const [isShopOpen, setIsShopOpen] = useState(false);
 
   // Refs for the animated elements
   const avatarRef = useRef<HTMLDivElement>(null);
@@ -77,14 +41,12 @@ export function CyberPetWidget({
 
   // ── Idle float animation ──────────────────────────────────────────────────
   useEffect(() => {
-    // Skip in compact (hero-card) mode — animations only on the main stage
     if (compact) return;
 
     const avatarEl = avatarRef.current;
     const shadowEl = shadowRef.current;
     if (!avatarEl) return;
 
-    // Avatar floats up and down
     const floatAnim = animate(avatarEl, {
       translateY: ['-6px', '6px'],
       duration:    2200,
@@ -93,7 +55,6 @@ export function CyberPetWidget({
       easing:     'easeInOutSine',
     });
 
-    // Shadow scales inversely — when avatar is up, shadow shrinks (depth illusion)
     let shadowAnim: ReturnType<typeof animate> | null = null;
     if (shadowEl) {
       shadowAnim = animate(shadowEl, {
@@ -102,7 +63,7 @@ export function CyberPetWidget({
         duration:  2200,
         direction: 'alternate',
         loop:      true,
-        easing:    'easeInOutSine',
+        easing:   'easeInOutSine',
       });
     }
 
@@ -112,138 +73,181 @@ export function CyberPetWidget({
     };
   }, [compact]);
 
-  // ── Bounce on click / hover ───────────────────────────────────────────────
+  // ── Click/hover bounce interaction ────────────────────────────────────────
+  const isBouncingRef = useRef(false);
+
   const handleBounce = useCallback(() => {
-    if (compact || !avatarRef.current) return;
-    animate(avatarRef.current, {
-      keyframes: [
-        { scale: 1,    rotate: '0deg'  },
-        { scale: 1.18, rotate: '-6deg' },
-        { scale: 0.95, rotate: '6deg'  },
-        { scale: 1,    rotate: '0deg'  },
-      ],
+    const avatarEl = avatarRef.current;
+    if (!avatarEl || isBouncingRef.current) return;
+
+    isBouncingRef.current = true;
+
+    animate(avatarEl, {
+      scale:    [1, 1.15, 0.95, 1.05, 1],
+      rotate:   [0, -6, 6, -3, 0],
       duration: 600,
-      easing:   'outElastic',
+      easing:   'easeOutElastic(1, .6)',
+      onComplete: () => {
+        isBouncingRef.current = false;
+      },
     });
-  }, [compact]);
+  }, []);
+
+  const activePetId = equippedCosmetics?.petId || avatarId || 'cat';
+  const activePetHat = equippedCosmetics?.petHatId || null;
 
   return (
-    <section
-      data-pet-widget
-      aria-label={`Cyber Pet untuk ${fullName}`}
-      className={`flex ${compact ? 'flex-row items-center gap-4' : 'flex-col items-center gap-5'}`}
-    >
-      {/* ── Avatar stage ─────────────────────────────────────────── */}
-      <div className={`flex flex-col items-center gap-2 ${compact ? '' : 'w-full'}`}>
-
-        {/* The animated avatar wrapper */}
-        <div
-          ref={avatarRef}
-          data-pet-avatar
-          className={`relative flex-shrink-0 cursor-pointer select-none
-            ${compact ? 'w-20 h-20' : 'w-36 h-36'}`}
-          onClick={handleBounce}
-          onMouseEnter={handleBounce}
-          role="img"
-          aria-label={`Pet ${fullName} — klik untuk berinteraksi`}
-        >
-          {/* Level badge */}
-          <div
-            data-pet-level-badge
-            className="absolute -top-2 -right-2 z-10 w-8 h-8 rounded-full
-              bg-indigo-600 text-white text-xs font-extrabold
-              flex items-center justify-center ring-2 ring-white shadow-md"
-            aria-label={`Level ${level.currentLevel}`}
-          >
-            {level.currentLevel}
-          </div>
-
-          {/* Avatar image */}
-          <div className="w-full h-full rounded-2xl overflow-hidden bg-indigo-50
-            ring-2 ring-indigo-200 shadow-lg p-1">
-            <PetAvatar avatarId={avatarId} />
-          </div>
-        </div>
-
-        {/* Ground shadow — scales opposite to the float */}
-        {!compact && (
-          <div
-            ref={shadowRef}
-            aria-hidden="true"
-            className="w-20 h-3 rounded-full bg-indigo-900/20 blur-sm"
-            style={{ transformOrigin: 'center' }}
-          />
-        )}
-      </div>
-
-      {/* ── Stats ────────────────────────────────────────────────── */}
-      <div
-        data-pet-stats
-        className={`flex flex-col gap-3 ${compact ? 'flex-1 min-w-0' : 'w-full'}`}
+    <>
+      <section
+        data-pet-widget
+        aria-label={`Cyber Pet untuk ${fullName}`}
+        className={`flex ${compact ? 'flex-row items-center gap-4' : 'flex-col items-center gap-5'}`}
       >
-        {/* Status message */}
-        <p
-          data-pet-status
-          className="text-sm font-bold text-indigo-700 text-center flex items-center justify-center gap-1.5"
-          aria-live="polite"
-        >
-          <i className="fa-solid fa-heart-pulse text-rose-500 fa-beat text-xs" aria-hidden="true" />
-          {status}
-        </p>
+        {/* ── Avatar stage ─────────────────────────────────────────── */}
+        <div className={`flex flex-col items-center gap-2 ${compact ? '' : 'w-full'}`}>
 
-        {/* XP bar */}
-        <div data-pet-xp-bar>
-          <div className="flex justify-between text-xs text-slate-500 mb-1">
-            <span className="font-semibold text-slate-700">
-              XP Level {level.currentLevel}
-            </span>
-            <span aria-label={`${level.xpInCurrentLevel} dari ${level.xpNeededThisLevel} XP`}>
-              {level.xpInCurrentLevel} / {level.xpNeededThisLevel}
-            </span>
-          </div>
-
+          {/* Animated avatar wrapper */}
           <div
-            role="progressbar"
-            aria-valuenow={level.progressPercent}
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-label={`Progress ke level ${level.currentLevel + 1}: ${level.progressPercent}%`}
-            className="h-3 rounded-full bg-slate-100 overflow-hidden"
+            ref={avatarRef}
+            data-pet-avatar
+            className={`relative flex-shrink-0 cursor-pointer select-none
+              ${compact ? 'w-20 h-20' : 'w-32 h-32'}`}
+            onClick={handleBounce}
+            onMouseEnter={handleBounce}
+            role="img"
+            aria-label={`Pet ${fullName} — klik untuk berinteraksi`}
           >
+            {/* Level badge */}
             <div
-              data-pet-xp-fill
-              className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-violet-500
-                transition-[width] duration-700 ease-out"
-              style={{ width: `${level.progressPercent}%` }}
-            />
+              data-pet-level-badge
+              className="absolute -top-1.5 -right-1.5 z-10 w-7 h-7 rounded-full
+                bg-blue-600 dark:bg-purple-600 text-white text-xs font-black
+                flex items-center justify-center ring-2 ring-white dark:ring-zinc-900 shadow-md"
+              aria-label={`Level ${level.currentLevel}`}
+            >
+              {level.currentLevel}
+            </div>
+
+            {/* Avatar vector frame */}
+            <div className="w-full h-full rounded-3xl overflow-hidden
+              bg-gradient-to-br from-blue-50/80 to-indigo-100/80
+              dark:from-slate-900 dark:to-purple-950/60
+              border border-blue-300/40 dark:border-purple-500/40 shadow-lg p-2 flex items-center justify-center">
+              <CyberPetRenderer
+                petId={activePetId}
+                petHatId={activePetHat}
+                size={compact ? 'md' : 'xl'}
+                animate={false}
+              />
+            </div>
           </div>
 
-          <p className="text-xs text-slate-400 mt-1 text-right">
-            Total:{' '}
-            <span data-pet-total-xp className="font-semibold text-slate-600">
-              {totalXp}
-            </span>{' '}
-            XP
-          </p>
+          {/* Ground shadow */}
+          {!compact && (
+            <div
+              ref={shadowRef}
+              aria-hidden="true"
+              className="w-20 h-2.5 rounded-full bg-blue-900/15 dark:bg-purple-900/30 blur-sm"
+              style={{ transformOrigin: 'center' }}
+            />
+          )}
+
+          {/* Quick Wardrobe / Shop Button */}
+          {!compact && (
+            <button
+              type="button"
+              onClick={() => setIsShopOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-[11px] font-black
+                bg-blue-500/15 hover:bg-blue-500/25 text-blue-700 dark:bg-purple-500/20 dark:hover:bg-purple-500/30 dark:text-purple-300
+                border border-blue-400/30 dark:border-purple-500/30 transition-all hover:scale-105 active:scale-95 shadow-sm mt-1"
+            >
+              <ShoppingBag className="w-3 h-3" />
+              <span>Ganti Kostum / Toko</span>
+            </button>
+          )}
         </div>
 
-        {/* Coin counter */}
+        {/* ── Stats ────────────────────────────────────────────────── */}
         <div
-          data-pet-coins
-          className="flex items-center gap-2 bg-amber-500/10 border border-amber-500/20
-            rounded-2xl px-4 py-2 w-fit group/coin shadow-sm"
-          aria-label={`${coins} koin`}
+          data-pet-stats
+          className={`flex flex-col gap-3 ${compact ? 'flex-1 min-w-0' : 'w-full'}`}
         >
-          <i className="fa-solid fa-coins text-amber-400 text-lg group-hover/coin:fa-bounce" aria-hidden="true" />
-          <span
-            data-pet-coin-count
-            className="text-base font-black text-amber-600 dark:text-amber-300 tabular-nums"
+          {/* Status message */}
+          <p
+            data-pet-status
+            className="text-xs font-bold text-blue-700 dark:text-purple-300 text-center flex items-center justify-center gap-1.5"
+            aria-live="polite"
           >
-            {coins.toLocaleString('id-ID')}
-          </span>
-          <span className="text-xs text-amber-600/80 dark:text-amber-300/80 font-bold">Koin</span>
+            <i className="fa-solid fa-heart-pulse text-rose-500 fa-beat text-xs" aria-hidden="true" />
+            {status}
+          </p>
+
+          {/* XP bar */}
+          <div data-pet-xp-bar>
+            <div className="flex justify-between text-xs text-slate-500 dark:text-slate-400 mb-1">
+              <span className="font-semibold text-slate-700 dark:text-slate-300">
+                XP Level {level.currentLevel}
+              </span>
+              <span aria-label={`${level.xpInCurrentLevel} dari ${level.xpNeededThisLevel} XP`}>
+                {level.xpInCurrentLevel} / {level.xpNeededThisLevel}
+              </span>
+            </div>
+
+            <div
+              role="progressbar"
+              aria-valuenow={level.progressPercent}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-label={`Progress ke level ${level.currentLevel + 1}: ${level.progressPercent}%`}
+              className="h-2.5 rounded-full bg-slate-100 dark:bg-zinc-800 overflow-hidden"
+            >
+              <div
+                data-pet-xp-fill
+                className="h-full rounded-full bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500
+                  transition-[width] duration-700 ease-out"
+                style={{ width: `${level.progressPercent}%` }}
+              />
+            </div>
+
+            <p className="text-[11px] text-slate-400 mt-1 text-right">
+              Total:{' '}
+              <span data-pet-total-xp className="font-semibold text-slate-600 dark:text-slate-300">
+                {totalXp}
+              </span>{' '}
+              XP
+            </p>
+          </div>
+
+          {/* Coin counter */}
+          <div
+            data-pet-coins
+            className="flex items-center gap-2 bg-amber-500/10 border border-amber-500/20
+              rounded-2xl px-4 py-2 w-fit group/coin shadow-sm"
+            aria-label={`${coins} koin`}
+          >
+            <i className="fa-solid fa-coins text-amber-400 text-lg group-hover/coin:fa-bounce" aria-hidden="true" />
+            <span
+              data-pet-coin-count
+              className="text-base font-black text-amber-600 dark:text-amber-300 tabular-nums"
+            >
+              {coins.toLocaleString('id-ID')}
+            </span>
+            <span className="text-xs text-amber-600/80 dark:text-amber-300/80 font-bold">Koin</span>
+          </div>
         </div>
-      </div>
-    </section>
+      </section>
+
+      {/* Cosmetic Shop Modal */}
+      {isShopOpen && (
+        <CosmeticShopModal
+          studentName={fullName}
+          coins={coins}
+          totalXp={totalXp}
+          inventory={inventory ?? []}
+          equippedCosmetics={equippedCosmetics}
+          onClose={() => setIsShopOpen(false)}
+        />
+      )}
+    </>
   );
 }

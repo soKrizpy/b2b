@@ -15,6 +15,8 @@ import { calculateLevel } from '@/features/pet/lib/levelCalc';
 import { isLive, formatDate, formatTime } from '@/lib/formatDate';
 import { HeroAtmosphere } from '@/components/common/HeroAtmosphere';
 import { LiveStatusIndicator } from '@/components/common/LiveStatusIndicator';
+import { CyberFantasyAvatar } from '@/components/avatar/CyberFantasyAvatar';
+import { CosmeticShopModal } from '@/features/pet/components/CosmeticShopModal';
 import type { TownSquareMeeting } from '@/features/sessions/queries';
 import type { StudentGamificationData } from '@/features/pet/lib/petQueries';
 import type { CertificateWithModule } from '@/features/certificates/queries';
@@ -22,6 +24,7 @@ import type { InvoiceRow } from '@/types/database';
 import type { TopicProgressSummary, ModuleWithTopics } from '@/features/curriculum/queries';
 import {
   Sparkles,
+  ShoppingBag,
   Compass,
   CheckCircle2,
   Flame,
@@ -145,6 +148,7 @@ export function StudentDashboardShell({
 }: Props) {
   const [mounted, setMounted] = useState(false);
   const [isCelebrationOpen, setIsCelebrationOpen] = useState(false);
+  const [isShopModalOpen, setIsShopModalOpen] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -234,6 +238,24 @@ export function StudentDashboardShell({
               {/* Profile inline strip */}
               {lvl && (
                 <div className="flex flex-wrap items-center gap-3 pt-3 border-t border-white/10">
+                  {/* Cyber-Fantasy Avatar preview */}
+                  <div
+                    onClick={() => setIsShopModalOpen(true)}
+                    className="p-1 rounded-2xl bg-white/20 dark:bg-black/30 backdrop-blur-sm border border-white/30 dark:border-purple-400/30 cursor-pointer hover:scale-105 transition-transform"
+                    title="Buka Ruang Ganti & Toko Kosmetik"
+                  >
+                    <CyberFantasyAvatar
+                      archetype={gamData?.equippedCosmetics?.archetype || 'cyber-mage'}
+                      skinTone={gamData?.equippedCosmetics?.skinTone || 'default'}
+                      hatId={gamData?.equippedCosmetics?.hatId !== undefined ? gamData.equippedCosmetics.hatId : gamData?.equippedHatId}
+                      outfitId={gamData?.equippedCosmetics?.outfitId || 'outfit-cyber-hoodie'}
+                      auraId={gamData?.equippedCosmetics?.auraId}
+                      size="sm"
+                      isSelf
+                      animateIdle
+                    />
+                  </div>
+
                   {/* Level + title */}
                   <div className="flex items-center gap-2">
                     <div className="w-8 h-8 rounded-xl bg-amber-400/20 border border-amber-400/40
@@ -245,7 +267,11 @@ export function StudentDashboardShell({
                         Tingkat {lvl.currentLevel}
                       </p>
                       <p className="text-xs font-bold text-white/90 leading-none mt-0.5">
-                        {adventurerInfo.title}
+                        {gamData?.equippedCosmetics?.titleId ? (
+                          <span>{adventurerInfo.title}</span>
+                        ) : (
+                          adventurerInfo.title
+                        )}
                       </p>
                     </div>
                   </div>
@@ -268,6 +294,17 @@ export function StudentDashboardShell({
                   <div className="flex items-center gap-1.5 bg-amber-500/20 border border-amber-400/35 px-2.5 py-1 rounded-xl text-xs font-black text-amber-200">
                     🪙 {gamData?.coins ?? 0}
                   </div>
+
+                  {/* Quick Cosmetic Shop button */}
+                  <button
+                    type="button"
+                    onClick={() => setIsShopModalOpen(true)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black text-white
+                      bg-blue-500/25 hover:bg-blue-500/40 border border-white/30 dark:bg-purple-500/30 dark:hover:bg-purple-500/45 transition-all hover:scale-105 active:scale-95 shadow-sm"
+                  >
+                    <ShoppingBag className="w-3.5 h-3.5 text-cyan-300" />
+                    <span>Toko Kosmetik</span>
+                  </button>
 
                   {/* Celebrate button */}
                   <button
@@ -534,6 +571,18 @@ export function StudentDashboardShell({
         coins={gamData?.coins ?? 0}
         studentName={studentName}
       />
+
+      {/* ── Cosmetic Shop & Dressing Room Modal ── */}
+      {mounted && isShopModalOpen && gamData && (
+        <CosmeticShopModal
+          studentName={studentName}
+          coins={gamData.coins}
+          totalXp={gamData.totalXp}
+          inventory={gamData.inventory ?? []}
+          equippedCosmetics={gamData.equippedCosmetics}
+          onClose={() => setIsShopModalOpen(false)}
+        />
+      )}
     </div>
   );
 }

@@ -1,0 +1,1568 @@
+﻿[
+  {
+    "module_title": "Python Fundamentals: Petualangan Dunia Coding",
+    "module_order": 2,
+    "description": "Pelajari Python dari nol hingga mahir dengan membangun proyek nyata. Mulai dari mencetak teks, mengolah data, membuat fungsi, hingga membangun aplikasi kecil berbasis Object-Oriented Programming.",
+    "level": "beginner",
+    "gamification_type": "mimo",
+    "topics": [
+      {
+        "topic_title": "Print & Variabel",
+        "topic_order": 1,
+        "description": "Menguasai fungsi print() untuk menampilkan output dan menggunakan variabel sebagai wadah penyimpanan data.",
+        "project_link": "https://replit.com",
+        "nodes": [
+          {
+            "node_id": "py-101-n1",
+            "order": 1,
+            "type": "lesson",
+            "title": "Hello, Python!",
+            "content": "Python adalah bahasa pemrograman yang mudah dibaca. Instruksi pertama yang wajib dipelajari adalah print() — fungsi bawaan untuk menampilkan teks ke layar. Setiap teks yang ingin ditampilkan diapit tanda kutip.",
+            "xp": 15
+          },
+          {
+            "node_id": "py-101-n2",
+            "order": 2,
+            "type": "code",
+            "title": "Variabel: Kotak Penyimpan Nilai",
+            "content": "Variabel adalah nama yang merepresentasikan suatu nilai. Di Python, kita tidak perlu mendeklarasikan tipe data secara eksplisit — cukup tulis nama variabel, tanda sama dengan, lalu nilainya.",
+            "code_language": "python",
+            "code_content": "# Menampilkan teks sederhana\nprint(\"Hello, World!\")\n\n# Membuat variabel\nnama = \"Budi\"\numur = 12\nprint(nama)\nprint(umur)",
+            "xp": 20
+          },
+          {
+            "node_id": "py-101-n3",
+            "order": 3,
+            "type": "quiz",
+            "title": "Cek Pemahaman: Sintaks print()",
+            "content": "Manakah cara yang benar untuk menampilkan teks 'Halo Dunia' di Python?",
+            "options": [
+              "print(\"Halo Dunia\")",
+              "echo \"Halo Dunia\"",
+              "printf(Halo Dunia)",
+              "display \"Halo Dunia\""
+            ],
+            "correct_option": "print(\"Halo Dunia\")",
+            "xp": 20
+          },
+          {
+            "node_id": "py-101-n4",
+            "order": 4,
+            "type": "practice",
+            "title": "Menggabungkan Variabel di Print",
+            "instructions": "Cara mana yang paling tepat untuk menggabungkan variabel nama dengan teks lain dalam satu print()?",
+            "options": [
+              "print(\"Nama saya:\", nama)",
+              "print(nama + + \"adalah saya\")",
+              "print = nama",
+              "echo(nama)"
+            ],
+            "correct_option": "print(\"Nama saya:\", nama)",
+            "xp": 25
+          }
+        ],
+        "quiz": [
+          {
+            "question": "Fungsi bawaan Python untuk menampilkan output ke layar adalah?",
+            "options": ["print()", "display()", "show()", "output()"],
+            "answer_index": 0,
+            "explanation": "print() adalah fungsi bawaan Python yang digunakan untuk mencetak nilai atau teks ke layar."
+          },
+          {
+            "question": "Manakah deklarasi variabel yang valid di Python?",
+            "options": ["nama = \"Andi\"", "var nama = \"Andi\"", "string nama = \"Andi\"", "declare nama = \"Andi\""],
+            "answer_index": 0,
+            "explanation": "Python tidak memerlukan keyword tipe data. Cukup tulis nama variabel, tanda =, lalu nilai."
+          },
+          {
+            "question": "Apa output dari kode berikut: x = 5; print(x)?",
+            "options": ["5", "x", "\"x\"", "Error"],
+            "answer_index": 0,
+            "explanation": "Variabel x menyimpan nilai 5. print(x) menampilkan nilai yang tersimpan di variabel tersebut."
+          },
+          {
+            "question": "Simbol apa yang digunakan untuk membuat komentar satu baris di Python?",
+            "options": ["#", "//", "/*", "--"],
+            "answer_index": 0,
+            "explanation": "Tanda # digunakan untuk menulis komentar di Python. Baris setelah # tidak dieksekusi."
+          },
+          {
+            "question": "Manakah nama variabel yang valid di Python?",
+            "options": ["nama_siswa", "2nama", "nama-siswa", "nama siswa"],
+            "answer_index": 0,
+            "explanation": "Nama variabel harus diawali huruf atau underscore, tidak boleh diawali angka, dan tidak boleh mengandung spasi atau tanda hubung."
+          }
+        ],
+        "challenge": {
+          "title": "Kartu Identitas Digital",
+          "instructions": "Buka Replit (replit.com) dan buat project Python baru. Buat variabel untuk nama, umur, kota, dan hobi. Gunakan print() untuk menampilkan kartu identitas dirimu dalam format yang rapi. Kirim link Replit-mu!",
+          "submission_type": "link",
+          "xp": 30
+        }
+      },
+      {
+        "topic_title": "Tipe Data",
+        "topic_order": 2,
+        "description": "Memahami tipe data Integer, Float, String, dan Boolean serta cara konversi antar tipe.",
+        "project_link": "https://replit.com",
+        "nodes": [
+          {
+            "node_id": "py-102-n1",
+            "order": 1,
+            "type": "lesson",
+            "title": "Empat Tipe Data Dasar Python",
+            "content": "Python mengenal beberapa tipe data primitif: int (bilangan bulat), float (bilangan desimal), str (teks), dan bool (True/False). Gunakan fungsi type() untuk memeriksa tipe data sebuah nilai.",
+            "xp": 15
+          },
+          {
+            "node_id": "py-102-n2",
+            "order": 2,
+            "type": "code",
+            "title": "Konversi Tipe Data (Casting)",
+            "content": "Kadang kita perlu mengubah tipe data satu ke yang lain. Python menyediakan fungsi int(), float(), str(), dan bool() untuk keperluan ini.",
+            "code_language": "python",
+            "code_content": "# Contoh tipe data\nangka = 42          # int\ndecimal = 3.14      # float\nteks = \"Python\"     # str\naktif = True        # bool\n\n# Konversi tipe\nprint(int(\"99\"))    # str ke int -> 99\nprint(float(10))    # int ke float -> 10.0\nprint(str(7))       # int ke str -> \"7\"\nprint(type(angka))  # <class 'int'>",
+            "xp": 20
+          },
+          {
+            "node_id": "py-102-n3",
+            "order": 3,
+            "type": "quiz",
+            "title": "Identifikasi Tipe Data",
+            "content": "Apa tipe data dari nilai 3.14 di Python?",
+            "options": ["float", "int", "str", "bool"],
+            "correct_option": "float",
+            "xp": 20
+          },
+          {
+            "node_id": "py-102-n4",
+            "order": 4,
+            "type": "practice",
+            "title": "Konversi yang Tepat",
+            "instructions": "Kode apa yang digunakan untuk mengubah string '100' menjadi integer?",
+            "options": ["int('100')", "str(100)", "float('100')", "bool('100')"],
+            "correct_option": "int('100')",
+            "xp": 25
+          }
+        ],
+        "quiz": [
+          {
+            "question": "Tipe data apa yang digunakan untuk menyimpan nilai True atau False?",
+            "options": ["bool", "int", "str", "float"],
+            "answer_index": 0,
+            "explanation": "Tipe data bool hanya memiliki dua nilai: True dan False. Digunakan dalam percabangan dan logika."
+          },
+          {
+            "question": "Fungsi apa yang digunakan untuk memeriksa tipe data sebuah variabel?",
+            "options": ["type()", "typeof()", "check()", "dtype()"],
+            "answer_index": 0,
+            "explanation": "type() adalah fungsi bawaan Python yang mengembalikan tipe data dari sebuah nilai atau variabel."
+          },
+          {
+            "question": "Apa hasil dari int(3.9) di Python?",
+            "options": ["3", "4", "3.9", "Error"],
+            "answer_index": 0,
+            "explanation": "int() memotong (bukan membulatkan) bagian desimal. int(3.9) menghasilkan 3."
+          },
+          {
+            "question": "Manakah yang merupakan tipe data string (str)?",
+            "options": ["\"Hello\"", "42", "3.14", "True"],
+            "answer_index": 0,
+            "explanation": "String adalah tipe data teks yang diapit tanda kutip tunggal atau ganda."
+          },
+          {
+            "question": "Apa output dari: print(type(True))?",
+            "options": ["<class 'bool'>", "<class 'str'>", "<class 'int'>", "True"],
+            "answer_index": 0,
+            "explanation": "True adalah nilai bertipe bool. type(True) mengembalikan <class 'bool'>."
+          }
+        ],
+        "challenge": {
+          "title": "Kalkulator Konversi Suhu",
+          "instructions": "Buat program Python di Replit yang mengkonversi suhu Celsius ke Fahrenheit (rumus: F = C * 9/5 + 32). Gunakan variabel bertipe float, tampilkan hasilnya dengan print(). Kirim link-nya!",
+          "submission_type": "link",
+          "xp": 35
+        }
+      },
+      {
+        "topic_title": "Input dari Pengguna",
+        "topic_order": 3,
+        "description": "Menggunakan fungsi input() untuk mengambil data dari pengguna dan memprosesnya dalam program.",
+        "project_link": "https://replit.com",
+        "nodes": [
+          {
+            "node_id": "py-103-n1",
+            "order": 1,
+            "type": "lesson",
+            "title": "Membuat Program Interaktif dengan input()",
+            "content": "Fungsi input() menghentikan program sementara dan menunggu pengguna mengetik sesuatu lalu menekan Enter. Hasilnya selalu berupa string, jadi perlu dikonversi jika ingin diolah sebagai angka.",
+            "xp": 15
+          },
+          {
+            "node_id": "py-103-n2",
+            "order": 2,
+            "type": "code",
+            "title": "Menerima dan Memproses Input Angka",
+            "content": "Karena input() selalu menghasilkan string, kita harus menggunakan int() atau float() jika ingin melakukan operasi aritmatika pada nilainya.",
+            "code_language": "python",
+            "code_content": "# Mengambil input teks\nnama = input(\"Siapa namamu? \")\nprint(\"Halo,\", nama)\n\n# Mengambil input angka\numur = int(input(\"Berapa umurmu? \"))\ntahun_lahir = 2026 - umur\nprint(\"Kamu lahir sekitar tahun\", tahun_lahir)",
+            "xp": 20
+          },
+          {
+            "node_id": "py-103-n3",
+            "order": 3,
+            "type": "quiz",
+            "title": "Tipe Kembalian input()",
+            "content": "Fungsi input() di Python selalu mengembalikan nilai bertipe?",
+            "options": ["str", "int", "float", "bool"],
+            "correct_option": "str",
+            "xp": 20
+          },
+          {
+            "node_id": "py-103-n4",
+            "order": 4,
+            "type": "practice",
+            "title": "Menangani Input Angka dengan Benar",
+            "instructions": "Jika pengguna diminta memasukkan angka dan kita ingin menjumlahkannya, kode yang tepat adalah?",
+            "options": [
+              "angka = int(input(\"Masukkan angka: \"))",
+              "angka = input(int(\"Masukkan angka: \"))",
+              "angka = str(input(\"Masukkan angka: \"))",
+              "angka = input(float)"
+            ],
+            "correct_option": "angka = int(input(\"Masukkan angka: \"))",
+            "xp": 25
+          }
+        ],
+        "quiz": [
+          {
+            "question": "Apa tipe data yang selalu dikembalikan oleh fungsi input()?",
+            "options": ["str", "int", "float", "list"],
+            "answer_index": 0,
+            "explanation": "input() selalu mengembalikan string, bahkan jika pengguna mengetik angka."
+          },
+          {
+            "question": "Bagaimana cara mengambil input angka bulat dari pengguna?",
+            "options": ["int(input(\"Masukkan angka: \"))", "input(int(\"Masukkan angka: \"))", "input.int(\"Masukkan angka: \")", "getint(\"Masukkan angka: \")"],
+            "answer_index": 0,
+            "explanation": "Membungkus input() dengan int() mengkonversi string input menjadi integer."
+          },
+          {
+            "question": "Apa yang terjadi jika kita langsung menjumlahkan dua hasil input() tanpa konversi?",
+            "options": [
+              "String akan digabung (konkatenasi), bukan dijumlahkan",
+              "Program error seketika",
+              "Python otomatis mengkonversi ke int",
+              "Hasilnya tetap benar"
+            ],
+            "answer_index": 0,
+            "explanation": "Operator + pada string berarti penggabungan (concatenation). '3' + '5' menghasilkan '35', bukan 8."
+          },
+          {
+            "question": "Parameter teks di dalam input('...') berfungsi sebagai?",
+            "options": ["Prompt yang ditampilkan kepada pengguna", "Nilai default jika pengguna tidak mengetik", "Batas maksimum karakter input", "Tipe data yang diterima"],
+            "answer_index": 0,
+            "explanation": "Teks di dalam input() adalah prompt — petunjuk yang tampil di layar meminta pengguna memasukkan sesuatu."
+          },
+          {
+            "question": "Kode mana yang meminta input desimal dari pengguna?",
+            "options": ["float(input(\"Nilai: \"))", "int(input(\"Nilai: \"))", "str(input(\"Nilai: \"))", "decimal(input(\"Nilai: \"))"],
+            "answer_index": 0,
+            "explanation": "float() mengkonversi string hasil input() menjadi bilangan desimal."
+          }
+        ],
+        "challenge": {
+          "title": "Kalkulator BMI Sederhana",
+          "instructions": "Buat program di Replit yang meminta input berat badan (kg) dan tinggi badan (meter) dari pengguna, hitung BMI-nya (BMI = berat / tinggi²), dan tampilkan hasilnya. Kirim link Replit-mu!",
+          "submission_type": "link",
+          "xp": 35
+        }
+      },
+      {
+        "topic_title": "Kondisional (if/elif/else)",
+        "topic_order": 4,
+        "description": "Membuat keputusan dalam program menggunakan percabangan if, elif, dan else.",
+        "project_link": "https://replit.com",
+        "nodes": [
+          {
+            "node_id": "py-104-n1",
+            "order": 1,
+            "type": "lesson",
+            "title": "Logika Percabangan: Program yang Berpikir",
+            "content": "Pernyataan if memungkinkan program mengambil keputusan berdasarkan kondisi. Jika kondisi bernilai True, blok kode di bawahnya dieksekusi. Indentasi (spasi) sangat penting di Python untuk menandai blok kode.",
+            "xp": 15
+          },
+          {
+            "node_id": "py-104-n2",
+            "order": 2,
+            "type": "code",
+            "title": "if, elif, dan else Berantai",
+            "content": "Kita bisa membuat rantai kondisi dengan elif (singkatan dari else if). Python memeriksa kondisi dari atas ke bawah dan menjalankan blok pertama yang bernilai True.",
+            "code_language": "python",
+            "code_content": "nilai = int(input(\"Masukkan nilai (0-100): \"))\n\nif nilai >= 90:\n    print(\"Nilai A - Sempurna!\")\nelif nilai >= 75:\n    print(\"Nilai B - Bagus!\")\nelif nilai >= 60:\n    print(\"Nilai C - Cukup\")\nelse:\n    print(\"Nilai D - Perlu belajar lebih giat\")",
+            "xp": 20
+          },
+          {
+            "node_id": "py-104-n3",
+            "order": 3,
+            "type": "quiz",
+            "title": "Urutan Evaluasi Kondisi",
+            "content": "Dalam rantai if-elif-else, apa yang terjadi setelah salah satu kondisi bernilai True?",
+            "options": [
+              "Blok tersebut dieksekusi lalu seluruh rantai kondisi dilewati",
+              "Semua kondisi tetap diperiksa",
+              "Program berhenti total",
+              "Blok else selalu ikut dieksekusi"
+            ],
+            "correct_option": "Blok tersebut dieksekusi lalu seluruh rantai kondisi dilewati",
+            "xp": 20
+          },
+          {
+            "node_id": "py-104-n4",
+            "order": 4,
+            "type": "practice",
+            "title": "Operator Perbandingan yang Tepat",
+            "instructions": "Operator mana yang digunakan untuk memeriksa apakah dua nilai SAMA di Python?",
+            "options": ["==", "=", "!=", ">="],
+            "correct_option": "==",
+            "xp": 25
+          }
+        ],
+        "quiz": [
+          {
+            "question": "Keyword apa yang digunakan untuk kondisi alternatif tambahan setelah if?",
+            "options": ["elif", "elseif", "else if", "elsif"],
+            "answer_index": 0,
+            "explanation": "Python menggunakan elif (bukan 'else if' atau 'elseif') untuk kondisi alternatif tambahan."
+          },
+          {
+            "question": "Apa peran indentasi di Python pada blok if?",
+            "options": [
+              "Menandai batas blok kode yang berada di dalam percabangan",
+              "Hanya estetika, tidak berpengaruh",
+              "Membuat kode lebih lambat",
+              "Wajib 4 spasi, tidak boleh lebih atau kurang"
+            ],
+            "answer_index": 0,
+            "explanation": "Python menggunakan indentasi (bukan kurung kurawal) sebagai pembatas blok kode. IndentationError terjadi jika salah."
+          },
+          {
+            "question": "Apa output kode berikut: x=10; if x>5: print('Besar') else: print('Kecil')?",
+            "options": ["Besar", "Kecil", "Error", "10"],
+            "answer_index": 0,
+            "explanation": "x=10 memenuhi kondisi x>5, sehingga blok if dieksekusi dan mencetak 'Besar'."
+          },
+          {
+            "question": "Blok else dieksekusi ketika?",
+            "options": [
+              "Tidak ada satupun kondisi if/elif yang bernilai True",
+              "Selalu dieksekusi terlepas dari kondisi apapun",
+              "Hanya jika terjadi error",
+              "Hanya jika nilai variabel adalah 0"
+            ],
+            "answer_index": 0,
+            "explanation": "Blok else adalah 'pelarian terakhir' yang hanya berjalan jika semua kondisi sebelumnya False."
+          },
+          {
+            "question": "Operator mana yang memeriksa apakah dua nilai TIDAK sama?",
+            "options": ["!=", "==", "<>", "not="],
+            "answer_index": 0,
+            "explanation": "Operator != (not equal) menghasilkan True jika dua nilai berbeda."
+          }
+        ],
+        "challenge": {
+          "title": "Mesin Penilaian Otomatis",
+          "instructions": "Buat program di Replit yang meminta nilai ujian siswa (0-100), lalu tentukan grade (A/B/C/D/E) dan pesan semangat yang sesuai menggunakan if-elif-else. Kirim link Replit-mu!",
+          "submission_type": "link",
+          "xp": 35
+        }
+      },
+      {
+        "topic_title": "Perulangan (for & while)",
+        "topic_order": 5,
+        "description": "Mengotomatisasi pekerjaan berulang menggunakan loop for dan while, serta mengendalikan alur dengan break dan continue.",
+        "project_link": "https://replit.com",
+        "nodes": [
+          {
+            "node_id": "py-105-n1",
+            "order": 1,
+            "type": "lesson",
+            "title": "For Loop: Iterasi Terkendali",
+            "content": "Loop for digunakan untuk mengulang sejumlah langkah yang sudah diketahui. Fungsi range() menghasilkan urutan angka. range(5) menghasilkan 0,1,2,3,4. range(1, 6) menghasilkan 1,2,3,4,5.",
+            "xp": 15
+          },
+          {
+            "node_id": "py-105-n2",
+            "order": 2,
+            "type": "code",
+            "title": "While Loop & Kendali Break/Continue",
+            "content": "While loop terus berjalan selama kondisinya True. break menghentikan loop seketika, sedangkan continue melewati sisa iterasi saat ini dan lanjut ke iterasi berikutnya.",
+            "code_language": "python",
+            "code_content": "# For loop dengan range\nfor i in range(1, 6):\n    print(f\"Bintang ke-{i}: \" + \"*\" * i)\n\n# While loop\nhitung = 10\nwhile hitung > 0:\n    print(hitung)\n    hitung -= 2\nprint(\"Selesai!\")\n\n# Break dan continue\nfor angka in range(10):\n    if angka == 3:\n        continue  # Lewati angka 3\n    if angka == 7:\n        break     # Berhenti di angka 7\n    print(angka)",
+            "xp": 20
+          },
+          {
+            "node_id": "py-105-n3",
+            "order": 3,
+            "type": "quiz",
+            "title": "range() yang Tepat",
+            "content": "range(2, 10, 2) menghasilkan urutan angka?",
+            "options": ["2, 4, 6, 8", "2, 4, 6, 8, 10", "1, 3, 5, 7, 9", "0, 2, 4, 6, 8"],
+            "correct_option": "2, 4, 6, 8",
+            "xp": 20
+          },
+          {
+            "node_id": "py-105-n4",
+            "order": 4,
+            "type": "practice",
+            "title": "Perbedaan break dan continue",
+            "instructions": "Apa perbedaan antara break dan continue di dalam loop?",
+            "options": [
+              "break menghentikan loop sepenuhnya; continue melewati iterasi saat ini saja",
+              "break melewati satu iterasi; continue menghentikan loop",
+              "Keduanya sama-sama menghentikan loop",
+              "break hanya untuk while, continue hanya untuk for"
+            ],
+            "correct_option": "break menghentikan loop sepenuhnya; continue melewati iterasi saat ini saja",
+            "xp": 25
+          }
+        ],
+        "quiz": [
+          {
+            "question": "Berapa kali loop for i in range(5): akan berjalan?",
+            "options": ["5 kali", "4 kali", "6 kali", "Tidak terbatas"],
+            "answer_index": 0,
+            "explanation": "range(5) menghasilkan 0,1,2,3,4 — tepat 5 nilai, jadi loop berjalan 5 kali."
+          },
+          {
+            "question": "Kapan while loop berhenti secara alami?",
+            "options": [
+              "Saat kondisinya bernilai False",
+              "Setelah tepat 100 iterasi",
+              "Saat variabel bernilai 0",
+              "Saat program kehabisan memori"
+            ],
+            "answer_index": 0,
+            "explanation": "While loop terus berjalan selama kondisinya True dan berhenti begitu kondisinya menjadi False."
+          },
+          {
+            "question": "Apa yang dimaksud infinite loop?",
+            "options": [
+              "Loop yang kondisinya tidak pernah menjadi False sehingga berjalan selamanya",
+              "Loop yang hanya berjalan sekali",
+              "Loop di dalam loop lainnya",
+              "Loop yang menggunakan range()"
+            ],
+            "answer_index": 0,
+            "explanation": "Infinite loop terjadi jika kondisi while selalu True. Harus dihentikan manual (Ctrl+C) atau dengan break."
+          },
+          {
+            "question": "Apa fungsi keyword break di dalam loop?",
+            "options": [
+              "Menghentikan loop sepenuhnya dan melanjutkan kode di luar loop",
+              "Melewati satu iterasi dan lanjut ke iterasi berikutnya",
+              "Mengulang iterasi saat ini dari awal",
+              "Mendeklarasikan batas maksimum loop"
+            ],
+            "answer_index": 0,
+            "explanation": "break segera mengakhiri eksekusi loop dan program melanjutkan ke baris setelah blok loop."
+          },
+          {
+            "question": "Output dari: for i in range(0,10,3): print(i) adalah?",
+            "options": ["0 3 6 9", "0 3 6 9 12", "1 4 7 10", "0 1 2 3"],
+            "answer_index": 0,
+            "explanation": "range(0,10,3) mulai dari 0, melompat 3, berhenti sebelum 10: 0, 3, 6, 9."
+          }
+        ],
+        "challenge": {
+          "title": "Tabel Perkalian Dinamis",
+          "instructions": "Buat program di Replit yang meminta input angka dari pengguna lalu menampilkan tabel perkalian (1 sampai 10) dari angka tersebut menggunakan for loop. Kirim link-nya!",
+          "submission_type": "link",
+          "xp": 40
+        }
+      },
+      {
+        "topic_title": "Fungsi (Functions)",
+        "topic_order": 6,
+        "description": "Membuat blok kode yang dapat digunakan ulang menggunakan def, parameter, return value, dan default argument.",
+        "project_link": "https://replit.com",
+        "nodes": [
+          {
+            "node_id": "py-106-n1",
+            "order": 1,
+            "type": "lesson",
+            "title": "Fungsi: Kode Sekali Tulis, Pakai Berkali-kali",
+            "content": "Fungsi adalah blok kode bernama yang dapat dipanggil berulang kali. Dibuat dengan keyword def diikuti nama fungsi dan tanda kurung. Fungsi membantu menghindari pengulangan kode (DRY: Don't Repeat Yourself).",
+            "xp": 15
+          },
+          {
+            "node_id": "py-106-n2",
+            "order": 2,
+            "type": "code",
+            "title": "Parameter, Argumen, dan Return Value",
+            "content": "Parameter adalah variabel di definisi fungsi. Argumen adalah nilai yang dikirim saat memanggil fungsi. Return mengembalikan nilai dari fungsi ke pemanggilnya.",
+            "code_language": "python",
+            "code_content": "# Fungsi dengan parameter dan return\ndef hitung_luas_persegi(sisi):\n    luas = sisi * sisi\n    return luas\n\n# Memanggil fungsi\nhasil = hitung_luas_persegi(5)\nprint(f\"Luas: {hasil} cm²\")  # Output: 25\n\n# Fungsi dengan default argument\ndef sapa(nama, salam=\"Halo\"):\n    print(f\"{salam}, {nama}!\")\n\nsapa(\"Andi\")          # Halo, Andi!\nsapa(\"Budi\", \"Hai\")  # Hai, Budi!",
+            "xp": 20
+          },
+          {
+            "node_id": "py-106-n3",
+            "order": 3,
+            "type": "quiz",
+            "title": "Memahami Return Value",
+            "content": "Apa fungsi dari keyword return di dalam sebuah fungsi?",
+            "options": [
+              "Mengembalikan nilai hasil fungsi ke pemanggil",
+              "Mencetak nilai ke layar",
+              "Menghentikan program sepenuhnya",
+              "Membuat loop berhenti"
+            ],
+            "correct_option": "Mengembalikan nilai hasil fungsi ke pemanggil",
+            "xp": 20
+          },
+          {
+            "node_id": "py-106-n4",
+            "order": 4,
+            "type": "practice",
+            "title": "Syntax Definisi Fungsi",
+            "instructions": "Manakah cara yang benar mendefinisikan fungsi bernama 'sapa' di Python?",
+            "options": [
+              "def sapa():",
+              "function sapa():",
+              "func sapa():",
+              "define sapa():"
+            ],
+            "correct_option": "def sapa():",
+            "xp": 25
+          }
+        ],
+        "quiz": [
+          {
+            "question": "Keyword apa yang digunakan untuk mendefinisikan fungsi di Python?",
+            "options": ["def", "function", "func", "fun"],
+            "answer_index": 0,
+            "explanation": "Python menggunakan keyword def untuk mendefinisikan fungsi."
+          },
+          {
+            "question": "Apa yang terjadi jika fungsi tidak memiliki pernyataan return?",
+            "options": [
+              "Fungsi mengembalikan nilai None secara implisit",
+              "Program akan error",
+              "Fungsi mengembalikan 0",
+              "Fungsi mengembalikan string kosong"
+            ],
+            "answer_index": 0,
+            "explanation": "Fungsi Python yang tidak memiliki return secara otomatis mengembalikan None."
+          },
+          {
+            "question": "Apa itu default argument pada fungsi?",
+            "options": [
+              "Nilai parameter yang digunakan jika argumen tidak diberikan saat pemanggilan",
+              "Argumen pertama yang selalu wajib diisi",
+              "Tipe data default sebuah parameter",
+              "Nama fungsi secara default"
+            ],
+            "answer_index": 0,
+            "explanation": "Default argument memberikan nilai fallback pada parameter jika pemanggil tidak menyertakan argumen tersebut."
+          },
+          {
+            "question": "Manakah cara yang benar memanggil fungsi tambah(a, b) dengan nilai 3 dan 4?",
+            "options": ["tambah(3, 4)", "call tambah(3, 4)", "tambah.call(3, 4)", "run tambah(3, 4)"],
+            "answer_index": 0,
+            "explanation": "Fungsi dipanggil cukup dengan nama fungsi diikuti argumen di dalam tanda kurung."
+          },
+          {
+            "question": "Prinsip DRY dalam pemrograman kepanjangan dari?",
+            "options": [
+              "Don't Repeat Yourself",
+              "Data Runs Yearly",
+              "Define Run Yield",
+              "Direct Run Yank"
+            ],
+            "answer_index": 0,
+            "explanation": "DRY (Don't Repeat Yourself) mendorong penggunaan fungsi agar kode yang sama tidak ditulis berulang kali."
+          }
+        ],
+        "challenge": {
+          "title": "Kalkulator Fungsi Lengkap",
+          "instructions": "Buat 4 fungsi: tambah(a,b), kurang(a,b), kali(a,b), bagi(a,b). Masing-masing fungsi return hasilnya. Buat menu interaktif dengan input() agar pengguna bisa memilih operasi. Kirim link Replit-mu!",
+          "submission_type": "link",
+          "xp": 40
+        }
+      },
+      {
+        "topic_title": "List",
+        "topic_order": 7,
+        "description": "Menyimpan koleksi data dalam list, memanipulasinya dengan indexing, slicing, dan metode bawaan.",
+        "project_link": "https://replit.com",
+        "nodes": [
+          {
+            "node_id": "py-107-n1",
+            "order": 1,
+            "type": "lesson",
+            "title": "List: Wadah Koleksi Data Berurutan",
+            "content": "List adalah tipe data yang menyimpan banyak nilai dalam satu variabel, dipisahkan koma di dalam tanda kurung siku []. List bersifat ordered (berurutan), mutable (bisa diubah), dan bisa menyimpan berbagai tipe data.",
+            "xp": 15
+          },
+          {
+            "node_id": "py-107-n2",
+            "order": 2,
+            "type": "code",
+            "title": "Indexing, Slicing, dan Metode List",
+            "content": "Akses elemen list dengan indeks (mulai dari 0). Gunakan slicing untuk mengambil sub-list. Metode append(), remove(), sort(), dan len() sangat sering digunakan.",
+            "code_language": "python",
+            "code_content": "buah = [\"apel\", \"mangga\", \"jeruk\", \"pisang\"]\n\n# Indexing\nprint(buah[0])    # apel\nprint(buah[-1])   # pisang (dari belakang)\n\n# Slicing\nprint(buah[1:3])  # ['mangga', 'jeruk']\n\n# Metode list\nbuah.append(\"anggur\")   # Tambah di akhir\nbuah.remove(\"jeruk\")    # Hapus nilai tertentu\nbuah.sort()             # Urutkan A-Z\nprint(len(buah))        # Jumlah elemen\nprint(buah)",
+            "xp": 20
+          },
+          {
+            "node_id": "py-107-n3",
+            "order": 3,
+            "type": "quiz",
+            "title": "Indeks List Python",
+            "content": "Pada list = ['a','b','c','d'], nilai list[2] adalah?",
+            "options": ["'c'", "'b'", "'d'", "'a'"],
+            "correct_option": "'c'",
+            "xp": 20
+          },
+          {
+            "node_id": "py-107-n4",
+            "order": 4,
+            "type": "practice",
+            "title": "Menambah Elemen ke List",
+            "instructions": "Metode apa yang digunakan untuk menambahkan elemen baru di akhir list?",
+            "options": ["append()", "add()", "insert()", "push()"],
+            "correct_option": "append()",
+            "xp": 25
+          }
+        ],
+        "quiz": [
+          {
+            "question": "Indeks pertama elemen list di Python dimulai dari angka?",
+            "options": ["0", "1", "-1", "Tergantung jumlah elemen"],
+            "answer_index": 0,
+            "explanation": "Python menggunakan zero-based indexing. Elemen pertama selalu berada di indeks 0."
+          },
+          {
+            "question": "Apa output dari list = [10,20,30]; print(list[-1])?",
+            "options": ["30", "10", "20", "Error"],
+            "answer_index": 0,
+            "explanation": "Indeks -1 mengakses elemen terakhir dari list. Pada list [10,20,30], indeks -1 menghasilkan 30."
+          },
+          {
+            "question": "Metode list apa yang menghapus elemen berdasarkan nilai (bukan indeks)?",
+            "options": ["remove()", "del", "pop()", "clear()"],
+            "answer_index": 0,
+            "explanation": "remove(nilai) menghapus kemunculan pertama dari nilai yang ditentukan dalam list."
+          },
+          {
+            "question": "Fungsi apa yang mengembalikan jumlah elemen dalam sebuah list?",
+            "options": ["len()", "size()", "count()", "length()"],
+            "answer_index": 0,
+            "explanation": "len() adalah fungsi bawaan Python yang mengembalikan panjang (jumlah elemen) dari list."
+          },
+          {
+            "question": "Hasil dari [1,2,3,4,5][1:4] adalah?",
+            "options": ["[2, 3, 4]", "[1, 2, 3]", "[2, 3, 4, 5]", "[1, 2, 3, 4]"],
+            "answer_index": 0,
+            "explanation": "Slicing [1:4] mengambil elemen dari indeks 1 sampai sebelum indeks 4, yaitu indeks 1,2,3 → nilai 2,3,4."
+          }
+        ],
+        "challenge": {
+          "title": "Aplikasi Daftar Belanja",
+          "instructions": "Buat program di Replit yang mengelola daftar belanja. Pengguna bisa menambah item, menghapus item, dan melihat daftar lengkap. Gunakan list, append(), remove(), dan loop for. Kirim link-nya!",
+          "submission_type": "link",
+          "xp": 40
+        }
+      },
+      {
+        "topic_title": "Dictionary",
+        "topic_order": 8,
+        "description": "Menyimpan data berpasangan key-value menggunakan dictionary dan mengaksesnya secara efisien.",
+        "project_link": "https://replit.com",
+        "nodes": [
+          {
+            "node_id": "py-108-n1",
+            "order": 1,
+            "type": "lesson",
+            "title": "Dictionary: Data Key-Value yang Powerful",
+            "content": "Dictionary menyimpan pasangan key-value di dalam kurung kurawal {}. Key harus unik dan immutable (biasanya string atau angka). Dictionary sangat efisien untuk mencari data berdasarkan nama/identitas.",
+            "xp": 15
+          },
+          {
+            "node_id": "py-108-n2",
+            "order": 2,
+            "type": "code",
+            "title": "Membuat, Mengakses, dan Memodifikasi Dictionary",
+            "content": "Akses nilai menggunakan key. Tambah atau ubah nilai dengan assignment. Gunakan metode keys(), values(), dan items() untuk iterasi.",
+            "code_language": "python",
+            "code_content": "siswa = {\n    \"nama\": \"Rina\",\n    \"umur\": 13,\n    \"nilai\": 92.5\n}\n\n# Akses nilai\nprint(siswa[\"nama\"])    # Rina\nprint(siswa.get(\"umur\")) # 13 (lebih aman)\n\n# Tambah/ubah key\nsiswa[\"kelas\"] = \"7A\"\nsiswa[\"nilai\"] = 95\n\n# Iterasi\nfor key, value in siswa.items():\n    print(f\"{key}: {value}\")",
+            "xp": 20
+          },
+          {
+            "node_id": "py-108-n3",
+            "order": 3,
+            "type": "quiz",
+            "title": "Akses Nilai Dictionary",
+            "content": "Diberikan: data = {'nama': 'Ali', 'kota': 'Jakarta'}. Bagaimana mengakses nilai 'Jakarta'?",
+            "options": ["data['kota']", "data[1]", "data.kota", "data->kota"],
+            "correct_option": "data['kota']",
+            "xp": 20
+          },
+          {
+            "node_id": "py-108-n4",
+            "order": 4,
+            "type": "practice",
+            "title": "Metode get() vs Akses Langsung",
+            "instructions": "Apa keunggulan menggunakan .get() dibanding akses langsung dengan [] pada dictionary?",
+            "options": [
+              "get() mengembalikan None jika key tidak ada, sedangkan [] memunculkan KeyError",
+              "get() lebih lambat dari []",
+              "get() hanya bisa digunakan untuk key berupa angka",
+              "Tidak ada perbedaan sama sekali"
+            ],
+            "correct_option": "get() mengembalikan None jika key tidak ada, sedangkan [] memunculkan KeyError",
+            "xp": 25
+          }
+        ],
+        "quiz": [
+          {
+            "question": "Struktur data apa yang menyimpan pasangan key-value di Python?",
+            "options": ["Dictionary", "List", "Tuple", "Set"],
+            "answer_index": 0,
+            "explanation": "Dictionary (dict) menyimpan data sebagai pasangan key-value yang dapat diakses melalui key-nya."
+          },
+          {
+            "question": "Karakter apa yang digunakan untuk membuat dictionary literal di Python?",
+            "options": ["{}", "[]", "()", "<>"],
+            "answer_index": 0,
+            "explanation": "Dictionary dibuat dengan kurung kurawal {}. Contoh: {'kunci': 'nilai'}."
+          },
+          {
+            "question": "Metode dictionary apa yang mengembalikan semua pasangan key-value?",
+            "options": ["items()", "keys()", "values()", "pairs()"],
+            "answer_index": 0,
+            "explanation": "items() mengembalikan view dari pasangan (key, value) yang bisa diiterasi dengan loop for."
+          },
+          {
+            "question": "Bagaimana cara menghapus sebuah key dari dictionary?",
+            "options": ["del data['key']", "data.remove('key')", "data.delete('key')", "remove data['key']"],
+            "answer_index": 0,
+            "explanation": "Keyword del digunakan untuk menghapus key beserta nilainya dari dictionary."
+          },
+          {
+            "question": "Key pada dictionary bersifat?",
+            "options": ["Unik dan immutable", "Bisa duplikat dan mutable", "Harus berupa angka", "Harus berupa string"],
+            "answer_index": 0,
+            "explanation": "Key dictionary harus unik (tidak boleh duplikat) dan immutable (bisa string, int, tuple — tidak bisa list)."
+          }
+        ],
+        "challenge": {
+          "title": "Buku Kontak Digital",
+          "instructions": "Buat program buku kontak di Replit menggunakan dictionary. Pengguna bisa menambah kontak (nama sebagai key, nomor sebagai value), mencari kontak, dan menampilkan semua kontak. Kirim link-nya!",
+          "submission_type": "link",
+          "xp": 40
+        }
+      },
+      {
+        "topic_title": "String Methods",
+        "topic_order": 9,
+        "description": "Memanipulasi teks menggunakan metode string bawaan Python seperti upper, lower, split, join, replace, dan f-string.",
+        "project_link": "https://replit.com",
+        "nodes": [
+          {
+            "node_id": "py-109-n1",
+            "order": 1,
+            "type": "lesson",
+            "title": "String adalah Objek yang Kaya Fitur",
+            "content": "Di Python, string bukan sekadar teks — ia adalah objek dengan banyak metode bawaan. Metode string tidak mengubah string asli (immutable) tapi mengembalikan string baru.",
+            "xp": 15
+          },
+          {
+            "node_id": "py-109-n2",
+            "order": 2,
+            "type": "code",
+            "title": "Metode String Paling Berguna",
+            "content": "Pelajari metode upper(), lower(), strip(), split(), join(), replace(), dan f-string untuk pemformatan teks modern.",
+            "code_language": "python",
+            "code_content": "teks = \"  Hello, Python World!  \"\n\nprint(teks.upper())          # Semua huruf besar\nprint(teks.lower())          # Semua huruf kecil\nprint(teks.strip())          # Hapus spasi di kedua ujung\nprint(teks.replace(\"Python\", \"Dunia\"))\n\n# Split dan Join\nkata = \"apel,mangga,jeruk\"\ndaftar = kata.split(\",\")\nprint(daftar)                # ['apel','mangga','jeruk']\ndigabung = \" - \".join(daftar)\nprint(digabung)              # apel - mangga - jeruk\n\n# F-string (modern & direkomendasikan)\nnama = \"Andi\"\nprint(f\"Halo, {nama}! Selamat datang.\")",
+            "xp": 20
+          },
+          {
+            "node_id": "py-109-n3",
+            "order": 3,
+            "type": "quiz",
+            "title": "Metode Split",
+            "content": "Apa hasil dari 'a-b-c'.split('-')?",
+            "options": ["['a', 'b', 'c']", "'abc'", "('a','b','c')", "{'a','b','c'}"],
+            "correct_option": "['a', 'b', 'c']",
+            "xp": 20
+          },
+          {
+            "node_id": "py-109-n4",
+            "order": 4,
+            "type": "practice",
+            "title": "F-string vs Concatenation",
+            "instructions": "Manakah cara modern dan direkomendasikan untuk menyisipkan variabel ke dalam string?",
+            "options": [
+              "f\"Halo, {nama}!\"",
+              "\"Halo, \" + nama + \"!\"",
+              "\"Halo, %s\" % nama",
+              "\"Halo, {}\".format(nama)"
+            ],
+            "correct_option": "f\"Halo, {nama}!\"",
+            "xp": 25
+          }
+        ],
+        "quiz": [
+          {
+            "question": "Metode apa yang menghapus spasi (whitespace) di awal dan akhir string?",
+            "options": ["strip()", "trim()", "clean()", "remove()"],
+            "answer_index": 0,
+            "explanation": "strip() menghapus whitespace (spasi, tab, newline) dari kedua sisi string."
+          },
+          {
+            "question": "Apa output dari 'Python'.upper()?",
+            "options": ["'PYTHON'", "'python'", "'Python'", "Error"],
+            "answer_index": 0,
+            "explanation": "upper() mengkonversi semua huruf string menjadi huruf kapital."
+          },
+          {
+            "question": "Metode join() digunakan untuk?",
+            "options": [
+              "Menggabungkan elemen list menjadi satu string dengan separator tertentu",
+              "Menggabungkan dua list menjadi satu",
+              "Menambahkan elemen ke akhir list",
+              "Memisahkan string menjadi list"
+            ],
+            "answer_index": 0,
+            "explanation": "join() menggabungkan list string dengan separator. Contoh: ', '.join(['a','b','c']) → 'a, b, c'."
+          },
+          {
+            "question": "Cara membuat f-string di Python adalah?",
+            "options": [
+              "Awali string dengan huruf f: f\"teks {variabel}\"",
+              "Akhiri string dengan f: \"teks {variabel}\"f",
+              "Gunakan format(): \"teks\".format(variabel)",
+              "Gunakan %: \"teks %s\" % variabel"
+            ],
+            "answer_index": 0,
+            "explanation": "F-string dibuat dengan awalan f sebelum tanda kutip. Variabel disisipkan dalam kurung kurawal {}."
+          },
+          {
+            "question": "Apa hasil 'hello world'.replace('world', 'python')?",
+            "options": ["'hello python'", "'hello world'", "'world python'", "Error"],
+            "answer_index": 0,
+            "explanation": "replace(old, new) menggantikan semua kemunculan substring 'old' dengan 'new'."
+          }
+        ],
+        "challenge": {
+          "title": "Generator Nama Username",
+          "instructions": "Buat program di Replit yang meminta nama lengkap pengguna, lalu otomatis membuat username: huruf kecil semua, spasi diganti underscore, tambahkan 3 digit angka di akhir. Contoh: 'Budi Santoso' → 'budi_santoso123'. Kirim link-nya!",
+          "submission_type": "link",
+          "xp": 40
+        }
+      },
+      {
+        "topic_title": "File I/O",
+        "topic_order": 10,
+        "description": "Membaca dan menulis file teks menggunakan fungsi open(), metode read/write, dan context manager with.",
+        "project_link": "https://replit.com",
+        "nodes": [
+          {
+            "node_id": "py-110-n1",
+            "order": 1,
+            "type": "lesson",
+            "title": "Menyimpan Data Melampaui Program: File I/O",
+            "content": "Data yang disimpan dalam variabel hilang saat program selesai. File I/O memungkinkan program menyimpan dan membaca data secara persisten ke/dari file. Python menyediakan fungsi open() untuk membuka file.",
+            "xp": 15
+          },
+          {
+            "node_id": "py-110-n2",
+            "order": 2,
+            "type": "code",
+            "title": "Membaca dan Menulis File dengan Context Manager",
+            "content": "Gunakan with open() sebagai context manager — file otomatis ditutup setelah blok with selesai, menghindari kebocoran resource.",
+            "code_language": "python",
+            "code_content": "# Menulis file\nwith open(\"catatan.txt\", \"w\") as f:\n    f.write(\"Baris pertama\\n\")\n    f.write(\"Baris kedua\\n\")\n\n# Membaca file\nwith open(\"catatan.txt\", \"r\") as f:\n    isi = f.read()\n    print(isi)\n\n# Membaca baris per baris\nwith open(\"catatan.txt\", \"r\") as f:\n    for baris in f:\n        print(baris.strip())\n\n# Mode append (menambah tanpa hapus isi lama)\nwith open(\"catatan.txt\", \"a\") as f:\n    f.write(\"Baris ketiga\\n\")",
+            "xp": 20
+          },
+          {
+            "node_id": "py-110-n3",
+            "order": 3,
+            "type": "quiz",
+            "title": "Mode Buka File",
+            "content": "Mode apa yang harus digunakan agar konten baru ditambahkan di akhir file tanpa menghapus isi lama?",
+            "options": ["'a' (append)", "'w' (write)", "'r' (read)", "'x' (exclusive)"],
+            "correct_option": "'a' (append)",
+            "xp": 20
+          },
+          {
+            "node_id": "py-110-n4",
+            "order": 4,
+            "type": "practice",
+            "title": "Keunggulan Context Manager",
+            "instructions": "Mengapa penggunaan 'with open()' direkomendasikan dibanding open() manual?",
+            "options": [
+              "File otomatis ditutup setelah blok with selesai, mencegah kebocoran resource",
+              "Membuat pembacaan file 10x lebih cepat",
+              "Memungkinkan membuka lebih dari 1 file sekaligus",
+              "Tidak ada perbedaan, hanya gaya penulisan"
+            ],
+            "correct_option": "File otomatis ditutup setelah blok with selesai, mencegah kebocoran resource",
+            "xp": 25
+          }
+        ],
+        "quiz": [
+          {
+            "question": "Mode 'w' saat membuka file berarti?",
+            "options": [
+              "Write mode — membuat file baru atau menimpa isi file yang sudah ada",
+              "Watch mode — memantau perubahan file",
+              "Wait mode — menunggu file tersedia",
+              "Weak mode — membaca file dengan hak terbatas"
+            ],
+            "answer_index": 0,
+            "explanation": "Mode 'w' (write) membuat file baru jika belum ada, atau menimpa seluruh isinya jika sudah ada."
+          },
+          {
+            "question": "Fungsi apa yang digunakan untuk membuka file di Python?",
+            "options": ["open()", "read()", "file()", "access()"],
+            "answer_index": 0,
+            "explanation": "open() adalah fungsi bawaan Python untuk membuka file. Menerima nama file dan mode sebagai argumen."
+          },
+          {
+            "question": "Apa yang dilakukan metode readlines()?",
+            "options": [
+              "Membaca semua baris file dan mengembalikannya sebagai list",
+              "Membaca file karakter per karakter",
+              "Mengembalikan jumlah baris dalam file",
+              "Hanya membaca baris pertama file"
+            ],
+            "answer_index": 0,
+            "explanation": "readlines() membaca seluruh file dan mengembalikan list dimana setiap elemen adalah satu baris."
+          },
+          {
+            "question": "Apa keuntungan menggunakan 'with' statement untuk membuka file?",
+            "options": [
+              "File otomatis ditutup meski terjadi exception",
+              "File dibuka lebih cepat",
+              "File tidak bisa dihapus selama program berjalan",
+              "Membuat file menjadi read-only"
+            ],
+            "answer_index": 0,
+            "explanation": "Context manager with memastikan file.close() dipanggil otomatis, bahkan jika ada exception di tengah proses."
+          },
+          {
+            "question": "Mode apa yang digunakan untuk menambah konten ke akhir file tanpa menghapus isi lama?",
+            "options": ["'a'", "'w'", "'r'", "'rw'"],
+            "answer_index": 0,
+            "explanation": "Mode 'a' (append) menambah data baru di akhir file tanpa menghapus konten yang sudah ada."
+          }
+        ],
+        "challenge": {
+          "title": "Jurnal Harian Digital",
+          "instructions": "Buat program di Replit yang berfungsi sebagai jurnal. Pengguna bisa: (1) menambah entri baru ke file jurnal.txt, (2) membaca semua entri sebelumnya. Gunakan mode 'a' dan 'r'. Kirim link-nya!",
+          "submission_type": "link",
+          "xp": 40
+        }
+      },
+      {
+        "topic_title": "Error Handling",
+        "topic_order": 11,
+        "description": "Menangani error dengan try/except, menggunakan finally, dan membuat exception kustom.",
+        "project_link": "https://replit.com",
+        "nodes": [
+          {
+            "node_id": "py-111-n1",
+            "order": 1,
+            "type": "lesson",
+            "title": "Error adalah Teman, Bukan Musuh",
+            "content": "Error (exception) adalah sinyal bahwa ada yang tidak beres saat program berjalan. Python membedakan dua jenis: SyntaxError (kesalahan penulisan kode) dan RuntimeError (kesalahan saat program berjalan). Dengan try/except, kita bisa menangkap error dan meresponsnya dengan elegan.",
+            "xp": 15
+          },
+          {
+            "node_id": "py-111-n2",
+            "order": 2,
+            "type": "code",
+            "title": "try, except, else, dan finally",
+            "content": "Blok try berisi kode yang mungkin error. except menangkap dan menangani error. else berjalan jika tidak ada error. finally selalu berjalan apapun yang terjadi.",
+            "code_language": "python",
+            "code_content": "def bagi_angka(a, b):\n    try:\n        hasil = a / b\n    except ZeroDivisionError:\n        print(\"Error: Tidak bisa dibagi nol!\")\n        return None\n    except TypeError:\n        print(\"Error: Input harus berupa angka!\")\n        return None\n    else:\n        print(f\"{a} / {b} = {hasil}\")\n        return hasil\n    finally:\n        print(\"Proses pembagian selesai.\")\n\nbagi_angka(10, 2)   # Berhasil\nbagi_angka(5, 0)    # ZeroDivisionError",
+            "xp": 20
+          },
+          {
+            "node_id": "py-111-n3",
+            "order": 3,
+            "type": "quiz",
+            "title": "Kapan finally Berjalan?",
+            "content": "Kapan blok finally dieksekusi?",
+            "options": [
+              "Selalu dieksekusi, baik ada exception maupun tidak",
+              "Hanya jika terjadi exception",
+              "Hanya jika tidak ada exception",
+              "Hanya jika except-nya menangkap error"
+            ],
+            "correct_option": "Selalu dieksekusi, baik ada exception maupun tidak",
+            "xp": 20
+          },
+          {
+            "node_id": "py-111-n4",
+            "order": 4,
+            "type": "practice",
+            "title": "Exception yang Tepat untuk Pembagian Nol",
+            "instructions": "Error apa yang muncul saat kita mencoba membagi angka dengan 0 di Python?",
+            "options": ["ZeroDivisionError", "ValueError", "TypeError", "ArithmeticError"],
+            "correct_option": "ZeroDivisionError",
+            "xp": 25
+          }
+        ],
+        "quiz": [
+          {
+            "question": "Blok kode mana yang SELALU dieksekusi dalam try/except/finally?",
+            "options": ["finally", "try", "except", "else"],
+            "answer_index": 0,
+            "explanation": "finally selalu dieksekusi terlepas dari apakah exception terjadi atau tidak. Biasa digunakan untuk cleanup."
+          },
+          {
+            "question": "Exception apa yang muncul jika mencoba mengkonversi 'abc' ke int?",
+            "options": ["ValueError", "TypeError", "SyntaxError", "KeyError"],
+            "answer_index": 0,
+            "explanation": "int('abc') memunculkan ValueError karena 'abc' bukan representasi valid dari integer."
+          },
+          {
+            "question": "Apa tujuan dari pernyataan try dalam Python?",
+            "options": [
+              "Menandai blok kode yang mungkin memunculkan exception untuk ditangani",
+              "Mencoba menjalankan program dalam mode debug",
+              "Memeriksa sintaks kode sebelum dieksekusi",
+              "Mendefinisikan exception baru"
+            ],
+            "answer_index": 0,
+            "explanation": "try mendefinisikan blok kode yang berisiko error. Jika terjadi exception, program lompat ke blok except."
+          },
+          {
+            "question": "Cara menampilkan pesan exception yang tertangkap adalah?",
+            "options": [
+              "except Exception as e: print(e)",
+              "except print(Exception):",
+              "catch Exception: print()",
+              "error Exception: log()"
+            ],
+            "answer_index": 0,
+            "explanation": "Gunakan 'as e' untuk menangkap objek exception, lalu print(e) untuk menampilkan pesannya."
+          },
+          {
+            "question": "Error apa yang terjadi jika mengakses index yang tidak ada di list?",
+            "options": ["IndexError", "KeyError", "ValueError", "TypeError"],
+            "answer_index": 0,
+            "explanation": "IndexError terjadi ketika mengakses indeks yang berada di luar rentang list."
+          }
+        ],
+        "challenge": {
+          "title": "Kalkulator Anti-Crash",
+          "instructions": "Buat kalkulator di Replit yang tahan error: tangani ZeroDivisionError, ValueError (input bukan angka), dan gunakan loop agar pengguna bisa terus mencoba sampai input valid. Kirim link-nya!",
+          "submission_type": "link",
+          "xp": 45
+        }
+      },
+      {
+        "topic_title": "Modules & Import",
+        "topic_order": 12,
+        "description": "Menggunakan modul bawaan Python (math, random, datetime) dan membuat modul sendiri.",
+        "project_link": "https://replit.com",
+        "nodes": [
+          {
+            "node_id": "py-112-n1",
+            "order": 1,
+            "type": "lesson",
+            "title": "Modul: Perpustakaan Kode Siap Pakai",
+            "content": "Modul adalah file Python yang berisi kumpulan fungsi dan variabel yang bisa diimpor. Python hadir dengan Standard Library yang sangat lengkap: math, random, datetime, os, sys, dan masih banyak lagi.",
+            "xp": 15
+          },
+          {
+            "node_id": "py-112-n2",
+            "order": 2,
+            "type": "code",
+            "title": "Import dan Penggunaan Modul Bawaan",
+            "content": "Gunakan import untuk mengimpor modul, atau from...import untuk mengimpor fungsi spesifik. Alias dengan as membuat nama lebih pendek.",
+            "code_language": "python",
+            "code_content": "import math\nimport random\nfrom datetime import datetime\n\n# Modul math\nprint(math.pi)           # 3.14159...\nprint(math.sqrt(144))    # 12.0\nprint(math.floor(3.8))   # 3\n\n# Modul random\nprint(random.randint(1, 100))    # Angka acak 1-100\nprint(random.choice(['A','B','C']))  # Pilih acak dari list\n\n# Modul datetime\nsekarang = datetime.now()\nprint(sekarang.strftime(\"%d/%m/%Y %H:%M\"))",
+            "xp": 20
+          },
+          {
+            "node_id": "py-112-n3",
+            "order": 3,
+            "type": "quiz",
+            "title": "Cara Import yang Tepat",
+            "content": "Untuk menggunakan hanya fungsi sqrt dari modul math, cara import yang paling efisien adalah?",
+            "options": [
+              "from math import sqrt",
+              "import math.sqrt",
+              "import sqrt from math",
+              "using math.sqrt"
+            ],
+            "correct_option": "from math import sqrt",
+            "xp": 20
+          },
+          {
+            "node_id": "py-112-n4",
+            "order": 4,
+            "type": "practice",
+            "title": "Membuat Modul Sendiri",
+            "instructions": "Jika kita menyimpan fungsi di file 'utils.py' dan ingin menggunakannya di 'main.py', cara importnya adalah?",
+            "options": [
+              "import utils",
+              "include utils",
+              "require utils",
+              "load utils"
+            ],
+            "correct_option": "import utils",
+            "xp": 25
+          }
+        ],
+        "quiz": [
+          {
+            "question": "Keyword apa yang digunakan untuk mengimpor modul di Python?",
+            "options": ["import", "include", "require", "use"],
+            "answer_index": 0,
+            "explanation": "import adalah keyword Python untuk mengimpor modul atau paket ke dalam program."
+          },
+          {
+            "question": "Apa fungsi dari modul random di Python?",
+            "options": [
+              "Menghasilkan nilai acak seperti angka random dan pemilihan acak dari list",
+              "Mengacak urutan eksekusi program",
+              "Membuat password secara otomatis",
+              "Mengenkripsi data"
+            ],
+            "answer_index": 0,
+            "explanation": "Modul random menyediakan fungsi untuk menghasilkan angka acak, shuffle list, dan pilih item secara acak."
+          },
+          {
+            "question": "Sintaks 'from math import pi' berarti?",
+            "options": [
+              "Hanya mengimpor konstanta pi dari modul math",
+              "Mengimpor seluruh modul math dan memberi alias pi",
+              "Membuat variabel pi dengan nilai dari math",
+              "Menghapus modul math kecuali pi"
+            ],
+            "answer_index": 0,
+            "explanation": "from...import mengimpor nama spesifik dari modul sehingga bisa digunakan langsung tanpa prefix 'math.'"
+          },
+          {
+            "question": "Bagaimana memberikan alias pada modul saat import?",
+            "options": [
+              "import numpy as np",
+              "import numpy alias np",
+              "import numpy = np",
+              "alias numpy as np"
+            ],
+            "answer_index": 0,
+            "explanation": "Keyword as digunakan untuk memberi alias. Contoh populer: import numpy as np, import pandas as pd."
+          },
+          {
+            "question": "Fungsi random.randint(1, 10) menghasilkan angka dalam rentang?",
+            "options": ["1 sampai 10 (inklusif)", "1 sampai 9", "0 sampai 10", "1 sampai 10 (eksklusif)"],
+            "answer_index": 0,
+            "explanation": "randint(a, b) menghasilkan integer acak antara a dan b secara inklusif (termasuk a dan b)."
+          }
+        ],
+        "challenge": {
+          "title": "Generator Nomor Undian",
+          "instructions": "Buat program di Replit yang menggunakan modul random untuk membuat sistem undian: generate 5 nomor acak unik antara 1-50 (seperti lotere), tampilkan hasilnya beserta tanggal undian menggunakan modul datetime. Kirim link-nya!",
+          "submission_type": "link",
+          "xp": 40
+        }
+      },
+      {
+        "topic_title": "OOP Dasar",
+        "topic_order": 13,
+        "description": "Memahami konsep Object-Oriented Programming dengan class, object, atribut, dan metode.",
+        "project_link": "https://replit.com",
+        "nodes": [
+          {
+            "node_id": "py-113-n1",
+            "order": 1,
+            "type": "lesson",
+            "title": "OOP: Memprogram seperti Dunia Nyata",
+            "content": "OOP (Object-Oriented Programming) adalah paradigma pemrograman yang mengorganisir kode sebagai objek. Class adalah cetak biru (blueprint), sedangkan object adalah instansi dari class tersebut. Setiap objek punya atribut (data) dan metode (fungsi).",
+            "xp": 15
+          },
+          {
+            "node_id": "py-113-n2",
+            "order": 2,
+            "type": "code",
+            "title": "Membuat Class dan Object di Python",
+            "content": "Keyword class mendefinisikan blueprint. __init__() adalah konstruktor yang dipanggil saat objek dibuat. Parameter self merujuk pada objek itu sendiri.",
+            "code_language": "python",
+            "code_content": "class Hewan:\n    def __init__(self, nama, jenis):\n        self.nama = nama      # Atribut\n        self.jenis = jenis\n    \n    def bersuara(self):\n        print(f\"{self.nama} bersuara!\")\n    \n    def info(self):\n        return f\"{self.nama} adalah {self.jenis}\"\n\n# Membuat objek (instansiasi)\nkucing = Hewan(\"Mimi\", \"Kucing\")\nanjing = Hewan(\"Pomi\", \"Anjing\")\n\nkucing.bersuara()           # Mimi bersuara!\nprint(anjing.info())        # Pomi adalah Anjing\nprint(kucing.nama)          # Mimi",
+            "xp": 20
+          },
+          {
+            "node_id": "py-113-n3",
+            "order": 3,
+            "type": "quiz",
+            "title": "Peran __init__ dalam Class",
+            "content": "Apa fungsi dari metode __init__() di dalam class Python?",
+            "options": [
+              "Konstruktor — dijalankan otomatis saat objek baru dibuat untuk menginisialisasi atribut",
+              "Menghapus objek dari memori",
+              "Memanggil fungsi utama program",
+              "Mendefinisikan nama class"
+            ],
+            "correct_option": "Konstruktor — dijalankan otomatis saat objek baru dibuat untuk menginisialisasi atribut",
+            "xp": 20
+          },
+          {
+            "node_id": "py-113-n4",
+            "order": 4,
+            "type": "practice",
+            "title": "Parameter self",
+            "instructions": "Mengapa parameter 'self' selalu ada di setiap metode dalam class Python?",
+            "options": [
+              "Merujuk pada instansi objek saat ini sehingga metode bisa mengakses atribut objek tersebut",
+              "Hanya konvensi penulisan, tidak memiliki arti khusus",
+              "Menggantikan keyword 'this' dari bahasa lain",
+              "Dibutuhkan agar Python bisa menemukan file class"
+            ],
+            "correct_option": "Merujuk pada instansi objek saat ini sehingga metode bisa mengakses atribut objek tersebut",
+            "xp": 25
+          }
+        ],
+        "quiz": [
+          {
+            "question": "Keyword apa yang digunakan untuk mendefinisikan class di Python?",
+            "options": ["class", "object", "struct", "type"],
+            "answer_index": 0,
+            "explanation": "Keyword class diikuti nama class (PascalCase) digunakan untuk mendefinisikan blueprint objek."
+          },
+          {
+            "question": "Metode khusus apa yang dipanggil otomatis saat objek baru dibuat?",
+            "options": ["__init__()", "__start__()", "__new__()", "__create__()"],
+            "answer_index": 0,
+            "explanation": "__init__() adalah konstruktor di Python. Dipanggil otomatis saat Anda menulis NamaClass()."
+          },
+          {
+            "question": "Apa perbedaan antara class dan object?",
+            "options": [
+              "Class adalah blueprint/cetak biru; object adalah instansi nyata dari class tersebut",
+              "Object adalah blueprint; class adalah instansi",
+              "Class dan object adalah hal yang sama persis",
+              "Class hanya bisa dibuat satu kali; object bisa banyak"
+            ],
+            "answer_index": 0,
+            "explanation": "Class adalah definisi/template. Object adalah wujud nyata yang dibuat dari template tersebut. Satu class bisa menghasilkan banyak object."
+          },
+          {
+            "question": "Cara mengakses atribut 'nama' dari objek 'siswa' adalah?",
+            "options": ["siswa.nama", "siswa[nama]", "siswa->nama", "get(siswa.nama)"],
+            "answer_index": 0,
+            "explanation": "Atribut objek diakses dengan notasi titik (dot notation): objek.atribut."
+          },
+          {
+            "question": "Proses membuat objek baru dari sebuah class disebut?",
+            "options": ["Instantiation (instansiasi)", "Inheritance (pewarisan)", "Encapsulation (enkapsulasi)", "Polymorphism"],
+            "answer_index": 0,
+            "explanation": "Instantiation adalah proses membuat instance (objek) baru dari sebuah class menggunakan NamaClass()."
+          }
+        ],
+        "challenge": {
+          "title": "Simulasi Bank Sederhana",
+          "instructions": "Buat class RekeningBank di Replit dengan atribut pemilik dan saldo, serta metode setor(jumlah), tarik(jumlah), dan cek_saldo(). Tambahkan validasi agar saldo tidak bisa negatif. Buat 2 objek rekening berbeda. Kirim link-nya!",
+          "submission_type": "link",
+          "xp": 50
+        }
+      },
+      {
+        "topic_title": "Mini Project: Aplikasi To-Do List",
+        "topic_order": 14,
+        "description": "Menggabungkan semua konsep Python yang dipelajari untuk membangun aplikasi To-Do List berbasis CLI yang fungsional.",
+        "project_link": "https://replit.com",
+        "nodes": [
+          {
+            "node_id": "py-114-n1",
+            "order": 1,
+            "type": "lesson",
+            "title": "Merancang Aplikasi CLI: Dari Ide ke Kode",
+            "content": "Sebelum menulis kode, kita perancang dulu: fitur apa yang dibutuhkan? Bagaimana struktur data yang tepat? Aplikasi To-Do List membutuhkan: menyimpan daftar tugas, menambah tugas, menandai selesai, menghapus tugas, dan menyimpan ke file agar data tidak hilang.",
+            "xp": 15
+          },
+          {
+            "node_id": "py-114-n2",
+            "order": 2,
+            "type": "code",
+            "title": "Arsitektur Aplikasi To-Do dengan OOP & File I/O",
+            "content": "Kita gabungkan class (OOP), list, dictionary, file I/O, dan error handling untuk membangun aplikasi yang lengkap dan robust.",
+            "code_language": "python",
+            "code_content": "import json\nimport os\n\nclass TodoApp:\n    def __init__(self, file_name=\"todos.json\"):\n        self.file_name = file_name\n        self.todos = self.muat_data()\n    \n    def muat_data(self):\n        if os.path.exists(self.file_name):\n            with open(self.file_name, \"r\") as f:\n                return json.load(f)\n        return []\n    \n    def simpan_data(self):\n        with open(self.file_name, \"w\") as f:\n            json.dump(self.todos, f, indent=2)\n    \n    def tambah(self, tugas):\n        self.todos.append({\"tugas\": tugas, \"selesai\": False})\n        self.simpan_data()\n        print(f\"Ditambahkan: {tugas}\")\n    \n    def tampilkan(self):\n        for i, todo in enumerate(self.todos, 1):\n            status = \"✓\" if todo[\"selesai\"] else \"○\"\n            print(f\"{i}. [{status}] {todo['tugas']}\")\n\napp = TodoApp()\napp.tambah(\"Belajar Python\")\napp.tampilkan()",
+            "xp": 20
+          },
+          {
+            "node_id": "py-114-n3",
+            "order": 3,
+            "type": "quiz",
+            "title": "Modul json untuk Persistensi Data",
+            "content": "Mengapa modul json digunakan untuk menyimpan data To-Do List ke file?",
+            "options": [
+              "JSON mudah dibaca manusia dan Python, serta mendukung penyimpanan struktur data kompleks",
+              "JSON adalah format paling cepat untuk dibaca Python",
+              "JSON mengenkripsi data secara otomatis",
+              "JSON hanya bisa menyimpan string"
+            ],
+            "correct_option": "JSON mudah dibaca manusia dan Python, serta mendukung penyimpanan struktur data kompleks",
+            "xp": 20
+          },
+          {
+            "node_id": "py-114-n4",
+            "order": 4,
+            "type": "practice",
+            "title": "Menggabungkan Semua Konsep",
+            "instructions": "Konsep Python mana yang TIDAK digunakan dalam arsitektur To-Do List di atas?",
+            "options": [
+              "GUI (Graphical User Interface)",
+              "OOP (Class dan Object)",
+              "File I/O (membaca dan menulis file)",
+              "Dictionary (struktur data)"
+            ],
+            "correct_option": "GUI (Graphical User Interface)",
+            "xp": 25
+          }
+        ],
+        "quiz": [
+          {
+            "question": "Fungsi json.dump() digunakan untuk?",
+            "options": [
+              "Menulis objek Python ke file dalam format JSON",
+              "Membaca file JSON menjadi objek Python",
+              "Memvalidasi format JSON",
+              "Mengkompresi data JSON"
+            ],
+            "answer_index": 0,
+            "explanation": "json.dump(obj, file) mengkonversi objek Python (dict, list, dll) menjadi string JSON dan menulisnya ke file."
+          },
+          {
+            "question": "Apa fungsi os.path.exists() dalam konteks File I/O?",
+            "options": [
+              "Memeriksa apakah file atau direktori dengan path tertentu sudah ada",
+              "Membuat direktori baru",
+              "Menghapus file dari sistem",
+              "Mendapatkan ukuran file"
+            ],
+            "answer_index": 0,
+            "explanation": "os.path.exists(path) mengembalikan True jika file atau folder di path tersebut ada, False jika tidak."
+          },
+          {
+            "question": "Dalam enumerate(['a','b','c'], 1), nilai start=1 berarti?",
+            "options": [
+              "Penomoran dimulai dari 1 bukan 0",
+              "Hanya 1 elemen yang dienumerate",
+              "Indeks pertama adalah -1",
+              "Loop berjalan sebanyak 1 kali"
+            ],
+            "answer_index": 0,
+            "explanation": "enumerate(iterable, start) memulai penomoran dari nilai start. enumerate(list, 1) menghasilkan (1,item1), (2,item2), dst."
+          },
+          {
+            "question": "Mengapa pengembang lebih suka menyimpan data dengan JSON dibanding teks biasa?",
+            "options": [
+              "JSON mempertahankan struktur data (dict, list, nested) secara otomatis",
+              "File JSON tidak bisa diedit manual",
+              "JSON lebih kecil ukurannya dari TXT",
+              "JSON dienkripsi secara bawaan"
+            ],
+            "answer_index": 0,
+            "explanation": "JSON mempertahankan tipe data dan struktur hierarkis. Teks biasa hanya menyimpan string tanpa struktur."
+          },
+          {
+            "question": "Konsep OOP mana yang diterapkan saat TodoApp menyembunyikan detail implementasi simpan_data() dari pengguna?",
+            "options": [
+              "Encapsulation (enkapsulasi)",
+              "Inheritance (pewarisan)",
+              "Polymorphism (polimorfisme)",
+              "Abstraction (abstraksi)"
+            ],
+            "answer_index": 0,
+            "explanation": "Encapsulation menyembunyikan detail implementasi internal class. Pengguna cukup memanggil tambah() tanpa tahu cara simpan_data() bekerja."
+          }
+        ],
+        "challenge": {
+          "title": "To-Do List Application — Final Project",
+          "instructions": "Bangun aplikasi To-Do List lengkap di Replit! Fitur wajib: (1) Tambah tugas, (2) Tampilkan semua tugas dengan nomor, (3) Tandai tugas selesai, (4) Hapus tugas, (5) Simpan ke file JSON agar data persist. Gunakan OOP dengan class TodoApp. Ini adalah proyek final — tunjukkan kemampuan terbaikmu! Kirim link Replit-mu!",
+          "submission_type": "link",
+          "xp": 100
+        }
+      }
+    ],
+    "final_assessment": {
+      "title": "Tryout Akhir Modul: Python Fundamentals Master",
+      "duration_minutes": 40,
+      "questions": [
+        {
+          "id": 1,
+          "question": "Fungsi bawaan Python yang digunakan untuk menampilkan output ke layar adalah?",
+          "options": ["print()", "display()", "show()", "echo()"],
+          "answer_index": 0,
+          "explanation": "print() adalah fungsi bawaan Python untuk mencetak nilai atau teks ke layar (stdout)."
+        },
+        {
+          "id": 2,
+          "question": "Manakah deklarasi variabel yang valid di Python?",
+          "options": ["nilai = 95", "var nilai = 95", "int nilai = 95", "declare nilai = 95"],
+          "answer_index": 0,
+          "explanation": "Python menggunakan dynamic typing — cukup nama_variabel = nilai tanpa keyword tipe data."
+        },
+        {
+          "id": 3,
+          "question": "Apa tipe data dari nilai True di Python?",
+          "options": ["bool", "str", "int", "object"],
+          "answer_index": 0,
+          "explanation": "True dan False adalah nilai bertipe bool (boolean) di Python."
+        },
+        {
+          "id": 4,
+          "question": "Fungsi input() di Python selalu mengembalikan tipe data?",
+          "options": ["str", "int", "float", "Tergantung yang diketik pengguna"],
+          "answer_index": 0,
+          "explanation": "input() SELALU mengembalikan string, tanpa terkecuali. Konversi manual diperlukan jika butuh tipe lain."
+        },
+        {
+          "id": 5,
+          "question": "Keyword apa yang digunakan untuk kondisi alternatif tambahan setelah if?",
+          "options": ["elif", "else if", "elseif", "or if"],
+          "answer_index": 0,
+          "explanation": "Python menggunakan elif (bukan 'else if' yang dipisah) untuk kondisi alternatif berantai."
+        },
+        {
+          "id": 6,
+          "question": "range(1, 10, 2) menghasilkan urutan?",
+          "options": ["1, 3, 5, 7, 9", "1, 2, 3, 4, 5", "2, 4, 6, 8, 10", "1, 3, 5, 7, 9, 11"],
+          "answer_index": 0,
+          "explanation": "range(start, stop, step) mulai dari 1, melompat 2, berhenti sebelum 10: 1, 3, 5, 7, 9."
+        },
+        {
+          "id": 7,
+          "question": "Apa yang dimaksud infinite loop?",
+          "options": [
+            "Loop yang kondisinya tidak pernah menjadi False",
+            "Loop yang berjalan tepat 1000 kali",
+            "Loop di dalam loop lainnya",
+            "Loop yang menggunakan range()"
+          ],
+          "answer_index": 0,
+          "explanation": "Infinite loop adalah loop while yang kondisinya selalu True, berjalan tanpa henti sampai dihentikan paksa."
+        },
+        {
+          "id": 8,
+          "question": "Keyword apa yang digunakan untuk mendefinisikan fungsi di Python?",
+          "options": ["def", "function", "func", "define"],
+          "answer_index": 0,
+          "explanation": "def adalah keyword Python untuk mendefinisikan fungsi."
+        },
+        {
+          "id": 9,
+          "question": "Jika fungsi tidak memiliki pernyataan return, apa yang dikembalikan?",
+          "options": ["None", "0", "False", "Error"],
+          "answer_index": 0,
+          "explanation": "Fungsi tanpa return secara implisit mengembalikan None — nilai khusus yang berarti 'tidak ada nilai'."
+        },
+        {
+          "id": 10,
+          "question": "Pada list = ['a','b','c','d'], nilai list[-1] adalah?",
+          "options": ["'d'", "'a'", "'c'", "Error"],
+          "answer_index": 0,
+          "explanation": "Indeks -1 mengakses elemen terakhir dari list. Pada list ini, elemen terakhir adalah 'd'."
+        },
+        {
+          "id": 11,
+          "question": "Metode list apa yang menambahkan elemen di akhir?",
+          "options": ["append()", "add()", "push()", "insert()"],
+          "answer_index": 0,
+          "explanation": "append() menambahkan satu elemen di posisi akhir list."
+        },
+        {
+          "id": 12,
+          "question": "Cara mengakses nilai dari dictionary: data = {'nama': 'Ali', 'kota': 'Bandung'} adalah?",
+          "options": ["data['nama']", "data.get[nama]", "data[0]", "data->nama"],
+          "answer_index": 0,
+          "explanation": "Dictionary diakses menggunakan key dalam tanda kurung siku: dict['key']."
+        },
+        {
+          "id": 13,
+          "question": "Apa output dari 'hello'.upper()?",
+          "options": ["'HELLO'", "'hello'", "'Hello'", "Error"],
+          "answer_index": 0,
+          "explanation": "upper() mengkonversi semua karakter string menjadi huruf kapital."
+        },
+        {
+          "id": 14,
+          "question": "Mode 'a' saat membuka file berarti?",
+          "options": [
+            "Append — menambah data di akhir file tanpa menghapus isi lama",
+            "Access — membuka file dengan hak akses penuh",
+            "Archive — mengkompres file",
+            "Auto — otomatis menentukan mode"
+          ],
+          "answer_index": 0,
+          "explanation": "Mode 'a' (append) menambahkan data baru di akhir file. Konten lama tidak dihapus."
+        },
+        {
+          "id": 15,
+          "question": "Blok kode mana yang SELALU dieksekusi dalam struktur try/except/finally?",
+          "options": ["finally", "try", "except", "else"],
+          "answer_index": 0,
+          "explanation": "finally selalu dieksekusi terlepas apakah exception terjadi atau tidak. Ideal untuk cleanup."
+        },
+        {
+          "id": 16,
+          "question": "Cara mengimpor hanya fungsi sqrt dari modul math adalah?",
+          "options": [
+            "from math import sqrt",
+            "import math.sqrt",
+            "import sqrt in math",
+            "get math.sqrt"
+          ],
+          "answer_index": 0,
+          "explanation": "Sintaks 'from modul import nama' mengimpor nama spesifik sehingga bisa digunakan langsung tanpa prefix."
+        },
+        {
+          "id": 17,
+          "question": "Metode khusus apa yang dipanggil otomatis saat objek Python baru dibuat dari class?",
+          "options": ["__init__()", "__start__()", "__main__()", "__run__()"],
+          "answer_index": 0,
+          "explanation": "__init__() adalah konstruktor Python yang dipanggil otomatis saat instansiasi objek baru."
+        },
+        {
+          "id": 18,
+          "question": "Parameter 'self' dalam metode class Python berfungsi untuk?",
+          "options": [
+            "Merujuk pada instansi objek saat ini",
+            "Menyimpan nilai default",
+            "Memanggil class parent",
+            "Mendefinisikan atribut global"
+          ],
+          "answer_index": 0,
+          "explanation": "self adalah referensi ke objek itu sendiri, memungkinkan akses ke atribut dan metode lain dalam class."
+        },
+        {
+          "id": 19,
+          "question": "Fungsi json.load() digunakan untuk?",
+          "options": [
+            "Membaca file JSON dan mengkonversinya menjadi objek Python",
+            "Menulis objek Python ke file JSON",
+            "Memvalidasi struktur JSON",
+            "Mengkonversi JSON ke XML"
+          ],
+          "answer_index": 0,
+          "explanation": "json.load(file) membaca file JSON dan mengembalikan objek Python (dict/list) yang setara."
+        },
+        {
+          "id": 20,
+          "question": "Konsep OOP yang menyembunyikan detail implementasi internal class dari luar disebut?",
+          "options": ["Encapsulation", "Inheritance", "Polymorphism", "Abstraction"],
+          "answer_index": 0,
+          "explanation": "Encapsulation (enkapsulasi) membungkus data dan metode dalam class, menyembunyikan detail internal dari akses luar."
+        }
+      ]
+    }
+  }
+]

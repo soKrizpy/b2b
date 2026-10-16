@@ -25,11 +25,16 @@ interface Props {
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 const CATEGORY_ICON: Record<AccessoryCategory, string> = {
-  hat:     '🎩',
-  hood:    '🧙',
-  headset: '🎧',
-  visor:   '🥽',
-  crown:   '👑',
+  hat:           '🎩',
+  hood:          '🧙',
+  headset:       '🎧',
+  visor:         '🥽',
+  crown:         '👑',
+  outfit:        '🥋',
+  aura:          '✨',
+  'pet-species': '🐾',
+  'pet-acc':     '🎀',
+  title:         '🎖️',
 };
 
 const ALL_CATEGORIES = Object.keys(CATEGORY_LABEL) as AccessoryCategory[];
