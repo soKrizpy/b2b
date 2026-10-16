@@ -33,14 +33,12 @@ export default async function StudentDashboardPage() {
     getStudentCompletedTopics(user.id),
   ]);
 
-  // Derive NEEDS_QUIZ topics and active quest map nodes from the active module
+  // Derive NEEDS_QUIZ topics from the active module
   const activeMod = allModules[0] ?? null;
   const needsQuizTopics: Array<{ id: number; title: string }> = [];
-  let questNodes: import("@/features/quiz/questMapQueries").QuestTopicNode[] = [];
 
   if (activeMod) {
     const questData = await getQuestMapData(user.id, activeMod);
-    questNodes = questData.nodes;
     for (const node of questData.needsQuizTopics) {
       needsQuizTopics.push({ id: node.topic.id, title: node.topic.title });
     }
@@ -67,8 +65,6 @@ export default async function StudentDashboardPage() {
       needsQuizTopics={needsQuizTopics}
       completedTopics={completedTopics}
       allModules={allModules}
-      questNodes={questNodes}
-      activeModuleName={activeMod?.title ?? ''}
     />
   );
 }
