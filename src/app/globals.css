@@ -7,11 +7,11 @@
 /* ── Interactive Neon Theme Architecture ────────────────────────────────────── */
 :root {
   /* Light Mode: Electric Blueish Neon Theme */
-  --background:      #f0f4f9; /* soft slate-blue page background */
+  --background:      #f0f4f9; /* soft slate-blue page background, easy on the eyes */
   --foreground:      #0f172a; /* dark slate text (slate-900) */
-  --surface:         #ffffff; /* pure white elevated card background */
-  --surface-raised:  #ffffff;
-  --border:          rgba(148, 163, 184, 0.3); /* subtle neutral */
+  --surface:         #ffffff; /* white elevated card background */
+  --surface-raised:  #f8fafc; /* slightly raised surface */
+  --border:          rgba(59, 130, 246, 0.28); /* dominant electric blue border */
   --border-hover:    #2563eb; /* electric blue hover border (blue-600) */
   --glow-hover:      0 0 20px rgba(59, 130, 246, 0.35); /* electric blue neon glow */
   --muted:           #64748b; /* slate-500 secondary text */
@@ -23,7 +23,7 @@
 
   /* Header */
   --header-bg:       rgba(240, 244, 249, 0.92);
-  --header-border:   rgba(59, 130, 246, 0.45);
+  --header-border:   rgba(59, 130, 246, 0.40);
 
   /* Blue / Indigo accents */
   --accent-500:      #3b82f6;
@@ -34,13 +34,13 @@
   /* Dark Mode: Purpleish Neon Theme */
   --background:      #020617; /* deep dark slate page background (slate-950) */
   --foreground:      #faf5ff; /* crisp off-white purple-50 text */
-  --surface:         #0f172a; /* slate-900 */
-  --surface-raised:  #1e293b; /* slate-800 */
-  --border:          rgba(255, 255, 255, 0.08); /* minimal */
+  --surface:         #0b0f19; /* dark elevated card background */
+  --surface-raised:  #151a2d; /* slightly raised surface */
+  --border:          rgba(168, 85, 247, 0.35); /* dominant electric purple border */
   --border-hover:    #c084fc; /* purple-400 hover border */
   --glow-hover:      0 0 20px rgba(168, 85, 247, 0.45); /* intense purple neon glow */
   --muted:           #94a3b8; /* slate-400 secondary text */
-  --table-hover:     #1e1b4b;
+  --table-hover:     #1e1338; /* dark purple table hover */
 
   --header-bg:       rgba(2, 6, 23, 0.90);
   --header-border:   rgba(168, 85, 247, 0.35);
@@ -150,7 +150,7 @@ body {
 }
 
 .dark .neon-card {
-  box-shadow: 0 2px 10px -1px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 2px 14px -1px rgba(168, 85, 247, 0.15);
 }
 
 .neon-card-interactive {

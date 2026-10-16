@@ -132,7 +132,7 @@ export function DashboardShell({ meetings, teachers, students, metrics: propMetr
               placeholder="Cari Murid/Guru/Topik Hari Ini..."
               value={searchQuery}
               onChange={(e) => { setSearchQuery(e.target.value); setPage(1); }}
-              className="w-full pl-9 pr-8 py-2.5 text-xs rounded-2xl bg-white dark:bg-zinc-950 border border-blue-500/50 dark:border-zinc-800 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 shadow-sm focus:shadow-[0_0_15px_rgba(34,211,238,0.2)] transition-all duration-200"
+              className="w-full pl-9 pr-8 py-2.5 text-xs rounded-2xl bg-white dark:bg-zinc-950 border border-blue-500/50 dark:border-purple-500/40 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-blue-400 dark:focus:ring-purple-400 focus:border-blue-400 dark:focus:border-purple-400 shadow-sm transition-all duration-200"
             />
             {searchQuery && (
               <button
@@ -173,7 +173,7 @@ export function DashboardShell({ meetings, teachers, students, metrics: propMetr
           </p>
         </div>
 
-        <div className="bg-white dark:bg-zinc-950 border border-purple-500/50 dark:border-purple-500/40 rounded-3xl p-5 sm:p-6 shadow-sm hover:shadow-[0_0_20px_rgba(168,85,247,0.2)] ring-1 ring-purple-500/20 transition-all duration-200">
+        <div className="bg-white dark:bg-zinc-950 border border-blue-400/40 dark:border-purple-500/40 rounded-3xl p-5 sm:p-6 shadow-sm hover:shadow-[0_0_20px_rgba(168,85,247,0.15)] ring-1 ring-blue-400/10 dark:ring-purple-500/20 transition-all duration-200">
           <span className="text-xs font-extrabold uppercase tracking-wider text-purple-700 dark:text-purple-300 inline-flex items-center gap-2">
             <i className="fa-solid fa-user-graduate text-purple-500 dark:text-purple-400" />
             MURID AKTIF
@@ -195,7 +195,7 @@ export function DashboardShell({ meetings, teachers, students, metrics: propMetr
       </div>
 
       {/* Main Today's Schedule Card */}
-      <div className="bg-white dark:bg-zinc-950 border border-blue-500/50 dark:border-zinc-800 rounded-3xl shadow-sm overflow-hidden space-y-0">
+      <div className="bg-white dark:bg-zinc-950 border border-blue-400/45 dark:border-purple-500/45 rounded-3xl shadow-sm overflow-hidden space-y-0">
         <div className="p-4 sm:p-6 border-b border-slate-200/80 dark:border-zinc-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-50/70 dark:bg-zinc-900/60">
           <div className="flex items-center gap-3 flex-wrap">
             <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-white inline-flex items-center gap-2">
@@ -249,7 +249,7 @@ export function DashboardShell({ meetings, teachers, students, metrics: propMetr
                         ? 'bg-rose-50/60 dark:bg-rose-950/30 border-rose-400 dark:border-rose-800/80 ring-1 ring-rose-500/40 shadow-[0_0_15px_rgba(244,63,94,0.15)]'
                         : m.is_completed
                         ? 'bg-slate-50/70 dark:bg-zinc-900/50 border-slate-200 dark:border-zinc-800 opacity-85'
-                        : 'bg-white dark:bg-zinc-900 border-blue-500/40 dark:border-zinc-800 hover:border-cyan-400 dark:hover:border-cyan-400 hover:shadow-[0_0_15px_rgba(34,211,238,0.15)]'
+                        : 'bg-white dark:bg-zinc-900/50 border-blue-400/45 dark:border-purple-500/40 hover:border-blue-500 dark:hover:border-purple-400 hover:shadow-[0_0_15px_rgba(59,130,246,0.15)] dark:hover:shadow-[0_0_15px_rgba(168,85,247,0.15)]'
                     }`}
                   >
                     <div>
@@ -350,7 +350,7 @@ export function DashboardShell({ meetings, teachers, students, metrics: propMetr
 
       {/* Grid Split: Recent Activity & Operational Quick Card */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 bg-white dark:bg-zinc-950 border border-blue-500/50 dark:border-zinc-800 rounded-3xl p-6 shadow-sm">
+        <div className="lg:col-span-2 bg-white dark:bg-zinc-950 border border-blue-400/45 dark:border-purple-500/45 rounded-3xl p-6 shadow-sm">
           <h2 className="text-base font-black text-slate-900 dark:text-white inline-flex items-center gap-2 mb-4">
             <i className="fa-solid fa-clock-rotate-left text-blue-500 dark:text-cyan-400" /> Aktivitas Terkini
           </h2>
@@ -359,7 +359,7 @@ export function DashboardShell({ meetings, teachers, students, metrics: propMetr
             {recentActivity.map((m) => (
               <div
                 key={m.id}
-                className="flex items-center justify-between gap-3 p-3.5 rounded-2xl bg-slate-50/70 dark:bg-zinc-900/60 border border-slate-200/80 dark:border-zinc-800/80 hover:border-blue-400 dark:hover:border-zinc-700 transition-colors duration-200"
+                className="flex items-center justify-between gap-3 p-3.5 rounded-2xl bg-slate-50/70 dark:bg-zinc-900/60 border border-blue-100 dark:border-zinc-800/80 hover:border-blue-400 dark:hover:border-purple-500/50 transition-colors duration-200"
               >
                 <div className="flex items-center gap-3 min-w-0">
                   <span className="text-base">{activityIcon(m)}</span>
@@ -376,7 +376,7 @@ export function DashboardShell({ meetings, teachers, students, metrics: propMetr
                 <span className={`text-[10px] font-extrabold px-2.5 py-1 rounded-full flex-shrink-0 border ${
                   m.is_completed
                     ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/20'
-                    : 'bg-blue-500/10 dark:bg-cyan-500/15 text-blue-700 dark:text-cyan-300 border-blue-500/20 dark:border-cyan-500/30'
+                    : 'bg-blue-500/10 dark:bg-purple-500/15 text-blue-700 dark:text-purple-300 border-blue-500/20 dark:border-purple-500/30'
                 }`}>
                   {m.is_completed ? 'Selesai' : 'Dijadwalkan'}
                 </span>

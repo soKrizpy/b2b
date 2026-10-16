@@ -269,8 +269,8 @@ export function StudentAchievementBadges({
         </div>
 
         {/* Global Progress Bar */}
-        <div className="flex items-center gap-3 bg-white dark:bg-slate-900/90 border border-slate-200/80
-          dark:border-slate-800 rounded-2xl px-3.5 py-2 shadow-xs min-w-[200px]">
+        <div className="flex items-center gap-3 bg-white dark:bg-slate-900/90 border border-blue-200/80
+          dark:border-purple-500/30 rounded-2xl px-3.5 py-2 shadow-xs min-w-[200px]">
           <div className="flex-1">
             <div className="flex justify-between items-center text-[10px] font-black mb-1">
               <span className="text-slate-500 dark:text-slate-400 uppercase tracking-wider">Progres Lencana</span>
@@ -306,8 +306,8 @@ export function StudentAchievementBadges({
               className={`px-3 py-1.5 rounded-xl font-extrabold text-[11px] transition-all duration-150
                 flex items-center gap-1.5 cursor-pointer ${
                 filter === cat.id
-                  ? 'bg-purple-600 text-white shadow-sm shadow-purple-500/30'
-                  : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200/80 dark:border-slate-800 hover:border-purple-300 dark:hover:border-purple-600/50'
+                  ? 'bg-blue-600 dark:bg-purple-600 text-white shadow-sm shadow-blue-500/25 dark:shadow-purple-500/30'
+                  : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-blue-200/80 dark:border-slate-800 hover:border-blue-400 dark:hover:border-purple-600/50'
               }`}
             >
               <span>{cat.icon}</span>
@@ -365,7 +365,7 @@ export function StudentAchievementBadges({
               className={`relative rounded-2xl p-4 border transition-all duration-200 flex flex-col justify-between ${
                 badge.unlocked
                   ? `${cfg.border} ${cfg.bgUnlocked} ${cfg.glow} hover:-translate-y-1`
-                  : 'border-slate-200/80 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/40 opacity-70 hover:opacity-90'
+                  : 'border-blue-100 dark:border-purple-900/30 bg-slate-50/60 dark:bg-slate-900/40 opacity-70 hover:opacity-90'
               }`}
             >
               <div>

@@ -70,7 +70,7 @@ export function MonthCalendar({
   while (cells.length % 7 !== 0) cells.push(null);
 
   return (
-    <div className="bg-white dark:bg-zinc-950 border border-blue-500/50 dark:border-zinc-800 rounded-2xl shadow-sm overflow-hidden">
+    <div className="bg-white dark:bg-zinc-950 border border-blue-400/40 dark:border-purple-500/40 rounded-2xl shadow-sm overflow-hidden">
       {/* Calendar header */}
       <div className="flex items-center justify-between px-4 sm:px-5 py-3.5 border-b border-slate-200 dark:border-zinc-800 bg-slate-50/70 dark:bg-zinc-900/60">
         <button
@@ -140,8 +140,8 @@ export function MonthCalendar({
                 isColRight ? 'border-r-0' : ''
               } ${
                 isSelected
-                  ? 'bg-blue-50/80 dark:bg-cyan-950/40 ring-1 ring-cyan-500/60 shadow-sm'
-                  : 'hover:bg-slate-50/80 dark:hover:bg-zinc-900/50'
+                  ? 'bg-blue-50/80 dark:bg-purple-950/40 ring-1 ring-blue-500/50 dark:ring-purple-500/60 shadow-sm'
+                  : 'hover:bg-blue-50/40 dark:hover:bg-zinc-900/50'
               }`}
             >
               {/* Day number */}

@@ -63,8 +63,8 @@ function ItemCard({
         equipped
           ? 'ring-2 ring-emerald-500 bg-emerald-500/10 border-emerald-500/80 shadow-lg shadow-emerald-500/10'
           : owned
-            ? 'border-zinc-800 hover:border-purple-500/50 bg-zinc-950/60'
-            : 'border-zinc-800 hover:border-purple-500/50 bg-zinc-950/40'
+            ? 'border-blue-200/80 hover:border-blue-500/50 bg-slate-50/80 dark:border-zinc-800 dark:hover:border-purple-500/50 dark:bg-zinc-950/60'
+            : 'border-slate-200 hover:border-blue-400/50 bg-white dark:border-zinc-800 dark:hover:border-purple-500/50 dark:bg-zinc-950/40'
       }`}
     >
       {/* Top Header */}
@@ -77,7 +77,7 @@ function ItemCard({
         </div>
 
         {equipped ? (
-          <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/40">
+          <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/40">
             ✓ Dipakai
           </span>
         ) : item.badge ? (
@@ -92,19 +92,19 @@ function ItemCard({
 
       {/* Info */}
       <div className="my-1 min-w-0">
-        <p className="text-xs font-extrabold text-white leading-tight truncate">
+        <p className="text-xs font-extrabold text-slate-900 dark:text-white leading-tight truncate">
           {item.name}
         </p>
-        <p className="text-[10px] text-zinc-400 mt-0.5 line-clamp-1 leading-normal">
+        <p className="text-[10px] text-slate-500 dark:text-zinc-400 mt-0.5 line-clamp-1 leading-normal">
           {item.description}
         </p>
       </div>
 
       {/* CTA Footer */}
-      <div className="flex items-center justify-between gap-1 pt-1.5 border-t border-zinc-800/80">
+      <div className="flex items-center justify-between gap-1 pt-1.5 border-t border-slate-200/80 dark:border-zinc-800/80">
         {!owned ? (
           <>
-            <span className="text-[10px] font-black text-amber-400 flex items-center gap-0.5">
+            <span className="text-[10px] font-black text-amber-500 dark:text-amber-400 flex items-center gap-0.5">
               🪙 {item.price}
             </span>
             <button
@@ -114,7 +114,7 @@ function ItemCard({
               className={`text-[10px] font-black px-2.5 py-1 rounded-xl transition-colors ${
                 canAfford
                   ? 'bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold shadow-sm'
-                  : 'bg-zinc-800 text-zinc-500 cursor-not-allowed'
+                  : 'bg-slate-100 text-slate-400 dark:bg-zinc-800 dark:text-zinc-500 cursor-not-allowed'
               } disabled:opacity-60`}
             >
               {pending ? '…' : canAfford ? 'Beli' : 'Kurang'}
@@ -125,7 +125,7 @@ function ItemCard({
             type="button"
             onClick={onUnequip}
             disabled={pending}
-            className="w-full text-[10px] font-black py-1 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 disabled:opacity-60 transition-colors"
+            className="w-full text-[10px] font-black py-1 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-zinc-800 dark:hover:bg-zinc-700 dark:text-zinc-300 disabled:opacity-60 transition-colors"
           >
             {pending ? '…' : 'Lepas'}
           </button>
@@ -213,27 +213,27 @@ export function PetWardrobeModal({
     /* Backdrop */
     <div
       className="fixed inset-0 z-50 flex items-center justify-center
-        bg-black/70 backdrop-blur-sm p-4"
+        bg-black/60 dark:bg-black/75 backdrop-blur-sm p-4"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       {/* Panel */}
       <div
-        className="relative w-full max-w-xl bg-zinc-900 border border-zinc-700/80
+        className="relative w-full max-w-xl bg-white dark:bg-[#0B0F19] border border-blue-400/40 dark:border-purple-500/40
           rounded-2xl shadow-2xl p-6 flex flex-col max-h-[90dvh] overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* ── Header ── */}
         <div className="flex items-center justify-between gap-3 pb-4
-          border-b border-zinc-800 flex-shrink-0">
+          border-b border-blue-100 dark:border-purple-500/20 flex-shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-purple-500/15 border border-purple-500/30 flex items-center justify-center text-xl">
+            <div className="w-10 h-10 rounded-xl bg-blue-500/10 dark:bg-purple-500/15 border border-blue-500/25 dark:border-purple-500/30 flex items-center justify-center text-xl text-blue-600 dark:text-purple-300">
               🎭
             </div>
             <div>
-              <h2 className="font-extrabold text-white text-base leading-tight">
+              <h2 className="font-extrabold text-slate-900 dark:text-white text-base leading-tight">
                 Lemari Kostum
               </h2>
-              <p className="text-xs text-zinc-400">{studentName}</p>
+              <p className="text-xs text-slate-500 dark:text-zinc-400">{studentName}</p>
             </div>
           </div>
 
@@ -241,13 +241,13 @@ export function PetWardrobeModal({
           <div className="flex items-center gap-2">
             <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl
               bg-amber-500/10 border border-amber-500/30
-              text-sm font-extrabold text-amber-400">
+              text-sm font-extrabold text-amber-600 dark:text-amber-400">
               🪙 {coins.toLocaleString('id-ID')}
             </span>
             <button
               type="button" onClick={onClose}
-              className="w-8 h-8 rounded-xl bg-zinc-800 hover:bg-zinc-700 flex items-center justify-center
-                text-zinc-400 hover:text-white transition-colors font-bold text-sm"
+              className="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 flex items-center justify-center
+                text-slate-500 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white transition-colors font-bold text-sm"
               aria-label="Tutup"
             >
               ✕
@@ -258,11 +258,11 @@ export function PetWardrobeModal({
         {/* ── Currently equipped strip ── */}
         {equippedItem && (
           <div className="mt-3 px-4 py-2 rounded-xl flex items-center gap-2 border
-            border-purple-500/30 bg-purple-500/10 flex-shrink-0">
-            <span className="text-[10px] font-black uppercase tracking-wide text-purple-400">
+            border-blue-400/30 bg-blue-50/60 dark:border-purple-500/30 dark:bg-purple-500/10 flex-shrink-0">
+            <span className="text-[10px] font-black uppercase tracking-wide text-blue-600 dark:text-purple-400">
               Dipakai:
             </span>
-            <span className="text-xs font-extrabold text-white">
+            <span className="text-xs font-extrabold text-slate-900 dark:text-white">
               {equippedItem.name}
             </span>
           </div>
@@ -281,8 +281,8 @@ export function PetWardrobeModal({
                 className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl
                   text-xs font-bold whitespace-nowrap transition-all border
                   ${activeCategory === cat
-                    ? 'bg-purple-600 border-purple-500 text-white shadow-md shadow-purple-600/30'
-                    : 'bg-zinc-950/60 border-zinc-800 text-zinc-400 hover:border-zinc-700 hover:text-zinc-200'
+                    ? 'bg-blue-600 border-blue-500 text-white shadow-md shadow-blue-600/25 dark:bg-purple-600 dark:border-purple-500 dark:text-white dark:shadow-purple-600/30'
+                    : 'bg-slate-50 border-slate-200 text-slate-600 hover:border-blue-400 hover:text-blue-700 dark:bg-zinc-950/60 dark:border-zinc-800 dark:text-zinc-400 dark:hover:border-zinc-700 dark:hover:text-zinc-200'
                   }`}
               >
                 {CATEGORY_ICON[cat]}
@@ -291,7 +291,7 @@ export function PetWardrobeModal({
                   <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-full leading-none
                     ${activeCategory === cat
                       ? 'bg-white/20 text-white'
-                      : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                      : 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30'
                     }`}>
                     {ownedCount}
                   </span>
@@ -304,7 +304,7 @@ export function PetWardrobeModal({
         {/* ── Error banner ── */}
         {errorMsg && (
           <div className="mt-2 rounded-xl px-3 py-2 text-xs font-bold
-            bg-red-500/10 text-red-400 border border-red-500/30 flex-shrink-0">
+            bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/30 flex-shrink-0">
             ✗ {errorMsg}
           </div>
         )}

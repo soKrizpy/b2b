@@ -208,7 +208,7 @@ export function DashboardAppShell({
             type="button"
             onClick={() => setCollapsed((v) => !v)}
             className="w-full flex items-center justify-center gap-2 p-2.5 rounded-2xl text-xs font-bold
-              bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10
+              bg-slate-100 dark:bg-white/5 border border-blue-400/30 dark:border-purple-500/30
               text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white
               hover:border-blue-400/50 dark:hover:border-purple-500/50 transition-all active:scale-95"
           >
@@ -285,7 +285,7 @@ export function DashboardAppShell({
 
               {/* User Profile Pill */}
               <div className="hidden sm:flex items-center gap-2 rounded-xl px-3 py-1.5 border
-                bg-slate-50 border-slate-200 dark:bg-[#0B0F19] dark:border-purple-500/40 shadow-xs">
+                bg-slate-50 border-blue-400/40 dark:bg-[#0B0F19] dark:border-purple-500/40 shadow-xs">
                 <div className="w-5 h-5 rounded-md bg-[#7cc62f] flex items-center justify-center flex-shrink-0">
                   <span suppressHydrationWarning className="text-[10px] text-white font-black">
                     {(fullName ?? '?')[0].toUpperCase()}

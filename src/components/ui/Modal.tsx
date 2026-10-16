@@ -41,19 +41,24 @@ export function Modal({ isOpen, onClose, title, children, size = "md" }: ModalPr
     >
       <div
         ref={dialogRef}
-        className={`w-full ${SIZE[size]} bg-white rounded-2xl shadow-2xl shadow-slate-900/20
-          flex flex-col max-h-[92vh] animate-fade-in-up ring-1 ring-slate-200/80`}
+        className={`w-full ${SIZE[size]} bg-white dark:bg-[#0B0F19] rounded-2xl shadow-2xl
+          shadow-blue-500/10 dark:shadow-purple-950/40
+          border border-blue-400/40 dark:border-purple-500/40
+          ring-1 ring-blue-300/30 dark:ring-purple-500/30
+          flex flex-col max-h-[92vh] animate-fade-in-up`}
       >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4
-          border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white rounded-t-2xl">
-          <h2 id="modal-title" className="text-base font-bold text-slate-900 tracking-tight">
+          border-b border-blue-100 dark:border-purple-500/25
+          bg-gradient-to-r from-blue-50/60 to-white dark:from-purple-950/40 dark:to-[#0B0F19] rounded-t-2xl">
+          <h2 id="modal-title" className="text-base font-bold text-slate-900 dark:text-purple-50 tracking-tight">
             {title}
           </h2>
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100
+            className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-blue-50
+              dark:hover:bg-purple-950/50 dark:hover:text-purple-200
               transition-all duration-150 active:scale-95"
             aria-label="Tutup"
           >
@@ -63,7 +68,7 @@ export function Modal({ isOpen, onClose, title, children, size = "md" }: ModalPr
           </button>
         </div>
         {/* Body */}
-        <div className="overflow-y-auto flex-1 px-6 py-5">{children}</div>
+        <div className="overflow-y-auto flex-1 px-6 py-5 text-slate-800 dark:text-slate-200">{children}</div>
       </div>
     </div>
   );

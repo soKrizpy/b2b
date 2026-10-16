@@ -100,7 +100,7 @@ export function MonthlyQuizChart({ snapshots }: MonthlyQuizChartProps) {
   }, [chartData]);
 
   return (
-    <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 sm:p-6 shadow-sm">
+    <div className="bg-white dark:bg-zinc-900 border border-blue-400/40 dark:border-purple-500/40 rounded-2xl p-5 sm:p-6 shadow-sm">
       {/* Header & Range Controls */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-zinc-100 dark:border-zinc-800">
         <div>

@@ -27,7 +27,7 @@ export function TeacherStudentsWidget({ students }: Props) {
   }, [students, search]);
 
   return (
-    <section className="bg-white dark:bg-[#161622] rounded-3xl p-6 sm:p-7 shadow-sm ring-1 ring-slate-200/80 dark:ring-white/10 transition-all">
+    <section className="bg-white dark:bg-[#161622] rounded-3xl p-6 sm:p-7 shadow-sm border border-blue-400/40 dark:border-purple-500/40 transition-all">
       {/* Header */}
       <div className="flex items-center justify-between gap-4 flex-wrap mb-5">
         <div className="flex items-center gap-3">
@@ -100,8 +100,8 @@ export function TeacherStudentsWidget({ students }: Props) {
             return (
               <div
                 key={s.id}
-                className="rounded-2xl p-4 bg-slate-50 dark:bg-white/[0.03] border border-slate-200/80 dark:border-white/10
-                  hover:border-violet-500/30 hover:shadow-md transition-all duration-200 flex flex-col justify-between gap-3 group"
+                className="rounded-2xl p-4 bg-slate-50 dark:bg-white/[0.03] border border-blue-100 dark:border-purple-500/20
+                  hover:border-blue-400 dark:hover:border-purple-500/50 hover:shadow-md transition-all duration-200 flex flex-col justify-between gap-3 group"
               >
                 {/* Top row: Avatar & Info */}
                 <div className="flex items-start gap-3">

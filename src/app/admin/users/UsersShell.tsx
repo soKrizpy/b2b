@@ -278,10 +278,10 @@ function StudentDesktopTable({
   students, onDetail,
 }: { students: StudentRecord[]; onDetail: (s: StudentRecord) => void }) {
   return (
-    <div className="rounded-2xl overflow-hidden border border-slate-200 dark:border-white/10 shadow-sm">
+    <div className="rounded-2xl overflow-hidden border border-blue-400/45 dark:border-purple-500/45 shadow-sm">
       <div className="overflow-x-auto">
         <table className="w-full text-sm border-collapse">
-          <thead className="bg-slate-50 dark:bg-[#1a1a28] border-b border-slate-200 dark:border-white/10">
+          <thead className="bg-blue-50/60 dark:bg-purple-950/30 border-b border-blue-200/80 dark:border-purple-500/25">
             <tr>
               <ColHeader>Nama &amp; Kontak</ColHeader>
               <ColHeader>Kelas &amp; Akses</ColHeader>
@@ -290,7 +290,7 @@ function StudentDesktopTable({
               <ColHeader>Aksi</ColHeader>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100 dark:divide-white/5">
+          <tbody className="divide-y divide-blue-100 dark:divide-purple-500/20">
             {students.map((s) => (
               <tr key={s.id}
                 className="bg-white dark:bg-[#161622]
@@ -350,10 +350,10 @@ function TeacherDesktopTable({
   teachers, onDetail,
 }: { teachers: TeacherRecord[]; onDetail: (t: TeacherRecord) => void }) {
   return (
-    <div className="rounded-2xl overflow-hidden border border-slate-200 dark:border-white/10 shadow-sm">
+    <div className="rounded-2xl overflow-hidden border border-blue-400/45 dark:border-purple-500/45 shadow-sm">
       <div className="overflow-x-auto">
         <table className="w-full text-sm border-collapse">
-          <thead className="bg-slate-50 dark:bg-[#1a1a28] border-b border-slate-200 dark:border-white/10">
+          <thead className="bg-blue-50/60 dark:bg-purple-950/30 border-b border-blue-200/80 dark:border-purple-500/25">
             <tr>
               <ColHeader>Nama &amp; Email</ColHeader>
               <ColHeader>Sesi &amp; Siswa</ColHeader>
@@ -361,7 +361,7 @@ function TeacherDesktopTable({
               <ColHeader>Aksi</ColHeader>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100 dark:divide-white/5">
+          <tbody className="divide-y divide-blue-100 dark:divide-purple-500/20">
             {teachers.map((t) => (
               <tr key={t.id}
                 className="bg-white dark:bg-[#161622]

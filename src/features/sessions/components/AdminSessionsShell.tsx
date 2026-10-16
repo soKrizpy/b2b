@@ -145,13 +145,13 @@ export function AdminSessionsShell({ meetings, teachers, students }: Props) {
       </div>
 
       {/* View Tabs */}
-      <div className="flex items-center gap-1.5 bg-slate-100/90 dark:bg-zinc-900/80 p-1.5 rounded-xl border border-slate-200 dark:border-zinc-800 w-fit">
+      <div className="flex items-center gap-1.5 bg-slate-100/90 dark:bg-zinc-900/80 p-1.5 rounded-xl border border-blue-200/80 dark:border-purple-500/30 w-fit">
         <button
           type="button"
           onClick={() => setViewTab('calendar')}
-          className={`px-4 py-2 rounded-lg text-xs font-extrabold transition-all focus:outline-none focus:ring-2 focus:ring-cyan-400 ${
+          className={`px-4 py-2 rounded-lg text-xs font-extrabold transition-all focus:outline-none focus:ring-2 focus:ring-blue-400 dark:focus:ring-purple-400 ${
             viewTab === 'calendar'
-              ? 'bg-white dark:bg-zinc-950 text-blue-600 dark:text-cyan-400 border border-blue-500/40 dark:border-zinc-700 shadow-sm'
+              ? 'bg-white dark:bg-zinc-950 text-blue-600 dark:text-purple-300 border border-blue-500/40 dark:border-purple-500/40 shadow-sm'
               : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
           }`}
         >
@@ -160,9 +160,9 @@ export function AdminSessionsShell({ meetings, teachers, students }: Props) {
         <button
           type="button"
           onClick={() => setViewTab('history')}
-          className={`px-4 py-2 rounded-lg text-xs font-extrabold transition-all flex items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-cyan-400 ${
+          className={`px-4 py-2 rounded-lg text-xs font-extrabold transition-all flex items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-blue-400 dark:focus:ring-purple-400 ${
             viewTab === 'history'
-              ? 'bg-white dark:bg-zinc-950 text-blue-600 dark:text-cyan-400 border border-blue-500/40 dark:border-zinc-700 shadow-sm'
+              ? 'bg-white dark:bg-zinc-950 text-blue-600 dark:text-purple-300 border border-blue-500/40 dark:border-purple-500/40 shadow-sm'
               : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
           }`}
         >
@@ -193,7 +193,7 @@ export function AdminSessionsShell({ meetings, teachers, students }: Props) {
 
           {/* Right: Detail Panel (lg:col-span-5 for 1280px laptop, xl:col-span-4 for desktop) */}
           <div className="lg:col-span-5 xl:col-span-4">
-            <div className="sticky top-6 bg-white dark:bg-zinc-950 border border-blue-500/50 dark:border-zinc-800 rounded-2xl shadow-sm overflow-hidden flex flex-col max-h-[calc(100vh-140px)]">
+            <div className="sticky top-6 bg-white dark:bg-zinc-950 border border-blue-400/40 dark:border-purple-500/40 rounded-2xl shadow-sm overflow-hidden flex flex-col max-h-[calc(100vh-140px)]">
               {/* Detail panel header */}
               <div className="px-5 py-4 border-b border-slate-200 dark:border-zinc-800 bg-slate-50/70 dark:bg-zinc-900/60">
                 <p className="text-xs font-extrabold uppercase tracking-wider text-blue-600 dark:text-cyan-400 mb-0.5">

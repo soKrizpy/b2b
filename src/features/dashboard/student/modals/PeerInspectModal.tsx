@@ -26,18 +26,18 @@ export function PeerInspectModal({ seat, onClose }: Props) {
     /* Backdrop */
     <div
       className="fixed inset-0 z-50 flex items-center justify-center
-        bg-black/70 backdrop-blur-sm p-4"
+        bg-black/60 dark:bg-black/75 backdrop-blur-sm p-4"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       {/* Panel */}
       <div
-        className="relative w-full max-w-sm bg-zinc-900 border border-zinc-700/80
+        className="relative w-full max-w-sm bg-white dark:bg-[#0B0F19] border border-blue-400/40 dark:border-purple-500/40
           rounded-2xl shadow-2xl p-6 overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Gradient header */}
-        <div className="bg-gradient-to-br from-indigo-900 via-purple-900 to-zinc-900
-          rounded-xl p-5 text-white text-center relative border border-purple-500/30">
+        <div className="bg-gradient-to-br from-blue-600 via-indigo-600 to-blue-700 dark:from-indigo-950 dark:via-purple-950 dark:to-zinc-900
+          rounded-xl p-5 text-white text-center relative border border-blue-400/30 dark:border-purple-500/30">
           {/* Close */}
           <button
             type="button"
@@ -52,9 +52,9 @@ export function PeerInspectModal({ seat, onClose }: Props) {
 
           {/* Avatar */}
           <div className="w-18 h-18 mx-auto rounded-2xl
-            bg-gradient-to-br from-zinc-800 to-purple-950
+            bg-gradient-to-br from-blue-700 to-indigo-800 dark:from-zinc-800 dark:to-purple-950
             flex items-center justify-center text-4xl mb-3
-            ring-2 ring-purple-400/50 shadow-xl">
+            ring-2 ring-blue-300/50 dark:ring-purple-400/50 shadow-xl">
             {petEmoji}
           </div>
 
@@ -62,7 +62,7 @@ export function PeerInspectModal({ seat, onClose }: Props) {
 
           {/* Level chip */}
           <span className="mt-1 inline-flex items-center gap-1.5 text-xs font-bold
-            bg-purple-500/20 text-purple-300 border border-purple-500/30 px-3 py-1 rounded-full">
+            bg-white/20 text-blue-100 dark:bg-purple-500/20 dark:text-purple-300 border border-white/30 dark:border-purple-500/30 px-3 py-1 rounded-full">
             ⭐ Level {lvl.currentLevel}
           </span>
         </div>
@@ -73,16 +73,16 @@ export function PeerInspectModal({ seat, onClose }: Props) {
           {/* XP progress */}
           <div>
             <div className="flex items-center justify-between text-xs mb-1.5">
-              <span className="font-bold text-zinc-400">
+              <span className="font-bold text-slate-500 dark:text-zinc-400">
                 EXP Progress
               </span>
-              <span className="font-extrabold text-purple-400 tabular-nums">
+              <span className="font-extrabold text-blue-600 dark:text-purple-400 tabular-nums">
                 {lvl.xpInCurrentLevel}/{lvl.xpNeededThisLevel} XP
               </span>
             </div>
-            <div className="h-2 rounded-full bg-zinc-800 overflow-hidden">
+            <div className="h-2 rounded-full bg-slate-100 dark:bg-zinc-800 overflow-hidden">
               <div
-                className="h-full rounded-full bg-gradient-to-r from-cyan-500 to-purple-500
+                className="h-full rounded-full bg-gradient-to-r from-blue-500 to-indigo-500 dark:from-cyan-500 dark:to-purple-500
                   transition-all duration-700"
                 style={{ width: `${lvl.progressPercent}%` }}
               />
@@ -90,10 +90,10 @@ export function PeerInspectModal({ seat, onClose }: Props) {
           </div>
 
           {/* Equipped accessory */}
-          <div className="rounded-xl bg-zinc-950/60
-            border border-zinc-800 px-4 py-3">
+          <div className="rounded-xl bg-slate-50 dark:bg-zinc-950/60
+            border border-blue-200/70 dark:border-zinc-800 px-4 py-3">
             <p className="text-[10px] font-black uppercase tracking-wider
-              text-zinc-500 mb-1.5">
+              text-slate-400 dark:text-zinc-500 mb-1.5">
               Aksesori Aktif
             </p>
             {accessory ? (
@@ -108,7 +108,7 @@ export function PeerInspectModal({ seat, onClose }: Props) {
                    accessory.category === 'visor'   ? '🥽' : '👑'}
                 </div>
                 <div className="min-w-0">
-                  <p className="text-xs font-extrabold text-white truncate">
+                  <p className="text-xs font-extrabold text-slate-900 dark:text-white truncate">
                     {accessory.name}
                   </p>
                   {accessory.badge && (
@@ -122,7 +122,7 @@ export function PeerInspectModal({ seat, onClose }: Props) {
                 </div>
               </div>
             ) : (
-              <p className="text-xs text-zinc-500 italic">
+              <p className="text-xs text-slate-400 dark:text-zinc-500 italic">
                 Tidak ada aksesori yang dipakai
               </p>
             )}
@@ -131,10 +131,10 @@ export function PeerInspectModal({ seat, onClose }: Props) {
           {/* Total XP chip */}
           <div className="flex items-center justify-between px-4 py-3 rounded-xl
             bg-amber-500/10 border border-amber-500/30">
-            <span className="text-xs font-bold text-amber-400">
+            <span className="text-xs font-bold text-amber-600 dark:text-amber-400">
               Total XP
             </span>
-            <span className="text-sm font-extrabold tabular-nums text-amber-300">
+            <span className="text-sm font-extrabold tabular-nums text-amber-700 dark:text-amber-300">
               ⭐ {seat.total_xp.toLocaleString('id-ID')}
             </span>
           </div>
@@ -143,8 +143,8 @@ export function PeerInspectModal({ seat, onClose }: Props) {
             type="button"
             onClick={onClose}
             className="w-full py-2.5 rounded-xl text-xs font-bold
-              border border-zinc-800 text-zinc-300 bg-zinc-800/60
-              hover:bg-zinc-800 hover:text-white transition-colors"
+              border border-slate-200 dark:border-zinc-800 text-slate-600 dark:text-zinc-300 bg-slate-100
+              hover:bg-slate-200 dark:bg-zinc-800/60 dark:hover:bg-zinc-800 dark:hover:text-white transition-colors"
           >
             Tutup
           </button>

@@ -10,6 +10,7 @@ import type { TownSquareMeeting, TownSquareSeat } from '@/features/sessions/quer
 import type { StudentGamificationData } from '@/features/pet/lib/petQueries';
 import { PetWardrobeModal } from '@/features/dashboard/student/modals/PetWardrobeModal';
 import { PeerInspectModal } from '@/features/dashboard/student/modals/PeerInspectModal';
+import { LiveStatusIndicator } from '@/components/common/LiveStatusIndicator';
 
 export type ScheduleState = 'STATE_A' | 'STATE_B' | 'STATE_C' | 'STATE_D';
 
@@ -84,13 +85,13 @@ function AvatarCircle({
   const dims  = size === 'lg' ? 'w-14 h-14 text-2xl' : size === 'md' ? 'w-11 h-11 text-xl' : 'w-8 h-8 text-base';
   const ring  = seat.is_self
     ? 'ring-2 ring-cyan-400 shadow-lg shadow-cyan-500/30 animate-pulse cursor-pointer hover:scale-105 transition-all'
-    : 'ring-1 ring-slate-200 dark:ring-zinc-800 group-hover:ring-purple-500/50 transition-all';
+    : 'ring-1 ring-blue-100 dark:ring-zinc-800 group-hover:ring-blue-400/50 dark:group-hover:ring-purple-500/50 transition-all';
 
   return (
     <div className={`${dims} ${ring} rounded-2xl bg-gradient-to-br
-      from-indigo-50 to-purple-100 dark:from-zinc-900 dark:to-indigo-950/80
+      from-blue-50 to-indigo-100 dark:from-zinc-900 dark:to-indigo-950/80
       flex items-center justify-center select-none relative transition-transform hover:scale-105`}>
-      {seat.avatar_id ? emoji : <i className="fa-solid fa-user-astronaut text-indigo-500 dark:text-cyan-400 text-lg" />}
+      {seat.avatar_id ? emoji : <i className="fa-solid fa-user-astronaut text-blue-600 dark:text-cyan-400 text-lg" />}
       
       {/* Online indicator */}
       <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-zinc-900" />
@@ -147,7 +148,7 @@ function StudentSeat({
   if (!seat) {
     return (
       <div className="flex flex-col items-center gap-1.5 opacity-60 cursor-default">
-        <div className="w-11 h-11 rounded-2xl border-2 border-dashed border-slate-300
+        <div className="w-11 h-11 rounded-2xl border-2 border-dashed border-blue-200
           dark:border-zinc-700/80 flex items-center justify-center text-slate-400
           dark:text-zinc-500 text-xs font-bold bg-slate-50/50 dark:bg-zinc-950/40">
           <i className="fa-solid fa-plus" />
@@ -166,21 +167,21 @@ function StudentSeat({
       onClick={onClick}
       title={seat.is_self ? 'Buka Lemari Kostummu' : `Lihat Pet ${firstName}`}
       className={`flex flex-col items-center gap-1.5 group relative
-        focus:outline-none focus:ring-2 focus:ring-purple-400 rounded-2xl p-0.5
+        focus:outline-none focus:ring-2 focus:ring-blue-400 dark:focus:ring-purple-400 rounded-2xl p-0.5
         ${seat.is_self ? 'cursor-pointer hover:scale-105 transition-transform' : onClick ? 'cursor-pointer hover:scale-105 transition-transform' : 'cursor-default'}`}
     >
       <div className="relative">
         <AvatarCircle seat={seat} size="md" />
         {!seat.is_self && (
           <span className="absolute -bottom-2 left-1/2 -translate-x-1/2 text-[8px] font-black
-            bg-purple-600/90 text-white px-1.5 py-0.5 rounded-full whitespace-nowrap
+            bg-blue-600/90 dark:bg-purple-600/90 text-white px-1.5 py-0.5 rounded-full whitespace-nowrap
             opacity-0 group-hover:opacity-100 transition-opacity duration-200 shadow-md z-10 pointer-events-none">
             Lihat Pet
           </span>
         )}
       </div>
       <p className={`text-[10px] font-black truncate max-w-[60px] text-center
-        group-hover:text-purple-600 dark:group-hover:text-purple-300 transition-colors
+        group-hover:text-blue-600 dark:group-hover:text-purple-300 transition-colors
         ${seat.is_self
           ? 'text-cyan-600 dark:text-cyan-300'
           : 'text-slate-700 dark:text-slate-300'
@@ -196,8 +197,8 @@ function StudentSeat({
 function StateA_EmptyState() {
   return (
     <div className="rounded-3xl bg-white dark:bg-zinc-900/80
-      border border-blue-500/40 dark:border-purple-500/40 shadow-sm p-5
-      flex items-center justify-between gap-4 transition-all duration-300 hover:scale-[1.01] cursor-pointer">
+      border border-blue-400/40 dark:border-purple-500/40 shadow-sm p-5
+      flex items-center justify-between gap-4 transition-all duration-300 hover:scale-[1.01] hover:border-blue-500 dark:hover:border-purple-400 cursor-pointer">
 
       <div className="flex items-center gap-4">
         <div className="w-12 h-12 rounded-2xl bg-cyan-500/10 border border-cyan-500/20
@@ -305,15 +306,16 @@ export function TownSquarePod({ meeting, nextMeeting, forceState, gamData, curre
   return (
     <>
     <div className="h-full rounded-3xl bg-white dark:bg-zinc-900/80
-      border border-blue-500/40 dark:border-purple-500/40 shadow-sm
-      shadow-[0_0_30px_rgba(139,92,246,0.12)]
+      border border-blue-400/40 dark:border-purple-500/40 shadow-sm
+      shadow-[0_0_30px_rgba(59,130,246,0.08)] dark:shadow-[0_0_30px_rgba(168,85,247,0.15)]
       transition-all duration-300 hover:scale-[1.02] cursor-pointer
-      hover:border-purple-400/70 hover:shadow-[0_0_40px_rgba(139,92,246,0.25)]
+      hover:border-blue-500 dark:hover:border-purple-400
+      hover:shadow-neon-blue dark:hover:shadow-neon-purple
       flex flex-col justify-between overflow-hidden">
 
       {/* ── Pod Header ── */}
-      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900
-        border-b border-slate-800 px-5 py-4 text-white">
+      <div className="bg-gradient-to-r from-blue-950 via-indigo-950 to-slate-900
+        border-b border-blue-900/40 dark:border-purple-900/40 px-5 py-4 text-white">
         <div className="flex items-center justify-between gap-2">
           <div className="min-w-0">
             <p className="text-[9px] font-black uppercase tracking-widest text-cyan-400 mb-0.5 flex items-center gap-1.5">
@@ -324,7 +326,9 @@ export function TownSquarePod({ meeting, nextMeeting, forceState, gamData, curre
             </h3>
           </div>
 
-          <div className="flex-shrink-0">
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {isMounted && <LiveStatusIndicator isLive={activeState === 'STATE_C'} />}
+
             {isMounted && activeState === 'STATE_C' && (
               <span className="inline-flex items-center gap-1.5 text-[10px] font-black
                 text-white bg-rose-600 px-2.5 py-1 rounded-full shadow-md shadow-rose-500/30">
@@ -335,9 +339,9 @@ export function TownSquarePod({ meeting, nextMeeting, forceState, gamData, curre
               <span
                 suppressHydrationWarning
                 className="inline-flex items-center gap-1 text-[10px] font-mono font-bold
-                  text-purple-300 bg-purple-500/20 px-2.5 py-1 rounded-full border border-purple-500/30"
+                  text-blue-600 dark:text-purple-300 bg-blue-500/10 dark:bg-purple-500/20 px-2.5 py-1 rounded-full border border-blue-500/25 dark:border-purple-500/30"
               >
-                <i className="fa-solid fa-clock text-purple-400" /> {displayCountdown}
+                <i className="fa-solid fa-clock text-blue-500 dark:text-purple-400" /> {displayCountdown}
               </span>
             )}
             {isMounted && activeState === 'STATE_D' && (
@@ -360,12 +364,12 @@ export function TownSquarePod({ meeting, nextMeeting, forceState, gamData, curre
 
         {/* Divider */}
         <div className="flex items-center gap-2 mb-3">
-          <div className="flex-1 h-px bg-slate-100 dark:bg-white/10" />
+          <div className="flex-1 h-px bg-blue-100 dark:bg-purple-500/20" />
           <span className="text-[9px] font-black uppercase tracking-widest
-            text-slate-400 dark:text-slate-500 whitespace-nowrap px-1 flex items-center gap-1">
-            <i className="fa-solid fa-user-group text-purple-400 text-[10px]" /> Meja Belajar
+            text-blue-600/70 dark:text-purple-300/70 whitespace-nowrap px-1 flex items-center gap-1">
+            <i className="fa-solid fa-user-group text-blue-500 dark:text-purple-400 text-[10px]" /> Meja Belajar
           </span>
-          <div className="flex-1 h-px bg-slate-100 dark:bg-white/10" />
+          <div className="flex-1 h-px bg-blue-100 dark:bg-purple-500/20" />
         </div>
 
         {/* 4 Student Seats */}
@@ -404,7 +408,7 @@ export function TownSquarePod({ meeting, nextMeeting, forceState, gamData, curre
         ) : activeState === 'STATE_A' ? (
           /* STATE A (mounted, has meeting) → neutral locked skeleton */
           <div className="mt-2 rounded-2xl bg-slate-50 dark:bg-zinc-800/50
-            border border-slate-200/80 dark:border-purple-500/20 p-3.5 text-center">
+            border border-blue-200/80 dark:border-purple-500/20 p-3.5 text-center">
             <button disabled
               className="w-full py-3 rounded-2xl text-xs font-black
                 bg-slate-200 dark:bg-zinc-800 text-slate-400 dark:text-zinc-500
@@ -417,14 +421,14 @@ export function TownSquarePod({ meeting, nextMeeting, forceState, gamData, curre
         ) : activeState === 'STATE_B' && isMounted ? (
           /* STATE B: Upcoming Class Countdown */
           <div className="mt-2 rounded-2xl bg-slate-50 dark:bg-zinc-800/50
-            border border-slate-200/80 dark:border-purple-500/20 p-3.5 text-center">
+            border border-blue-200/80 dark:border-purple-500/20 p-3.5 text-center">
             <div className="flex items-center justify-between text-xs mb-2">
-              <span className="font-extrabold text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
-                <i className="fa-solid fa-clock text-purple-400" /> Hitung Mundur Kelas
+              <span className="font-extrabold text-slate-600 dark:text-slate-400 flex items-center gap-1.5">
+                <i className="fa-solid fa-clock text-blue-500 dark:text-purple-400" /> Hitung Mundur Kelas
               </span>
               <span
                 suppressHydrationWarning
-                className="font-mono font-black text-xs text-purple-600 dark:text-purple-300 bg-purple-500/10 px-2.5 py-0.5 rounded-lg border border-purple-500/20"
+                className="font-mono font-black text-xs text-blue-600 dark:text-purple-300 bg-blue-500/10 dark:bg-purple-500/10 px-2.5 py-0.5 rounded-lg border border-blue-500/25 dark:border-purple-500/20"
               >
                 {displayCountdown}
               </span>

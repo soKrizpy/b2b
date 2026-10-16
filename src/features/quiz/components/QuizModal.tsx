@@ -388,13 +388,13 @@ export function QuizModal({
     >
       {/* Panel */}
       <div
-        className="relative w-full max-w-xl bg-zinc-900 border border-zinc-700/80
+        className="relative w-full max-w-xl bg-white dark:bg-zinc-900 border border-blue-400/40 dark:border-purple-500/40
           rounded-2xl shadow-2xl p-6 flex flex-col max-h-[90dvh] overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div className="flex items-center justify-between gap-3 pb-4
-          border-b border-zinc-800 flex-shrink-0">
+          border-b border-slate-200 dark:border-zinc-800 flex-shrink-0">
           <div className="flex items-center gap-3 min-w-0">
             <div className="w-9 h-9 rounded-xl bg-indigo-500/15 flex items-center
               justify-center text-base flex-shrink-0">
