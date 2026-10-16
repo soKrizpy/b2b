@@ -1,8 +1,8 @@
-'use client';
+﻿'use client';
 // src/features/dashboard/student/StudentDashboardShell.tsx
 // 2-Column Student Dashboard Shell.
 // Col Left  (2/3): Hero Realm Banner (with inline profile strip) + Town Square Pod
-// Col Right (1/3): Cyber Pet Companion · Misi Harian · Ringkasan Belajar · Koleksi Sertifikat
+// Col Right (1/3): Cyber Pet Companion - Misi Harian - Ringkasan Belajar - Koleksi Sertifikat
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
@@ -31,7 +31,7 @@ import {
   BookOpen,
 } from 'lucide-react';
 
-// ── Types ─────────────────────────────────────────────────────────────────────
+// â”€â”€ Types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 interface SessionItem {
   id: number | string;
@@ -52,13 +52,13 @@ interface Props {
   invoices:           InvoiceRow[];
   upcoming:           SessionItem[];
   past:               SessionItem[];
-  /** Topics with NEEDS_QUIZ status — drives the mission banner */
+  /** Topics with NEEDS_QUIZ status â€” drives the mission banner */
   needsQuizTopics:    Array<{ id: number; title: string }>;
   completedTopics?:   TopicProgressSummary[];
   allModules?:        ModuleWithTopics[];
 }
 
-// ── Section Header Component ──────────────────────────────────────────────────
+// â”€â”€ Section Header Component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function SectionHeader({ icon, label }: { icon: React.ReactNode; label: string }) {
   return (
@@ -74,7 +74,7 @@ function SectionHeader({ icon, label }: { icon: React.ReactNode; label: string }
   );
 }
 
-// ── Needs-Quiz Mission Banner ─────────────────────────────────────────────────
+// â”€â”€ Needs-Quiz Mission Banner â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function NeedsQuizBanner({
   topics,
@@ -93,7 +93,7 @@ function NeedsQuizBanner({
       <div className="px-5 py-4 flex items-center gap-4 flex-wrap">
         <div className="w-10 h-10 rounded-2xl bg-amber-500/20 border border-amber-500/30
           flex items-center justify-center text-xl flex-shrink-0">
-          🔥
+          ðŸ”¥
         </div>
 
         <div className="flex-1 min-w-0">
@@ -127,7 +127,7 @@ function NeedsQuizBanner({
   );
 }
 
-// ── Main Shell Component ──────────────────────────────────────────────────────
+// â”€â”€ Main Shell Component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export function StudentDashboardShell({
   studentId,
@@ -159,19 +159,19 @@ export function StudentDashboardShell({
 
   return (
     <div className="space-y-6 animate-fade-in-up">
-      {/* ── Announcement Banner ── */}
+      {/* â”€â”€ Announcement Banner â”€â”€ */}
       <AnnouncementBanner role="students" />
 
-      {/* ── NEEDS_QUIZ Mission Banner ── */}
+      {/* â”€â”€ NEEDS_QUIZ Mission Banner â”€â”€ */}
       <NeedsQuizBanner topics={needsQuizTopics} />
 
-      {/* ══ 2-COLUMN LAYOUT ══ */}
+      {/* â•â• 2-COLUMN LAYOUT â•â• */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
 
-        {/* ── LEFT COL (2/3): Hero + Pod ── */}
+        {/* â”€â”€ LEFT COL (2/3): Hero + Pod â”€â”€ */}
         <div className="lg:col-span-2 space-y-6 order-1">
 
-          {/* Hero Realm Welcome Card — now includes profile info inline */}
+          {/* Hero Realm Welcome Card â€” now includes profile info inline */}
           <div className={`relative rounded-3xl overflow-hidden p-6 sm:p-7 text-white shadow-xl
             transition-all duration-300
             ${hasLive
@@ -201,7 +201,7 @@ export function StudentDashboardShell({
                     </div>
                   )}
                   <h1 className="text-xl sm:text-2xl font-black tracking-tight text-white">
-                    Selamat berpetualang, {studentName}! {hasLive ? '🔥' : '🚀'}
+                    Selamat berpetualang, {studentName}! {hasLive ? 'ðŸ”¥' : 'ðŸš€'}
                   </h1>
                   {next && (
                     <p className="text-xs text-slate-300 mt-1 font-medium flex items-center gap-1.5">
@@ -267,7 +267,7 @@ export function StudentDashboardShell({
 
                   {/* Coins */}
                   <div className="flex items-center gap-1.5 bg-amber-500/15 border border-amber-500/25 px-2.5 py-1 rounded-xl text-xs font-black text-amber-300">
-                    🪙 {gamData?.coins ?? 0}
+                    ðŸª™ {gamData?.coins ?? 0}
                   </div>
 
                   {/* Celebrate button */}
@@ -296,7 +296,7 @@ export function StudentDashboardShell({
 
         </div>
 
-        {/* ── RIGHT COL (1/3): Pet + Misi Harian + Ringkasan + Certs ── */}
+        {/* â”€â”€ RIGHT COL (1/3): Pet + Misi Harian + Ringkasan + Certs â”€â”€ */}
         <div className="lg:col-span-1 space-y-6 order-2">
 
           {/* Cyber Pet Companion Card */}
@@ -320,13 +320,13 @@ export function StudentDashboardShell({
               </div>
             ) : (
               <div className="py-8 text-center space-y-2">
-                <div className="text-4xl select-none">🐾</div>
+                <div className="text-4xl select-none">ðŸ¾</div>
                 <p className="text-xs font-bold text-slate-500 dark:text-slate-400">Cyber Pet belum diaktifkan</p>
               </div>
             )}
           </div>
 
-          {/* Misi Harian — moved here from left col */}
+          {/* Misi Harian â€” moved here from left col */}
           <div className="rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800
             p-5 shadow-sm space-y-3">
             <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
@@ -366,7 +366,7 @@ export function StudentDashboardShell({
               </div>
             </div>
             <Link href="/student/lessons" className="text-center block text-xs font-bold text-purple-600 dark:text-purple-400 hover:underline pt-1">
-              Jelajahi Peta Quest Lengkap →
+              Jelajahi Peta Quest Lengkap â†’
             </Link>
           </div>
 
@@ -416,10 +416,10 @@ export function StudentDashboardShell({
               <div className="space-y-2">
                 {certificates.slice(0, 2).map((cert) => (
                   <div key={cert.id} className="p-2.5 rounded-2xl bg-amber-50/50 dark:bg-amber-950/20 border border-amber-300/40 dark:border-amber-500/30 flex items-center gap-2.5">
-                    <span className="text-lg">🏆</span>
+                    <span className="text-lg">ðŸ†</span>
                     <div className="min-w-0">
                       <p className="text-xs font-bold text-slate-900 dark:text-white truncate">{cert.module_title || 'Sertifikat Kelulusan'}</p>
-                      <p className="text-[10px] text-amber-600 dark:text-amber-400 font-mono">Tier {cert.tier} · Nilai {cert.score}</p>
+                      <p className="text-[10px] text-amber-600 dark:text-amber-400 font-mono">Tier {cert.tier} Â· Nilai {cert.score}</p>
                     </div>
                   </div>
                 ))}
@@ -436,16 +436,16 @@ export function StudentDashboardShell({
         </div>
       </div>
 
-      {/* ══════════════════════════════════════════════════════════════════════════
+      {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
           LOWER SECTIONS (Full Width): Full Badges, Progress Chart, Sesi
-          ══════════════════════════════════════════════════════════════════════════ */}
+          â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
 
-      {/* ── Quick Teleport Banner: Lencana & Target Modul Tab ── */}
+      {/* â”€â”€ Quick Teleport Banner: Lencana & Target Modul Tab â”€â”€ */}
       <section className="rounded-3xl bg-gradient-to-r from-purple-950/40 via-indigo-950/30 to-slate-900 border border-purple-500/30 p-5 sm:p-6 shadow-xl shadow-purple-950/30">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3.5">
             <div className="w-12 h-12 rounded-2xl bg-purple-500/20 border border-purple-400/40 flex items-center justify-center text-2xl flex-shrink-0">
-              🏆
+              ðŸ†
             </div>
             <div>
               <div className="flex items-center gap-2 mb-0.5">
@@ -479,7 +479,7 @@ export function StudentDashboardShell({
         </div>
       </section>
 
-      {/* ── Upcoming Sessions (2nd–5th) ── */}
+      {/* â”€â”€ Upcoming Sessions (2ndâ€“5th) â”€â”€ */}
       {nextFour.length > 0 && (
         <section className="space-y-4">
           <SectionHeader icon={<Calendar className="w-4 h-4" />} label="Jadwal Berikutnya" />
@@ -527,10 +527,10 @@ export function StudentDashboardShell({
         </section>
       )}
 
-      {/* ── Billing Notice Modal ── */}
+      {/* â”€â”€ Billing Notice Modal â”€â”€ */}
       <BillingNoticeModal invoices={invoices.filter((inv) => inv.status === 'sent')} />
 
-      {/* ── Level-Up Celebration Modal ── */}
+      {/* â”€â”€ Level-Up Celebration Modal â”€â”€ */}
       <LevelUpCelebrationModal
         isOpen={isCelebrationOpen}
         onClose={() => setIsCelebrationOpen(false)}
@@ -542,3 +542,4 @@ export function StudentDashboardShell({
     </div>
   );
 }
+
