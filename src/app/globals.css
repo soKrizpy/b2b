@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+/* Google Fonts Inter removed — Geist loaded via next/font */
 
 @tailwind base;
 @tailwind components;
@@ -11,7 +11,7 @@
   --foreground:      #0f172a; /* dark slate text (slate-900) */
   --surface:         #ffffff; /* pure white elevated card background */
   --surface-raised:  #ffffff;
-  --border:          rgba(59, 130, 246, 0.55); /* vivid electric blue border (blue-500/55) */
+  --border:          rgba(148, 163, 184, 0.3); /* subtle neutral */
   --border-hover:    #2563eb; /* electric blue hover border (blue-600) */
   --glow-hover:      0 0 20px rgba(59, 130, 246, 0.35); /* electric blue neon glow */
   --muted:           #64748b; /* slate-500 secondary text */
@@ -34,9 +34,9 @@
   /* Dark Mode: Purpleish Neon Theme */
   --background:      #020617; /* deep dark slate page background (slate-950) */
   --foreground:      #faf5ff; /* crisp off-white purple-50 text */
-  --surface:         #0b0f19; /* dark indigo-slate card background */
-  --surface-raised:  #1e1b4b; /* dark violet-950 raised surface */
-  --border:          rgba(168, 85, 247, 0.45); /* purple neon border (purple-500/45) */
+  --surface:         #0f172a; /* slate-900 */
+  --surface-raised:  #1e293b; /* slate-800 */
+  --border:          rgba(255, 255, 255, 0.08); /* minimal */
   --border-hover:    #c084fc; /* purple-400 hover border */
   --glow-hover:      0 0 20px rgba(168, 85, 247, 0.45); /* intense purple neon glow */
   --muted:           #94a3b8; /* slate-400 secondary text */
@@ -55,14 +55,14 @@ html { scroll-behavior: smooth; }
 body {
   background:    var(--background);
   color:         var(--foreground);
-  font-family:   'Inter', system-ui, -apple-system, sans-serif;
+  font-family:   var(--font-geist-sans), system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 /* ── Custom scrollbar ─────────────────────────────────────── */
-::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: #3b82f6; border-radius: 9999px; }
 .dark ::-webkit-scrollbar-thumb { background: #c084fc; }
@@ -100,19 +100,7 @@ body {
   50%      { opacity: 0.65; filter: blur(18px); }
 }
 
-/* ── Satisfying Progress Bar Keyframes ────────────────────── */
-@keyframes progressShimmer {
-  0%   { transform: translateX(-100%); }
-  100% { transform: translateX(250%); }
-}
-@keyframes progressSparkleTip {
-  0%, 100% { transform: scale(1) rotate(0deg); filter: drop-shadow(0 0 6px #22d3ee); }
-  50%      { transform: scale(1.3) rotate(90deg); filter: drop-shadow(0 0 14px #38bdf8); }
-}
-@keyframes progressNeonPulse {
-  0%, 100% { box-shadow: 0 0 10px rgba(34, 211, 238, 0.4), 0 0 20px rgba(168, 85, 247, 0.2); }
-  50%      { box-shadow: 0 0 20px rgba(34, 211, 238, 0.8), 0 0 35px rgba(16, 185, 129, 0.5); }
-}
+/* Progress shimmer/sparkle/neon-pulse keyframes removed */
 
 /* ── Utility classes & Interactive Neon Utility System ────────── */
 .animate-fade-in-up       { animation: fadeInUp 0.4s ease both; }
@@ -122,9 +110,6 @@ body {
 .animate-fog-slow         { animation: fogDriftSlow 16s ease-in-out infinite; }
 .animate-fog-wisp         { animation: fogWispDrift 10s ease-in-out infinite; }
 .animate-fog-glow         { animation: fogPulseGlow 6s ease-in-out infinite; }
-.animate-progress-shimmer { animation: progressShimmer 2.2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
-.animate-sparkle-tip      { animation: progressSparkleTip 2s ease-in-out infinite; }
-.animate-neon-pulse       { animation: progressNeonPulse 3s ease-in-out infinite; }
 
 .stagger > *:nth-child(1) { animation-delay: 0.05s; }
 .stagger > *:nth-child(2) { animation-delay: 0.10s; }

@@ -27,7 +27,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           referrerPolicy="no-referrer"
         />
       </head>
-      <body className="min-h-full bg-slate-50 dark:bg-[#0d0d14] text-slate-900 dark:text-slate-100 antialiased">
+      <body className="min-h-full antialiased">
         {children}
         <Toaster richColors position="top-right" closeButton />
       </body>

@@ -101,7 +101,7 @@ export default async function TeacherDashboardPage() {
         </div>
 
         {upcoming.length === 0 ? (
-          <div className="rounded-3xl border-2 border-dashed border-slate-200 dark:border-white/10 bg-white dark:bg-[#161622] py-20 px-6 text-center">
+          <div className="rounded-3xl border-2 border-dashed border-slate-200 dark:border-white/10 bg-white dark:bg-[var(--surface)] py-20 px-6 text-center">
             <div className="w-16 h-16 rounded-3xl bg-indigo-500/10 flex items-center justify-center text-indigo-500 mb-4 text-3xl mx-auto">
               <i className="fa-solid fa-calendar-xmark" />
             </div>
@@ -118,7 +118,7 @@ export default async function TeacherDashboardPage() {
 
               return (
                 <div key={m.id}
-                  className={`bg-white dark:bg-[#161622] rounded-3xl shadow-sm ring-1 overflow-hidden
+                  className={`bg-white dark:bg-[var(--surface)] rounded-3xl shadow-sm ring-1 overflow-hidden
                     transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 animate-fade-in-up
                     ${live ? "ring-red-400 dark:ring-red-500/50 shadow-rose-500/10" : "ring-slate-200/80 dark:ring-white/10"}`}
                 >
@@ -228,7 +228,7 @@ export default async function TeacherDashboardPage() {
           <div className="space-y-2.5 stagger">
             {past.map((m) => (
               <div key={m.id}
-                className="bg-white dark:bg-[#161622] rounded-3xl ring-1 ring-slate-200/80 dark:ring-white/10 px-6 py-4
+                className="bg-white dark:bg-[var(--surface)] rounded-3xl ring-1 ring-slate-200/80 dark:ring-white/10 px-6 py-4
                   flex items-center gap-4 hover:shadow-sm transition-all duration-150
                   hover:ring-emerald-300 dark:hover:ring-emerald-500/40 group animate-fade-in-up"
               >
