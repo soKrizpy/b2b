@@ -1,9 +1,15 @@
 'use client';
 // src/features/dashboard/student/TownSquarePod.tsx
-// Clean Cyber EdTech Town Square Pod with interactive seats:
-//   - Own seat → opens PetWardrobeModal (buy/equip accessories)
-//   - Peer seat → opens PeerInspectModal (read-only profile card)
-//   - Empty seat → cursor-default, no interaction
+// Balanced 2x2 Town Square Pod with high-contrast avatars, countdown entry gate, and precise cursor ergonomics.
+//
+// Features:
+//   - Teacher podium centered on top
+//   - 4 Student seats arranged in a balanced 2 columns x 2 rows grid (larger size="lg" avatars)
+//   - Self seat: Opens CosmeticShopModal (cursor-pointer)
+//   - Peer seat: Opens PeerInspectModal (cursor-pointer)
+//   - Empty seat: Dashed slot (cursor-default)
+//   - Card container: cursor-default (standard mouse pointer)
+//   - Countdown Gate: Counts down to start time; unlocks 5 minutes before start (and remains active during class)
 
 import { useState, useEffect } from 'react';
 import type { TownSquareMeeting, TownSquareSeat } from '@/features/sessions/queries';
@@ -13,58 +19,29 @@ import { PeerInspectModal } from '@/features/dashboard/student/modals/PeerInspec
 import { CyberFantasyAvatar } from '@/components/avatar/CyberFantasyAvatar';
 import { LiveStatusIndicator } from '@/components/common/LiveStatusIndicator';
 
-export type ScheduleState = 'STATE_A' | 'STATE_B' | 'STATE_C' | 'STATE_D';
-
 interface Props {
   meeting:      TownSquareMeeting | null;
   nextMeeting?: TownSquareMeeting | null;
-  forceState?:  ScheduleState;
   /** Gamification data for the current student — drives wardrobe modal */
   gamData?:     StudentGamificationData | null;
   /** Supabase auth id of the logged-in student (to identify self seat) */
   currentStudentId?: string | null;
 }
 
-// ── Time & State Calculation Helpers ─────────────────────────────────────────
-
 const CLASS_DURATION_MINUTES = 60;
-const BUFFER_AFTER_END_MINUTES = 60;
 
-function computeScheduleState(
-  meeting: TownSquareMeeting | null,
-  nowMs: number
-): { state: ScheduleState; secondsLeftToStart: number; secondsLeftToEnd: number } {
-  if (!meeting) {
-    return { state: 'STATE_A', secondsLeftToStart: 0, secondsLeftToEnd: 0 };
-  }
+// ── Time & Countdown Formatting Helpers ─────────────────────────────────────
 
-  const startMs = new Date(meeting.meeting_date).getTime();
-  const endMs = startMs + CLASS_DURATION_MINUTES * 60 * 1000;
-  const stateE_Ms = endMs + BUFFER_AFTER_END_MINUTES * 60 * 1000;
-
-  const secondsLeftToStart = Math.max(0, Math.floor((startMs - nowMs) / 1000));
-  const secondsLeftToEnd   = Math.max(0, Math.floor((endMs - nowMs) / 1000));
-
-  if (nowMs < startMs) {
-    return { state: 'STATE_B', secondsLeftToStart, secondsLeftToEnd };
-  }
-
-  if (nowMs >= startMs && nowMs <= endMs) {
-    return { state: 'STATE_C', secondsLeftToStart: 0, secondsLeftToEnd };
-  }
-
-  if (nowMs > endMs && nowMs <= stateE_Ms) {
-    return { state: 'STATE_D', secondsLeftToStart: 0, secondsLeftToEnd: 0 };
-  }
-
-  return { state: 'STATE_A', secondsLeftToStart: 0, secondsLeftToEnd: 0 };
-}
-
-function formatCountdown(seconds: number): string {
+function formatDetailedCountdown(seconds: number): string {
   if (seconds <= 0) return '00:00:00';
-  const hrs  = Math.floor(seconds / 3600);
+  const days = Math.floor(seconds / 86400);
+  const hrs  = Math.floor((seconds % 86400) / 3600);
   const mins = Math.floor((seconds % 3600) / 60);
   const secs = seconds % 60;
+
+  if (days > 0) {
+    return `${days}h ${String(hrs).padStart(2, '0')}j ${String(mins).padStart(2, '0')}m`;
+  }
   return `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
 }
 
@@ -72,47 +49,54 @@ function formatCountdown(seconds: number): string {
 
 function AvatarCircle({
   seat,
-  size = 'md',
+  size = 'lg',
 }: {
   seat: TownSquareSeat;
-  size?: 'sm' | 'md' | 'lg';
+  size?: 'sm' | 'md' | 'lg' | 'xl';
 }) {
   const cos = seat.equipped_cosmetics;
-  const avatarSize = size === 'lg' ? 'lg' : size === 'md' ? 'md' : 'sm';
   const ring = seat.is_self
-    ? 'ring-2 ring-cyan-400 shadow-lg shadow-cyan-500/30'
-    : 'ring-1 ring-blue-100 dark:ring-zinc-800 group-hover:ring-blue-400/50 dark:group-hover:ring-purple-500/50';
+    ? 'ring-2 ring-cyan-400 shadow-xl shadow-cyan-500/30'
+    : 'ring-1 ring-blue-200/80 dark:ring-zinc-800 group-hover:ring-blue-400/60 dark:group-hover:ring-purple-500/60 shadow-md';
 
   return (
-    <div className={`relative rounded-2xl ${ring} transition-all`}>
+    <div className={`relative rounded-3xl ${ring} transition-all p-1 bg-white/40 dark:bg-zinc-900/60 backdrop-blur-xs`}>
+      {seat.is_self && (
+        <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 text-[9px] font-black uppercase tracking-wider
+          bg-cyan-500 text-white px-2 py-0.5 rounded-full shadow-md z-20 pointer-events-none">
+          YOU
+        </span>
+      )}
       <CyberFantasyAvatar
         archetype={cos?.archetype || 'cyber-mage'}
         skinTone={cos?.skinTone || 'default'}
         hatId={cos?.hatId !== undefined ? cos.hatId : seat.equipped_hat_id}
         outfitId={cos?.outfitId || 'outfit-cyber-hoodie'}
         auraId={cos?.auraId}
-        size={avatarSize}
+        size={size}
         isSelf={seat.is_self}
         animateIdle
       />
+      {/* Active student indicator dot */}
+      <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-zinc-900 z-20" />
     </div>
   );
 }
 
-// ── Teacher seat ──────────────────────────────────────────────────────────────
+// ── Teacher podium ────────────────────────────────────────────────────────────
 
 function TeacherSeat({ name }: { name: string | null }) {
   return (
-    <div className="flex flex-col items-center gap-1.5">
+    <div className="flex flex-col items-center gap-1.5 cursor-default select-none">
       <div className="relative group">
-        <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-400 via-amber-500 to-amber-600
-          flex items-center justify-center text-2xl shadow-lg shadow-amber-500/20
-          ring-2 ring-amber-300/40 dark:ring-amber-400/30 transition-transform group-hover:scale-105">
+        <div className="w-16 h-16 rounded-3xl bg-gradient-to-br from-amber-400 via-amber-500 to-amber-600
+          flex items-center justify-center text-3xl shadow-xl shadow-amber-500/20
+          ring-2 ring-amber-300/50 dark:ring-amber-400/30 transition-transform group-hover:scale-105">
           👨‍🏫
         </div>
         {/* Crown Icon */}
-        <span className="absolute -top-3 left-1/2 -translate-x-1/2 text-sm select-none drop-shadow-md">
-          <i className="fa-solid fa-crown text-amber-400" />
+        <span className="absolute -top-3.5 left-1/2 -translate-x-1/2 text-base select-none drop-shadow-md">
+          <i className="fa-solid fa-crown text-amber-300" />
         </span>
       </div>
       <div className="text-center">
@@ -121,7 +105,7 @@ function TeacherSeat({ name }: { name: string | null }) {
         </p>
         <span className="text-[9px] font-extrabold uppercase tracking-wider
           bg-amber-500/10 text-amber-600 dark:text-amber-300
-          px-2 py-0.5 rounded-full border border-amber-500/25 inline-flex items-center gap-1">
+          px-2.5 py-0.5 rounded-full border border-amber-500/25 inline-flex items-center gap-1">
           <i className="fa-solid fa-graduation-cap text-[9px]" /> Pengajar
         </span>
       </div>
@@ -129,7 +113,7 @@ function TeacherSeat({ name }: { name: string | null }) {
   );
 }
 
-// ── Student seat slot ─────────────────────────────────────────────────────────
+// ── Student seat slot (Enlarged & Balanced 2x2 Layout) ────────────────────────
 
 function StudentSeat({
   seat,
@@ -140,13 +124,13 @@ function StudentSeat({
 }) {
   if (!seat) {
     return (
-      <div className="flex flex-col items-center gap-1.5 opacity-60 cursor-default">
-        <div className="w-11 h-11 rounded-2xl border-2 border-dashed border-blue-200
+      <div className="flex flex-col items-center gap-2 opacity-50 cursor-default select-none">
+        <div className="w-16 h-16 rounded-3xl border-2 border-dashed border-blue-200/80
           dark:border-zinc-700/80 flex items-center justify-center text-slate-400
-          dark:text-zinc-500 text-xs font-bold bg-slate-50/50 dark:bg-zinc-950/40">
-          <i className="fa-solid fa-plus" />
+          dark:text-zinc-500 text-base font-bold bg-slate-50/40 dark:bg-zinc-950/40 shadow-inner">
+          <i className="fa-solid fa-plus text-xs" />
         </div>
-        <p className="text-[9px] text-slate-400 dark:text-zinc-500 font-bold">
+        <p className="text-[11px] text-slate-400 dark:text-zinc-500 font-bold">
           Kosong
         </p>
       </div>
@@ -159,21 +143,21 @@ function StudentSeat({
       type="button"
       onClick={onClick}
       title={seat.is_self ? 'Buka Toko & Lemari Kosmetik' : `Lihat Profil & Pet ${firstName}`}
-      className={`flex flex-col items-center gap-1.5 group relative
-        focus:outline-none focus:ring-2 focus:ring-blue-400 dark:focus:ring-purple-400 rounded-2xl p-0.5
+      className={`flex flex-col items-center gap-2 group relative
+        focus:outline-none focus:ring-2 focus:ring-blue-400 dark:focus:ring-purple-400 rounded-3xl p-1
         ${seat.is_self ? 'cursor-pointer hover:scale-105 transition-transform' : onClick ? 'cursor-pointer hover:scale-105 transition-transform' : 'cursor-default'}`}
     >
       <div className="relative">
-        <AvatarCircle seat={seat} size="md" />
+        <AvatarCircle seat={seat} size="lg" />
         {!seat.is_self && (
-          <span className="absolute -bottom-2 left-1/2 -translate-x-1/2 text-[8px] font-black
-            bg-blue-600/90 dark:bg-purple-600/90 text-white px-1.5 py-0.5 rounded-full whitespace-nowrap
-            opacity-0 group-hover:opacity-100 transition-opacity duration-200 shadow-md z-10 pointer-events-none">
+          <span className="absolute -bottom-2.5 left-1/2 -translate-x-1/2 text-[9px] font-black
+            bg-blue-600/90 dark:bg-purple-600/90 text-white px-2 py-0.5 rounded-full whitespace-nowrap
+            opacity-0 group-hover:opacity-100 transition-opacity duration-200 shadow-md z-30 pointer-events-none">
             Lihat Profil
           </span>
         )}
       </div>
-      <p className={`text-[10px] font-black truncate max-w-[60px] text-center
+      <p className={`text-xs font-black truncate max-w-[85px] text-center
         group-hover:text-blue-600 dark:group-hover:text-purple-300 transition-colors
         ${seat.is_self
           ? 'text-cyan-600 dark:text-cyan-300'
@@ -185,17 +169,16 @@ function StudentSeat({
   );
 }
 
-// ── STATE A: Compact Empty State Layout (Max 120px tall) ─────────────────────
+// ── Empty State when there is truly no scheduled meeting ─────────────────────
 
 function StateA_EmptyState() {
   return (
     <div className="rounded-3xl bg-white dark:bg-zinc-900/80
       border border-blue-400/40 dark:border-purple-500/40 shadow-sm p-5
-      flex items-center justify-between gap-4 transition-all duration-300 hover:scale-[1.01] hover:border-blue-500 dark:hover:border-purple-400 cursor-pointer">
-
+      flex items-center justify-between gap-4 cursor-default">
       <div className="flex items-center gap-4">
         <div className="w-12 h-12 rounded-2xl bg-cyan-500/10 border border-cyan-500/20
-          flex items-center justify-center text-2xl flex-shrink-0">
+          flex items-center justify-center text-2xl flex-shrink-0 select-none">
           🚀
         </div>
         <div>
@@ -226,13 +209,13 @@ function StateA_EmptyState() {
 
 // ── Main Town Square Pod Export ──────────────────────────────────────────────
 
-export function TownSquarePod({ meeting, nextMeeting, forceState, gamData, currentStudentId }: Props) {
+export function TownSquarePod({ meeting, nextMeeting, gamData }: Props) {
   const [isMounted, setIsMounted] = useState(false);
   const [nowMs, setNowMs] = useState<number>(0);
 
-  // Modal state — client-only (no SSR)
-  const [wardrobeOpen, setWardrobeOpen]     = useState(false);
-  const [peerSeat,     setPeerSeat]         = useState<TownSquareSeat | null>(null);
+  // Modal states — client-only
+  const [wardrobeOpen, setWardrobeOpen] = useState(false);
+  const [peerSeat,     setPeerSeat]     = useState<TownSquareSeat | null>(null);
 
   useEffect(() => {
     setIsMounted(true);
@@ -241,48 +224,28 @@ export function TownSquarePod({ meeting, nextMeeting, forceState, gamData, curre
     return () => clearInterval(timer);
   }, []);
 
-  // Before mount, always show STATE_A or the locked "upcoming" skeleton so
-  // the server HTML and the first client render are identical.
-  // The real state is computed only after the client has the real clock.
-  const currentNow = isMounted ? nowMs : 0;
+  const activeMeeting = meeting ?? nextMeeting ?? null;
 
-  const computed = computeScheduleState(
-    isMounted ? meeting : null,  // treat as no meeting until mounted
-    currentNow
-  );
-
-  let activeMeeting = meeting;
-  let activeState = forceState ?? computed.state;
-  let secondsLeftToStart = computed.secondsLeftToStart;
-
-  if (isMounted && !forceState && computed.state === 'STATE_A' && meeting && nextMeeting) {
-    const nextComputed = computeScheduleState(nextMeeting, currentNow);
-    if (nextComputed.state !== 'STATE_A') {
-      activeMeeting = nextMeeting;
-      activeState = nextComputed.state;
-      secondsLeftToStart = nextComputed.secondsLeftToStart;
-    }
-  }
-
-  // When not mounted: keep activeMeeting for seat layout but force STATE_A
-  // so the entry-gate renders the same disabled skeleton on server + client.
-  if (!isMounted && meeting) {
-    activeMeeting = meeting;
-    activeState = 'STATE_A';
-  }
-
-  const displayCountdown = isMounted ? formatCountdown(secondsLeftToStart) : '--:--:--';
-
-  // STATE A with no meeting at all → compact empty state
-  if (activeState === 'STATE_A' && !activeMeeting) {
+  // Truly no meeting in database
+  if (!activeMeeting) {
     return <StateA_EmptyState />;
   }
 
-  // STATE A with a meeting → show pod shell but with neutral "upcoming" footer
-  // (this is also what renders on the server before hydration)
-  if (activeState === 'STATE_A' || !activeMeeting) {
-    if (!activeMeeting) return <StateA_EmptyState />;
-  }
+  // ── Precise Schedule & Countdown Gate Calculation ─────────────────────────
+  const startMs = new Date(activeMeeting.meeting_date).getTime();
+  const endMs   = startMs + CLASS_DURATION_MINUTES * 60 * 1000;
+
+  const currentNow = isMounted ? nowMs : 0;
+  const secondsToStart = Math.max(0, Math.floor((startMs - currentNow) / 1000));
+
+  const isLive = isMounted && currentNow >= startMs && currentNow <= endMs;
+  const isFinished = isMounted && currentNow > endMs;
+  const isUpcoming = !isMounted || currentNow < startMs;
+
+  // Unlocked: 5 minutes (300 seconds) before start OR during the live class
+  const isGateUnlocked = isMounted && ((isUpcoming && secondsToStart <= 300) || isLive);
+
+  const displayCountdown = isMounted ? formatDetailedCountdown(secondsToStart) : '--:--:--';
 
   const slots: (TownSquareSeat | null)[] = [
     ...activeMeeting.seats.slice(0, 4),
@@ -298,214 +261,204 @@ export function TownSquarePod({ meeting, nextMeeting, forceState, gamData, curre
 
   return (
     <>
-    <div className="h-full rounded-3xl bg-white dark:bg-zinc-900/80
-      border border-blue-400/40 dark:border-purple-500/40 shadow-sm
-      shadow-[0_0_30px_rgba(59,130,246,0.08)] dark:shadow-[0_0_30px_rgba(168,85,247,0.15)]
-      transition-all duration-300 hover:scale-[1.02] cursor-pointer
-      hover:border-blue-500 dark:hover:border-purple-400
-      hover:shadow-neon-blue dark:hover:shadow-neon-purple
-      flex flex-col justify-between overflow-hidden">
+      <div className="h-full rounded-3xl bg-white dark:bg-zinc-900/80
+        border border-blue-400/40 dark:border-purple-500/40 shadow-sm
+        shadow-[0_0_30px_rgba(59,130,246,0.08)] dark:shadow-[0_0_30px_rgba(168,85,247,0.15)]
+        cursor-default flex flex-col justify-between overflow-hidden">
 
-      {/* ── Pod Header ── */}
-      <div className="bg-gradient-to-r from-blue-950 via-indigo-950 to-slate-900
-        border-b border-blue-900/40 dark:border-purple-900/40 px-5 py-4 text-white">
-        <div className="flex items-center justify-between gap-2">
-          <div className="min-w-0">
-            <p className="text-[9px] font-black uppercase tracking-widest text-cyan-400 mb-0.5 flex items-center gap-1.5">
-              <i className="fa-solid fa-landmark text-cyan-400" /> Town Square Pod
-            </p>
-            <h3 className="font-extrabold text-sm leading-tight truncate">
-              {sessionLabel}{activeMeeting.title}
-            </h3>
+        {/* ── Pod Header ── */}
+        <div className="bg-gradient-to-r from-blue-950 via-indigo-950 to-slate-900
+          border-b border-blue-900/40 dark:border-purple-900/40 px-5 py-4 text-white">
+          <div className="flex items-center justify-between gap-2">
+            <div className="min-w-0">
+              <p className="text-[9px] font-black uppercase tracking-widest text-cyan-400 mb-0.5 flex items-center gap-1.5">
+                <i className="fa-solid fa-landmark text-cyan-400" /> Town Square Pod
+              </p>
+              <h3 className="font-extrabold text-sm leading-tight truncate">
+                {sessionLabel}{activeMeeting.title}
+              </h3>
+            </div>
+
+            <div className="flex items-center gap-2 flex-shrink-0">
+              {isMounted && <LiveStatusIndicator isLive={isLive} />}
+
+              {isMounted && isLive && (
+                <span className="inline-flex items-center gap-1.5 text-[10px] font-black
+                  text-white bg-rose-600 px-2.5 py-1 rounded-full shadow-md shadow-rose-500/30">
+                  <i className="fa-solid fa-video fa-beat-fade text-white" /> LIVE NOW
+                </span>
+              )}
+
+              {isMounted && isUpcoming && !isLive && (
+                <span
+                  suppressHydrationWarning
+                  className={`inline-flex items-center gap-1 text-[10px] font-mono font-bold px-2.5 py-1 rounded-full border ${
+                    isGateUnlocked
+                      ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                      : 'bg-blue-500/10 dark:bg-purple-500/20 text-blue-600 dark:text-purple-300 border-blue-500/25 dark:border-purple-500/30'
+                  }`}
+                >
+                  <i className={`fa-solid ${isGateUnlocked ? 'fa-door-open text-emerald-400' : 'fa-clock text-blue-500 dark:text-purple-400'}`} />
+                  {isGateUnlocked ? `PINTU BUKA (${displayCountdown})` : displayCountdown}
+                </span>
+              )}
+
+              {isMounted && isFinished && (
+                <span className="inline-flex items-center gap-1 text-[10px] font-bold
+                  text-emerald-400 bg-emerald-500/20 px-2.5 py-1 rounded-full border border-emerald-500/30">
+                  <i className="fa-solid fa-circle-check text-emerald-400" /> SELESAI
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* ── Virtual Table & Seats (Centered Teacher + Balanced 2x2 Student Grid) ── */}
+        <div className="px-5 pt-4 pb-3 flex-1 flex flex-col justify-center">
+
+          {/* Teacher podium */}
+          <div className="flex justify-center mb-3.5">
+            <TeacherSeat name={activeMeeting.teacher_name} />
           </div>
 
-          <div className="flex items-center gap-2 flex-shrink-0">
-            {isMounted && <LiveStatusIndicator isLive={activeState === 'STATE_C'} />}
-
-            {isMounted && activeState === 'STATE_C' && (
-              <span className="inline-flex items-center gap-1.5 text-[10px] font-black
-                text-white bg-rose-600 px-2.5 py-1 rounded-full shadow-md shadow-rose-500/30">
-                <i className="fa-solid fa-video fa-beat-fade text-white" /> LIVE NOW
-              </span>
-            )}
-            {isMounted && activeState === 'STATE_B' && (
-              <span
-                suppressHydrationWarning
-                className="inline-flex items-center gap-1 text-[10px] font-mono font-bold
-                  text-blue-600 dark:text-purple-300 bg-blue-500/10 dark:bg-purple-500/20 px-2.5 py-1 rounded-full border border-blue-500/25 dark:border-purple-500/30"
-              >
-                <i className="fa-solid fa-clock text-blue-500 dark:text-purple-400" /> {displayCountdown}
-              </span>
-            )}
-            {isMounted && activeState === 'STATE_D' && (
-              <span className="inline-flex items-center gap-1 text-[10px] font-bold
-                text-emerald-400 bg-emerald-500/20 px-2.5 py-1 rounded-full border border-emerald-500/30">
-                <i className="fa-solid fa-circle-check text-emerald-400" /> SELESAI
-              </span>
-            )}
+          {/* Divider */}
+          <div className="flex items-center gap-2 mb-3.5">
+            <div className="flex-1 h-px bg-blue-100 dark:bg-purple-500/20" />
+            <span className="text-[9px] font-black uppercase tracking-widest
+              text-blue-600/70 dark:text-purple-300/70 whitespace-nowrap px-1 flex items-center gap-1">
+              <i className="fa-solid fa-user-group text-blue-500 dark:text-purple-400 text-[10px]" /> Meja Belajar
+            </span>
+            <div className="flex-1 h-px bg-blue-100 dark:bg-purple-500/20" />
           </div>
-        </div>
-      </div>
 
-      {/* ── Virtual Table & Seats ── */}
-      <div className="px-5 pt-4 pb-2 flex-1 flex flex-col justify-center">
-
-        {/* Teacher row */}
-        <div className="flex justify-center mb-3">
-          <TeacherSeat name={activeMeeting.teacher_name} />
-        </div>
-
-        {/* Divider */}
-        <div className="flex items-center gap-2 mb-3">
-          <div className="flex-1 h-px bg-blue-100 dark:bg-purple-500/20" />
-          <span className="text-[9px] font-black uppercase tracking-widest
-            text-blue-600/70 dark:text-purple-300/70 whitespace-nowrap px-1 flex items-center gap-1">
-            <i className="fa-solid fa-user-group text-blue-500 dark:text-purple-400 text-[10px]" /> Meja Belajar
-          </span>
-          <div className="flex-1 h-px bg-blue-100 dark:bg-purple-500/20" />
-        </div>
-
-        {/* 4 Student Seats */}
-        <div className="grid grid-cols-4 gap-2 justify-items-center">
-          {slots.map((seat, i) => {
-            // Determine click handler per seat type
-            let handleClick: (() => void) | undefined;
-            if (seat) {
-              if (seat.is_self) {
-                handleClick = isMounted ? () => setWardrobeOpen(true) : undefined;
-              } else {
-                handleClick = isMounted ? () => setPeerSeat(seat) : undefined;
+          {/* 4 Student Seats: Arranged in 2 columns x 2 rows for optimal balance & large avatars */}
+          <div className="grid grid-cols-2 gap-x-12 sm:gap-x-16 gap-y-3.5 max-w-[260px] sm:max-w-[300px] mx-auto justify-items-center">
+            {slots.map((seat, i) => {
+              let handleClick: (() => void) | undefined;
+              if (seat) {
+                if (seat.is_self) {
+                  handleClick = isMounted ? () => setWardrobeOpen(true) : undefined;
+                } else {
+                  handleClick = isMounted ? () => setPeerSeat(seat) : undefined;
+                }
               }
-            }
-            // empty seat → no handler (cursor-default)
-            return (
-              <StudentSeat
-                key={seat?.student_id ?? `empty-${i}`}
-                seat={seat}
-                onClick={handleClick}
-              />
-            );
-          })}
+              return (
+                <StudentSeat
+                  key={seat?.student_id ?? `empty-${i}`}
+                  seat={seat}
+                  onClick={handleClick}
+                />
+              );
+            })}
+          </div>
+        </div>
+
+        {/* ── Countdown Entry Gate: Active 5 min before start & during class ── */}
+        <div className="px-5 pb-5">
+          {!hasLink ? (
+            <div className="mt-2 rounded-2xl bg-amber-500/10
+              border border-amber-500/20 px-3.5 py-3 text-center cursor-default">
+              <p className="text-xs font-bold text-amber-700 dark:text-amber-300 flex items-center justify-center gap-2">
+                <i className="fa-solid fa-triangle-exclamation text-amber-500" /> Link kelas belum disematkan guru
+              </p>
+            </div>
+          ) : isGateUnlocked ? (
+            /* ── UNLOCKED ENTRY GATE: 5 Min Before Start OR During Live Class ── */
+            <div className="mt-2 rounded-2xl bg-gradient-to-br from-emerald-500/10 via-teal-500/10 to-cyan-500/10
+              border border-emerald-500/40 p-3.5 text-center shadow-[0_0_20px_rgba(16,185,129,0.2)]">
+              <div className="flex items-center justify-between text-xs mb-2">
+                <span className="font-black text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
+                  <i className="fa-solid fa-door-open text-emerald-500" />
+                  {isLive ? 'Kelas Sedang Berlangsung!' : 'Pintu Kelas Terbuka! (Masuk Lebih Awal)'}
+                </span>
+                <span className="text-[10px] font-extrabold text-emerald-600 dark:text-emerald-300 uppercase tracking-widest bg-emerald-500/20 px-2 py-0.5 rounded-full border border-emerald-500/30">
+                  {isLive ? 'Live Now' : `${displayCountdown}`}
+                </span>
+              </div>
+
+              <a
+                href={activeMeeting.link_url!}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full mt-1 inline-flex items-center justify-center gap-2.5 py-3 rounded-2xl
+                  text-xs font-black text-white shadow-xl transition-all duration-300
+                  bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600
+                  shadow-emerald-500/30 hover:shadow-emerald-500/50 hover:scale-[1.02] active:scale-[0.98]
+                  cursor-pointer focus:outline-none focus:ring-2 focus:ring-cyan-400"
+              >
+                <i className="fa-solid fa-video fa-beat-fade text-sm text-white" />
+                <span>Masuk Kelas Sekarang (Zoom / GMeet)</span>
+              </a>
+            </div>
+          ) : isUpcoming ? (
+            /* ── COUNTDOWN GATE: More than 5 minutes before class ── */
+            <div className="mt-2 rounded-2xl bg-slate-50 dark:bg-zinc-800/50
+              border border-blue-200/80 dark:border-purple-500/20 p-3.5 text-center cursor-default">
+              <div className="flex items-center justify-between text-xs mb-2">
+                <span className="font-extrabold text-slate-600 dark:text-slate-400 flex items-center gap-1.5">
+                  <i className="fa-solid fa-clock text-blue-500 dark:text-purple-400" />
+                  Hitung Mundur Waktu Kelas Dimulai
+                </span>
+                <span
+                  suppressHydrationWarning
+                  className="font-mono font-black text-xs text-blue-600 dark:text-purple-300 bg-blue-500/10 dark:bg-purple-500/10 px-2.5 py-0.5 rounded-lg border border-blue-500/25 dark:border-purple-500/20"
+                >
+                  {displayCountdown}
+                </span>
+              </div>
+
+              <button
+                disabled
+                className="w-full mt-1 py-3 rounded-2xl text-xs font-black
+                  bg-slate-200 dark:bg-zinc-800 text-slate-400 dark:text-zinc-500
+                  border border-slate-300/50 dark:border-zinc-700/60
+                  cursor-not-allowed opacity-80 flex items-center justify-center gap-2"
+              >
+                <i className="fa-solid fa-lock text-slate-400 dark:text-zinc-500" />
+                <span>Masuk Kelas (Aktif 5 menit sebelum mulai)</span>
+              </button>
+            </div>
+          ) : isFinished ? (
+            /* ── CLASS FINISHED STATE ── */
+            <div className="mt-2 rounded-2xl bg-emerald-500/10
+              border border-emerald-500/20 p-3.5 text-center cursor-default">
+              <div className="flex items-center justify-center gap-2 text-xs font-bold
+                text-emerald-600 dark:text-emerald-300 mb-2">
+                <i className="fa-solid fa-circle-check text-emerald-500" />
+                <span>Kelas Hari Ini Telah Selesai</span>
+              </div>
+              <button
+                disabled
+                className="w-full mt-1 py-3 rounded-2xl text-xs font-black
+                  bg-emerald-500/15 text-emerald-600 dark:text-emerald-400
+                  border border-emerald-500/30 cursor-default opacity-85
+                  flex items-center justify-center gap-2"
+              >
+                <i className="fa-solid fa-check text-emerald-500" />
+                <span>Kelas Selesai</span>
+              </button>
+            </div>
+          ) : null}
         </div>
       </div>
 
-      {/* ── Entry Gate & Dynamic State Footer ── */}
-      <div className="px-5 pb-5">
-        {!hasLink ? (
-          <div className="mt-2 rounded-2xl bg-amber-500/10
-            border border-amber-500/20 px-3.5 py-3 text-center">
-            <p className="text-xs font-bold text-amber-700 dark:text-amber-300 flex items-center justify-center gap-2">
-              <i className="fa-solid fa-triangle-exclamation text-amber-500" /> Link kelas belum tersedia
-            </p>
-          </div>
-        ) : activeState === 'STATE_A' ? (
-          /* STATE A (mounted, has meeting) → neutral locked skeleton */
-          <div className="mt-2 rounded-2xl bg-slate-50 dark:bg-zinc-800/50
-            border border-blue-200/80 dark:border-purple-500/20 p-3.5 text-center">
-            <button disabled
-              className="w-full py-3 rounded-2xl text-xs font-black
-                bg-slate-200 dark:bg-zinc-800 text-slate-400 dark:text-zinc-500
-                border border-slate-300/50 dark:border-zinc-700/60
-                cursor-not-allowed opacity-75 flex items-center justify-center gap-2">
-              <i className="fa-solid fa-lock text-slate-400 dark:text-zinc-500" />
-              <span>Tidak Ada Kelas Hari Ini</span>
-            </button>
-          </div>
-        ) : activeState === 'STATE_B' && isMounted ? (
-          /* STATE B: Upcoming Class Countdown */
-          <div className="mt-2 rounded-2xl bg-slate-50 dark:bg-zinc-800/50
-            border border-blue-200/80 dark:border-purple-500/20 p-3.5 text-center">
-            <div className="flex items-center justify-between text-xs mb-2">
-              <span className="font-extrabold text-slate-600 dark:text-slate-400 flex items-center gap-1.5">
-                <i className="fa-solid fa-clock text-blue-500 dark:text-purple-400" /> Hitung Mundur Kelas
-              </span>
-              <span
-                suppressHydrationWarning
-                className="font-mono font-black text-xs text-blue-600 dark:text-purple-300 bg-blue-500/10 dark:bg-purple-500/10 px-2.5 py-0.5 rounded-lg border border-blue-500/25 dark:border-purple-500/20"
-              >
-                {displayCountdown}
-              </span>
-            </div>
-
-            <button
-              disabled
-              className="w-full mt-1 py-3 rounded-2xl text-xs font-black
-                bg-slate-200 dark:bg-zinc-800 text-slate-400 dark:text-zinc-500
-                border border-slate-300/50 dark:border-zinc-700/60
-                cursor-not-allowed opacity-75 flex items-center justify-center gap-2"
-            >
-              <i className="fa-solid fa-lock text-slate-400 dark:text-zinc-500" />
-              <span>Pintu Belum Terbuka</span>
-            </button>
-          </div>
-        ) : activeState === 'STATE_C' && isMounted ? (
-          /* STATE C: Live Class Active */
-          <div className="mt-2 rounded-2xl bg-gradient-to-br from-emerald-500/10 to-cyan-500/10
-            border border-emerald-500/40 p-3.5 text-center shadow-[0_0_20px_rgba(16,185,129,0.2)]">
-            <div className="flex items-center justify-between text-xs mb-2">
-              <span className="font-black text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
-                <i className="fa-solid fa-video fa-beat-fade text-emerald-500" /> Pintu Terbuka!
-              </span>
-              <span className="text-[10px] font-extrabold text-emerald-600 dark:text-emerald-300 uppercase tracking-widest bg-emerald-500/20 px-2 py-0.5 rounded-full border border-emerald-500/30">
-                Live Now
-              </span>
-            </div>
-
-            <a
-              href={activeMeeting.link_url!}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="w-full mt-1 inline-flex items-center justify-center gap-2.5 py-3 rounded-2xl
-                text-xs font-black text-white shadow-xl transition-all duration-300
-                bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600
-                shadow-emerald-500/30 hover:shadow-emerald-500/50 hover:scale-[1.02] active:scale-[0.98]
-                focus:outline-none focus:ring-2 focus:ring-cyan-400"
-            >
-              <i className="fa-solid fa-video fa-beat-fade text-sm text-white" />
-              <span>Masuk Kelas Zoom</span>
-            </a>
-          </div>
-        ) : activeState === 'STATE_D' && isMounted ? (
-          /* STATE D: Class Ended */
-          <div className="mt-2 rounded-2xl bg-emerald-500/10
-            border border-emerald-500/20 p-3.5 text-center">
-            <div className="flex items-center justify-center gap-2 text-xs font-bold
-              text-emerald-600 dark:text-emerald-300 mb-2">
-              <i className="fa-solid fa-circle-check text-emerald-500" />
-              <span>Kelas Hari Ini Selesai</span>
-            </div>
-            <button
-              disabled
-              className="w-full mt-1 py-3 rounded-2xl text-xs font-black
-                bg-emerald-500/15 text-emerald-600 dark:text-emerald-400
-                border border-emerald-500/30 cursor-default opacity-85
-                flex items-center justify-center gap-2"
-            >
-              <i className="fa-solid fa-check text-emerald-500" />
-              <span>Kelas Selesai</span>
-            </button>
-          </div>
-        ) : null}
-      </div>
-    </div>
-
-    {/* ── Modals — rendered only after mount to avoid hydration mismatch ── */}
-    {isMounted && wardrobeOpen && gamData && (
-      <CosmeticShopModal
-        studentName={gamData.fullName}
-        coins={gamData.coins}
-        totalXp={gamData.totalXp}
-        inventory={gamData.inventory ?? []}
-        equippedCosmetics={gamData.equippedCosmetics}
-        onClose={() => setWardrobeOpen(false)}
-      />
-    )}
-    {isMounted && peerSeat && (
-      <PeerInspectModal
-        seat={peerSeat}
-        onClose={() => setPeerSeat(null)}
-      />
-    )}
+      {/* ── Interactive Modals ── */}
+      {isMounted && wardrobeOpen && gamData && (
+        <CosmeticShopModal
+          studentName={gamData.fullName}
+          coins={gamData.coins}
+          totalXp={gamData.totalXp}
+          inventory={gamData.inventory ?? []}
+          equippedCosmetics={gamData.equippedCosmetics}
+          onClose={() => setWardrobeOpen(false)}
+        />
+      )}
+      {isMounted && peerSeat && (
+        <PeerInspectModal
+          seat={peerSeat}
+          onClose={() => setPeerSeat(null)}
+        />
+      )}
     </>
   );
 }

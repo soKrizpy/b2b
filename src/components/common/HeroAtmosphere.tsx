@@ -62,10 +62,11 @@ export function HeroAtmosphere({ className = '' }: { className?: string }) {
     // ── Dark Mode: Flipped Asteroid / Meteor Trajectory ──────────────────────
     const asteroidEl = asteroidRef.current;
     if (asteroidEl) {
-      // Moves down and left across the card with the flipped head leading the way
+      // Moves down and left across the card with the flipped head leading the way, tilted -15deg (menungging)
       const asteroidAnim = animate(asteroidEl, {
         translateX: [0, -(width * 0.7 + 100)],
         translateY: [0, 240],
+        rotate: [-15, -15],
         opacity: [
           { to: 0, duration: 0 },
           { to: 0.95, duration: 250 },
