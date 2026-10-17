@@ -352,6 +352,7 @@ export interface TownSquareSeat {
   } | null;
   total_xp:            number;
   is_self:             boolean;
+  is_online?:          boolean;
 }
 
 export interface TownSquareMeeting {

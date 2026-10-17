@@ -59,6 +59,9 @@ function AvatarCircle({
     ? 'ring-2 ring-cyan-400 shadow-xl shadow-cyan-500/30'
     : 'ring-1 ring-blue-200/80 dark:ring-zinc-800 group-hover:ring-blue-400/60 dark:group-hover:ring-purple-500/60 shadow-md';
 
+  // Online status: self is online, or seat.is_online if specified
+  const isOnline = seat.is_online ?? seat.is_self;
+
   return (
     <div className={`relative rounded-3xl ${ring} transition-all p-1 bg-white/40 dark:bg-zinc-900/60 backdrop-blur-xs`}>
       {seat.is_self && (
@@ -74,11 +77,20 @@ function AvatarCircle({
         outfitId={cos?.outfitId || 'outfit-cyber-hoodie'}
         auraId={cos?.auraId}
         size={size}
-        isSelf={seat.is_self}
         animateIdle
       />
-      {/* Active student indicator dot */}
-      <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-zinc-900 z-20" />
+      {/* Active/Offline student indicator dot */}
+      {isOnline ? (
+        <span className="absolute -bottom-0.5 -right-0.5 flex h-3.5 w-3.5 z-20" title="Online">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+          <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-emerald-500 ring-2 ring-white dark:ring-zinc-900 shadow-[0_0_8px_rgba(16,185,129,0.9)] animate-pulse" />
+        </span>
+      ) : (
+        <span
+          className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full bg-zinc-400 dark:bg-zinc-600 ring-2 ring-white dark:ring-zinc-900 z-20"
+          title="Offline"
+        />
+      )}
     </div>
   );
 }

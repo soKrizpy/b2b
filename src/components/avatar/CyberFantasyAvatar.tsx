@@ -41,7 +41,6 @@ export function CyberFantasyAvatar({
   auraId,
   size = 'md',
   className = '',
-  isSelf = false,
   animateIdle = true,
 }: CyberFantasyAvatarProps) {
   const skin = SKIN_TONES[skinTone] || SKIN_TONES.default;
@@ -373,16 +372,6 @@ export function CyberFantasyAvatar({
           </g>
         )}
       </svg>
-
-      {/* Online indicator */}
-      <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-zinc-900" />
-
-      {/* YOU Tag */}
-      {isSelf && (
-        <span className="absolute -top-1.5 -right-1 text-[7px] bg-gradient-to-r from-cyan-500 to-blue-500 text-slate-950 font-black px-1.5 py-0.2 rounded-full leading-tight shadow-sm">
-          YOU
-        </span>
-      )}
     </div>
   );
 }
