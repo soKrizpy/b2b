@@ -6,7 +6,7 @@
 //   • Butter-smooth 60/120fps GPU float & shadow breathing (hardware-composited, zero stutter)
 //   • Interactive elastic click/hover bounce via Anime.js v4 layered on inner frame
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { animate } from 'animejs';
 import { calculateLevel, getPetStatus } from '../lib/levelCalc';
 import type { StudentGamificationData } from '../lib/petQueries';
@@ -34,9 +34,52 @@ export function CyberPetWidget({
 
   const [isShopOpen, setIsShopOpen] = useState(false);
 
-  // Ref for the interactive bounce inner container
+  // Refs for the animated elements
+  const avatarRef = useRef<HTMLDivElement>(null);
+  const shadowRef = useRef<HTMLDivElement>(null);
   const bounceRef = useRef<HTMLDivElement>(null);
   const isBouncingRef = useRef(false);
+
+  // ── Anime.js v4 Idle Float & Ground Shadow Breathing ───────────────────────
+  useEffect(() => {
+    if (compact) return;
+
+    const avatarEl = avatarRef.current;
+    const shadowEl = shadowRef.current;
+    if (!avatarEl) return;
+
+    // Smooth sinusoidal floating using native Anime.js v4
+    const floatAnim = animate(avatarEl, {
+      translateY: [-7, 7],
+      rotate: [-1.2, 1.2],
+      duration: 2400,
+      alternate: true,
+      loop: true,
+      ease: 'inOutSine',
+    });
+
+    let shadowAnim: ReturnType<typeof animate> | null = null;
+    if (shadowEl) {
+      shadowAnim = animate(shadowEl, {
+        scaleX: [0.85, 1.15],
+        scaleY: [0.85, 1.15],
+        opacity: [0.18, 0.38],
+        duration: 2400,
+        alternate: true,
+        loop: true,
+        ease: 'inOutSine',
+      });
+    }
+
+    return () => {
+      try {
+        floatAnim?.pause();
+        shadowAnim?.pause();
+      } catch {
+        // Safe cleanup
+      }
+    };
+  }, [compact]);
 
   // ── Click / Hover Interactive Bounce ───────────────────────────────────────
   const handleBounce = useCallback(() => {
@@ -69,13 +112,15 @@ export function CyberPetWidget({
         {/* ── Avatar stage ─────────────────────────────────────────── */}
         <div className={`flex flex-col items-center gap-2 ${compact ? '' : 'w-full'}`}>
 
-          {/* Continuous GPU-floating wrapper (never hitches on re-renders) */}
+          {/* Smooth Anime.js float wrapper */}
           <div
-            className={`relative flex-shrink-0 cursor-pointer select-none ${compact ? 'w-20 h-20' : 'w-32 h-32 animate-cypeco-float'}`}
+            ref={avatarRef}
+            className={`relative flex-shrink-0 cursor-pointer select-none ${compact ? 'w-20 h-20' : 'w-32 h-32'}`}
             onClick={handleBounce}
             onMouseEnter={handleBounce}
             role="img"
             aria-label={`Pet ${fullName} — klik untuk berinteraksi`}
+            style={{ willChange: 'transform' }}
           >
             {/* Level badge */}
             <div
@@ -107,12 +152,13 @@ export function CyberPetWidget({
             </div>
           </div>
 
-          {/* Synchronized breathing ground shadow */}
+          {/* Synchronized Anime.js ground shadow */}
           {!compact && (
             <div
+              ref={shadowRef}
               aria-hidden="true"
-              className="w-20 h-2.5 rounded-full bg-blue-900/15 dark:bg-purple-900/35 blur-sm animate-cypeco-shadow"
-              style={{ transformOrigin: 'center center' }}
+              className="w-20 h-2.5 rounded-full bg-blue-900/15 dark:bg-purple-900/35 blur-sm"
+              style={{ transformOrigin: 'center center', willChange: 'transform, opacity' }}
             />
           )}
 

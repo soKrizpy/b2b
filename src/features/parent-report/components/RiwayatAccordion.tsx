@@ -25,10 +25,10 @@ function scoreLabel(score: number) {
 }
 
 function scoreBg(score: number) {
-  if (score >= 80) return 'bg-emerald-50 border-emerald-200';
-  if (score >= 70) return 'bg-cyan-50 border-cyan-200';
-  if (score >= 50) return 'bg-amber-50 border-amber-200';
-  return 'bg-red-50 border-red-200';
+  if (score >= 80) return 'bg-emerald-50 dark:bg-emerald-950/60 border-emerald-200 dark:border-emerald-800';
+  if (score >= 70) return 'bg-cyan-50 dark:bg-cyan-950/60 border-cyan-200 dark:border-cyan-800';
+  if (score >= 50) return 'bg-amber-50 dark:bg-amber-950/60 border-amber-200 dark:border-amber-800';
+  return 'bg-red-50 dark:bg-red-950/60 border-red-200 dark:border-red-800';
 }
 
 // ── Session row ───────────────────────────────────────────────────────────────
@@ -39,22 +39,22 @@ function SessionRow({ session }: { session: RiwayatSession }) {
   const score   = session.quiz_score;
 
   return (
-    <li className="flex flex-col gap-2 p-4 border-b border-zinc-100 last:border-0">
+    <li className="flex flex-col gap-2 p-4 border-b border-zinc-100 dark:border-zinc-800/80 last:border-0">
 
       {/* ── Top row: topic label + date + attendance ── */}
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           {session.topic_title && (
             <p className="text-[10px] font-black uppercase tracking-wider
-              text-purple-600 mb-0.5 flex items-center gap-1">
+              text-purple-600 dark:text-purple-400 mb-0.5 flex items-center gap-1">
               <i className="fa-solid fa-bookmark text-[9px]" />
               {session.topic_title}
             </p>
           )}
-          <p className="text-sm font-bold text-zinc-800 leading-snug">
+          <p className="text-sm font-bold text-zinc-800 dark:text-zinc-100 leading-snug">
             {session.title}
           </p>
-          <p className="text-xs text-zinc-400 mt-0.5">
+          <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-0.5">
             {formatDate(session.meeting_date)}
           </p>
         </div>
@@ -62,8 +62,8 @@ function SessionRow({ session }: { session: RiwayatSession }) {
         {/* Attendance badge */}
         <span className={`flex-shrink-0 text-[10px] font-black px-2.5 py-0.5 rounded-full border ${
           session.has_joined
-            ? 'bg-emerald-50 text-emerald-600 border-emerald-200'
-            : 'bg-red-50 text-red-500 border-red-200'
+            ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800'
+            : 'bg-red-50 dark:bg-red-950/60 text-red-500 dark:text-red-400 border-red-200 dark:border-red-800'
         }`}>
           {session.has_joined ? '✓ Hadir' : '✗ Absen'}
         </span>
@@ -75,7 +75,7 @@ function SessionRow({ session }: { session: RiwayatSession }) {
         {/* Quiz score chip */}
         {score !== null ? (
           <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border ${scoreBg(score)}`}>
-            <span className="text-[10px] font-black uppercase tracking-wide text-zinc-400">
+            <span className="text-[10px] font-black uppercase tracking-wide text-zinc-400 dark:text-zinc-500">
               Nilai Kuis
             </span>
             <span className={`text-sm font-black tabular-nums ${scoreColor(score)}`}>
@@ -86,7 +86,7 @@ function SessionRow({ session }: { session: RiwayatSession }) {
             </span>
           </div>
         ) : (
-          <span className="text-[10px] text-zinc-400 italic">
+          <span className="text-[10px] text-zinc-400 dark:text-zinc-500 italic">
             Kuis belum dikerjakan
           </span>
         )}
@@ -99,8 +99,8 @@ function SessionRow({ session }: { session: RiwayatSession }) {
             title={noteOpen ? 'Tutup catatan guru' : 'Lihat catatan guru'}
             className="flex-shrink-0 inline-flex items-center gap-1.5 px-3 py-1 rounded-lg
               text-[10px] font-bold transition-colors
-              bg-zinc-100 text-zinc-600 border border-zinc-200
-              hover:bg-zinc-200 hover:text-zinc-800"
+              bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700
+              hover:bg-zinc-200 dark:hover:bg-zinc-700 hover:text-zinc-800 dark:hover:text-zinc-100"
             aria-expanded={noteOpen}
           >
             <i className={`fa-solid fa-chevron-down text-[9px] transition-transform duration-200 ${noteOpen ? 'rotate-180' : ''}`} />
@@ -111,13 +111,13 @@ function SessionRow({ session }: { session: RiwayatSession }) {
 
       {/* Collapsible teacher note quote block */}
       {noteOpen && hasNote && (
-        <div className="bg-purple-50 border border-purple-200 rounded-xl p-3 text-xs text-purple-800 mt-2 shadow-inner">
+        <div className="bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800/60 rounded-xl p-3 text-xs text-purple-800 dark:text-purple-200 mt-2 shadow-inner">
           <p className="text-[10px] font-black uppercase tracking-wide
-            text-purple-600 mb-1.5 flex items-center">
+            text-purple-600 dark:text-purple-400 mb-1.5 flex items-center">
             <i className="fa-solid fa-comment-dots text-purple-500 mr-2" />
             Evaluasi Guru
           </p>
-          <p className="text-xs text-purple-700 leading-relaxed whitespace-pre-wrap font-medium">
+          <p className="text-xs text-purple-700 dark:text-purple-300 leading-relaxed whitespace-pre-wrap font-medium">
             {session.progress_report}
           </p>
         </div>
@@ -146,35 +146,35 @@ function ModuleAccordion({
   const pct = Math.round((mod.completed_count / Math.max(mod.sessions.length, 1)) * 100);
 
   return (
-    <div className="bg-white border border-zinc-200 rounded-2xl transition-all hover:border-zinc-300 shadow-sm overflow-hidden">
+    <div className="bg-white dark:bg-zinc-900/90 border border-zinc-200 dark:border-zinc-800 rounded-2xl transition-all hover:border-zinc-300 dark:hover:border-zinc-700 shadow-sm overflow-hidden">
 
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
         className="w-full flex items-center justify-between gap-3 p-4
-          hover:bg-zinc-50 transition-colors text-left"
+          hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors text-left"
         aria-expanded={open}
       >
         <div className="flex items-center gap-3 min-w-0 flex-1">
           <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 transition-colors ${
-            open ? 'bg-purple-500 shadow-sm shadow-purple-400/50' : 'bg-zinc-300'
+            open ? 'bg-purple-500 shadow-sm shadow-purple-400/50' : 'bg-zinc-300 dark:bg-zinc-700'
           }`} />
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-3">
-              <p className="text-sm font-extrabold text-zinc-800 truncate">
+              <p className="text-sm font-extrabold text-zinc-800 dark:text-zinc-100 truncate">
                 {mod.module_title}
               </p>
               {/* Progress bar mini modul */}
-              <div className="w-20 sm:w-28 h-2 rounded-full bg-zinc-200 border border-zinc-200 overflow-hidden flex-shrink-0 hidden sm:block">
+              <div className="w-20 sm:w-28 h-2 rounded-full bg-zinc-200 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 overflow-hidden flex-shrink-0 hidden sm:block">
                 <div
                   className="h-full bg-gradient-to-r from-purple-500 to-indigo-500 rounded-full transition-all duration-300"
                   style={{ width: `${pct}%` }}
                 />
               </div>
             </div>
-            <p className="text-xs text-zinc-500 mt-0.5">
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
               {mod.sessions.length} Sesi ·{' '}
-              <span className="text-emerald-600 font-bold">
+              <span className="text-emerald-600 dark:text-emerald-400 font-bold">
                 {mod.completed_count} Hadir
               </span>
               {avgScore !== null && (
@@ -191,7 +191,7 @@ function ModuleAccordion({
 
         <div className="flex items-center gap-3 flex-shrink-0">
           <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full tabular-nums
-            bg-purple-50 text-purple-600 border border-purple-200">
+            bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
             {mod.completed_count}/{mod.sessions.length}
           </span>
           <i className={`fa-solid fa-chevron-down text-zinc-400 text-xs transition-transform duration-200 ${
@@ -201,13 +201,13 @@ function ModuleAccordion({
       </button>
 
       {open && (
-        <div className="border-t border-zinc-100">
+        <div className="border-t border-zinc-100 dark:border-zinc-800">
           {mod.sessions.length === 0 ? (
-            <p className="p-4 text-xs text-zinc-400 italic">
+            <p className="p-4 text-xs text-zinc-400 dark:text-zinc-500 italic">
               Belum ada sesi selesai untuk modul ini.
             </p>
           ) : (
-            <ul className="divide-y divide-zinc-100">
+            <ul className="divide-y divide-zinc-100 dark:divide-zinc-800">
               {mod.sessions.map((s) => (
                 <SessionRow key={s.meeting_id} session={s} />
               ))}
@@ -225,10 +225,10 @@ export function RiwayatAccordion({ modules }: { modules: RiwayatModule[] }) {
   if (modules.length === 0) {
     return (
       <div className="rounded-2xl border border-dashed
-        border-zinc-300 bg-zinc-50 py-12 text-center">
+        border-zinc-300 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/40 py-12 text-center">
         <span className="text-4xl mb-3 block select-none" aria-hidden="true">📋</span>
-        <p className="font-bold text-zinc-700 text-sm">Belum ada riwayat kelas</p>
-        <p className="text-xs text-zinc-400 mt-1">
+        <p className="font-bold text-zinc-700 dark:text-zinc-200 text-sm">Belum ada riwayat kelas</p>
+        <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-1">
           Riwayat kelas yang sudah selesai akan muncul di sini.
         </p>
       </div>
