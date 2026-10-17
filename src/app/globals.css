@@ -102,7 +102,6 @@ body {
 
 /* Progress shimmer/sparkle/neon-pulse keyframes removed */
 
-/* ── Utility classes & Interactive Neon Utility System ────────── */
 .animate-fade-in-up       { animation: fadeInUp 0.4s ease both; }
 .animate-fade-in          { animation: fadeIn   0.3s ease both; }
 .animate-float            { animation: floatY   3s   ease-in-out infinite; }
@@ -110,6 +109,111 @@ body {
 .animate-fog-slow         { animation: fogDriftSlow 16s ease-in-out infinite; }
 .animate-fog-wisp         { animation: fogWispDrift 10s ease-in-out infinite; }
 .animate-fog-glow         { animation: fogPulseGlow 6s ease-in-out infinite; }
+
+/* ── Cypeco Companion Pet Ultra-Smooth Float Engine ────────── */
+@keyframes cypecoFloatSmooth {
+  0% {
+    transform: translate3d(0, -8px, 0) rotate(-1.5deg);
+  }
+  50% {
+    transform: translate3d(0, 8px, 0) rotate(1.5deg);
+  }
+  100% {
+    transform: translate3d(0, -8px, 0) rotate(-1.5deg);
+  }
+}
+
+@keyframes cypecoShadowSmooth {
+  0%, 100% {
+    transform: scale3d(0.8, 0.8, 1);
+    opacity: 0.16;
+  }
+  50% {
+    transform: scale3d(1.18, 1.18, 1);
+    opacity: 0.38;
+  }
+}
+
+.animate-cypeco-float {
+  animation: cypecoFloatSmooth 3.2s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
+  will-change: transform;
+}
+
+.animate-cypeco-shadow {
+  animation: cypecoShadowSmooth 3.2s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
+  will-change: transform, opacity;
+}
+
+/* ── Hero Card Ambient Atmosphere Keyframes ────────── */
+@keyframes heroCloudDrift1 {
+  0%   { transform: translate3d(-35%, 0, 0); }
+  100% { transform: translate3d(135%, 0, 0); }
+}
+
+@keyframes heroCloudDrift2 {
+  0%   { transform: translate3d(-30%, 0, 0); }
+  100% { transform: translate3d(140%, 0, 0); }
+}
+
+@keyframes heroBirdFly1 {
+  0%   { transform: translate3d(-15vw, 4px, 0); }
+  25%  { transform: translate3d(12vw, -12px, 0); }
+  50%  { transform: translate3d(45vw, 6px, 0); }
+  75%  { transform: translate3d(75vw, -8px, 0); }
+  100% { transform: translate3d(115vw, 2px, 0); }
+}
+
+@keyframes heroBirdFly2 {
+  0%   { transform: translate3d(-20vw, -4px, 0); }
+  35%  { transform: translate3d(20vw, 8px, 0); }
+  70%  { transform: translate3d(60vw, -10px, 0); }
+  100% { transform: translate3d(115vw, 0px, 0); }
+}
+
+@keyframes heroBirdFlap {
+  0%, 100% { transform: scaleY(1); }
+  50%      { transform: scaleY(0.4); }
+}
+
+@keyframes starTwinkleGlow {
+  0%, 100% {
+    opacity: 0.2;
+    transform: scale3d(0.8, 0.8, 1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale3d(1.25, 1.25, 1);
+  }
+}
+
+@keyframes cosmicCometGlide {
+  0% {
+    transform: translate3d(-40px, -20px, 0) rotate(-26deg);
+    opacity: 0;
+  }
+  4% {
+    opacity: 0.95;
+  }
+  16% {
+    transform: translate3d(320px, 150px, 0) rotate(-26deg);
+    opacity: 0;
+  }
+  100% {
+    transform: translate3d(320px, 150px, 0) rotate(-26deg);
+    opacity: 0;
+  }
+}
+
+@keyframes heroAmbientBreathing {
+  0%, 100% {
+    opacity: 0.3;
+    transform: scale3d(1, 1, 1);
+  }
+  50% {
+    opacity: 0.6;
+    transform: scale3d(1.12, 1.12, 1);
+  }
+}
 
 .stagger > *:nth-child(1) { animation-delay: 0.05s; }
 .stagger > *:nth-child(2) { animation-delay: 0.10s; }
